@@ -1,0 +1,8 @@
+# obs-service-info-accessors.c: the service lifecycle and the service getters
+# set and read a service's plugin table and plugin data inside libobs.
+# Declared in obs-internal.h without EXPORT, so the shims stay hidden the
+# same way.
+obs_service_set_info
+obs_service_set_plugin_data
+obs_service_get_info_table
+obs_service_get_plugin_data

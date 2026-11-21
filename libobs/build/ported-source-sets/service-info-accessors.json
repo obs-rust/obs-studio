@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-service-info-accessors+.h.c"
+  ]
+}

@@ -493,6 +493,8 @@ mod canonical_scene_transform_getters_are_registered;
 mod canonical_sck_vaapi_helpers_are_registered;
 #[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
 mod canonical_scripting_hosts_are_registered;
+#[path = "native/registration/canonical_service_info_accessors_swap_is_registered.rs"]
+mod canonical_service_info_accessors_swap_is_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]

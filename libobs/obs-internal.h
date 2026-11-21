@@ -2774,6 +2774,15 @@ struct obs_service_state_fields {
 };
 
 extern struct obs_service_state_fields obs_service_state_fields(obs_service_t *service);
+
+/* Private field view for the #3840 Rust info-table and plugin-data
+ * accessors: the service's own table copy and its plugin data. Borrowed. */
+struct obs_service_info_accessors_fields {
+	struct obs_service_info *info;
+	void **data;
+};
+
+extern struct obs_service_info_accessors_fields obs_service_info_accessors_fields(obs_service_t *service);
 extern obs_service_t **obs_service_output_service_field(obs_output_t *output);
 
 extern void obs_service_activate(struct obs_service *service);

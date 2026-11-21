@@ -1,10 +1,11 @@
 /* Test-only oracle: the original libobs/obs-service-getters.c.h, unmodified,
  * with its exports renamed to oracle_* so it can link next to the Rust
  * shims (#1899, #1913, #1920). find_service() and the context accessors are
- * test doubles that both sides call. obs_service_get_info_table() and
- * obs_service_get_plugin_data() are copied from obs-service.c,
- * and oracle_service_new() builds the struct obs_service both sides read,
- * so the parity tests drive the C and the Rust with the same service. */
+ * test doubles that both sides call. The info-table and plugin-data
+ * accessors are the Rust port's (#3840), through the real field adapter in
+ * oracle/service_info_accessors.c, and oracle_service_new() builds the
+ * struct obs_service both sides read, so the parity tests drive the C and
+ * the Rust with the same service. */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif
@@ -55,17 +56,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* obs-service.c */
-const struct obs_service_info *obs_service_get_info_table(const obs_service_t *service)
-{
-	return &service->info;
-}
-
-void *obs_service_get_plugin_data(const obs_service_t *service)
-{
-	return service->context.data;
-}
 
 /* Context getters now come from the Rust port and its real field adapter. */
 
@@ -136,17 +126,9 @@ obs_service_t *obs_service_context_new(const char *name, obs_data_t *settings, o
 	return service;
 }
 
-void obs_service_set_info(obs_service_t *service, const struct obs_service_info *info)
-{
-	trace_ev("set_info", service);
-	service->info = *info;
-}
-
-void obs_service_set_plugin_data(obs_service_t *service, void *data)
-{
-	trace_ev(data ? "set_data" : "set_data NULL", service);
-	service->context.data = data;
-}
+/* obs_service_set_info() and obs_service_set_plugin_data() are the Rust
+ * port's now (#3840); both sides call them, so the lifecycle trace no
+ * longer records them. */
 
 /* obs_context_init_control()'s control object, then the insert. */
 void obs_service_context_insert(obs_service_t *service)

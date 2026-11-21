@@ -16026,6 +16026,33 @@
         "."
       ]
     },
+    "test_service_info_accessors_rust": {
+      "sources": [
+        "test/cmocka/test_service_info_accessors.c",
+        "test/cmocka/service-info-accessors-link-support.c"
+      ],
+      "definitions": [
+        "OBS_SERVICE_INFO_ACCESSORS_RUST"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-info-accessors-fields.c.h"
+      ],
+      "includes": [
+        "."
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_service_lifecycle": {
       "sources": [
         "test/cmocka/test_service_lifecycle.c"
@@ -28125,6 +28152,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_service_info_accessors_rust": {
+      "target": "test_service_info_accessors_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_service_lifecycle": {
       "target": "test_service_lifecycle",
