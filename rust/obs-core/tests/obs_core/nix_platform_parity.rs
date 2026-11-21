@@ -14,8 +14,7 @@ unsafe extern "C" {
     fn oracle_obs_get_nix_platform_display() -> *mut c_void;
 }
 
-#[test]
-fn operation_sequences_match_original_c() {
+fn run_child_process() -> bool {
     if std::env::var_os("OBS_NIX_PLATFORM_PARITY_CHILD").is_none() {
         let selector = format!(
             "{}::operation_sequences_match_original_c",
@@ -33,6 +32,14 @@ fn operation_sequences_match_original_c() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        return true;
+    }
+    false
+}
+
+#[test]
+fn operation_sequences_match_original_c() {
+    if run_child_process() {
         return;
     }
     // SAFETY: this test alone accesses the oracle's globals; pointers stay live,
