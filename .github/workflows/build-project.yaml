@@ -3456,8 +3456,8 @@ jobs:
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   rust-tier2-macos:
-    # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).
-    timeout-minutes: 25
+    # 2x the 17-24 min the lane now runs; 25 timed out on master (#5415, #2593 A).
+    timeout-minutes: 45
     name: Rust Tier 2 (macos-26)
     runs-on: macos-26
     # Starts with Fast Gate (#2985), like the other platform lanes.
