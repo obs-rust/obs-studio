@@ -3,4 +3,3 @@
 ^test_frontend_screenshot_srgb$ #3960 I010 and I210 orange cases intermittently sample a black program frame after a correct screenshot
 ^test_pulse_default_follow_pipewire$ #4944 default_output_unplugged still flakes after private-daemon serialization
 ^test_source_transition_slots$ #4680 clear assumes immediate weak expiry while the video tick may still own a reference (1/972 C reference under CPU-pinned stress)
-^test_transition_load_release$ #4800 old-source ownership assertions race under CPU-pinned stress (1/390 hybrid)
