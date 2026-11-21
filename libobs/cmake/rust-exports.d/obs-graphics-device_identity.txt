@@ -1,0 +1,2 @@
+gs_get_device_obj
+gs_get_device_name

@@ -50,6 +50,14 @@ gs_shader_t *oracle_gs_get_pixel_shader(void);
 #undef gs_get_pixel_shader
 #undef gs_get_vertex_shader
 
+#define gs_get_device_obj oracle_gs_get_device_obj
+#define gs_get_device_name oracle_gs_get_device_name
+void *oracle_gs_get_device_obj(void);
+const char *oracle_gs_get_device_name(void);
+#include "graphics-device-identity.inc"
+#undef gs_get_device_name
+#undef gs_get_device_obj
+
 /* Original graphics.c.h context validator, verbatim. */
 static inline bool gs_valid(const char *f)
 {
@@ -256,4 +264,74 @@ int oracle_active_shader_ref(void)
 	assert(dq_shader_tokens[0] == 17 && dq_shader_tokens[1] == 29);
 	assert(dq_graphics.ref == 0 || dq_graphics.ref == 1);
 	return dq_graphics.ref == 1 ? 1 : 0;
+}
+
+/* Device identity shares the real private adapter and TLS recording context. */
+static THREAD_LOCAL int dq_identity_devices[2], dq_identity_objects[2];
+static THREAD_LOCAL char dq_identity_names[3][32];
+static THREAD_LOCAL void *dq_identity_object;
+static THREAD_LOCAL const char *dq_identity_name;
+static THREAD_LOCAL unsigned dq_identity_calls[2], dq_identity_device;
+
+static void *dq_identity_query_object(gs_device_t *device)
+{
+	assert(thread_graphics == &dq_graphics);
+	assert(device == dq_graphics.device);
+	assert(device == NULL || device == (gs_device_t *)&dq_identity_devices[0] ||
+	       device == (gs_device_t *)&dq_identity_devices[1]);
+	dq_identity_device = device == NULL ? 0u : (device == (gs_device_t *)&dq_identity_devices[0] ? 1u : 2u);
+	dq_identity_calls[0]++;
+	return dq_identity_object;
+}
+static const char *dq_identity_query_name(void)
+{
+	assert(thread_graphics == &dq_graphics);
+	dq_identity_calls[1]++;
+	return dq_identity_name;
+}
+
+void *oracle_device_identity_token(bool name, unsigned token);
+void *oracle_device_identity_token(bool name, unsigned token)
+{
+	assert(token <= (name ? 3u : 2u));
+	if (!token)
+		return NULL;
+	return name ? (void *)dq_identity_names[token - 1] : (void *)&dq_identity_objects[token - 1];
+}
+void oracle_device_identity_context(bool context);
+void oracle_device_identity_context(bool context)
+{
+	thread_graphics = context ? &dq_graphics : NULL;
+}
+void oracle_device_identity_reset(bool object, bool name, unsigned object_result, unsigned name_result,
+				  unsigned device);
+void oracle_device_identity_reset(bool object, bool name, unsigned object_result, unsigned name_result, unsigned device)
+{
+	assert(device <= 2);
+	oracle_device_queries_reset(false, false, false, 0, 0);
+	dq_graphics.device = device ? (gs_device_t *)&dq_identity_devices[device - 1] : NULL;
+	dq_graphics.exports.device_get_device_obj = object ? dq_identity_query_object : NULL;
+	dq_graphics.exports.device_get_name = name ? dq_identity_query_name : NULL;
+	memset(dq_identity_names, 0, sizeof(dq_identity_names));
+	strcpy(dq_identity_names[1], "recording backend");
+	strcpy(dq_identity_names[2], "recording backend");
+	dq_identity_object = oracle_device_identity_token(false, object_result);
+	dq_identity_name = oracle_device_identity_token(true, name_result);
+	dq_identity_calls[0] = dq_identity_calls[1] = 0;
+	dq_identity_device = 3;
+}
+unsigned oracle_device_identity_calls(bool name);
+unsigned oracle_device_identity_calls(bool name)
+{
+	return dq_identity_calls[name ? 1 : 0];
+}
+unsigned oracle_device_identity_last_device(void);
+unsigned oracle_device_identity_last_device(void)
+{
+	return dq_identity_device;
+}
+void oracle_device_identity_mutate_name(void);
+void oracle_device_identity_mutate_name(void)
+{
+	dq_identity_names[1][0] = 'R';
 }
