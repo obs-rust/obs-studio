@@ -1,0 +1,11 @@
+# Exercise the selected real C-reference/hybrid library through its public API.
+add_executable(test_latest_input_type_id_api test_latest_input_type_id_api.c)
+target_include_directories(test_latest_input_type_id_api PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_latest_input_type_id_api PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_latest_input_type_id_api)
+if(XVFB_RUN)
+  add_test(NAME test_latest_input_type_id_api COMMAND ${XVFB_RUN} -a $<TARGET_FILE:test_latest_input_type_id_api>)
+else()
+  add_test(NAME test_latest_input_type_id_api COMMAND test_latest_input_type_id_api)
+endif()
+set_tests_properties(test_latest_input_type_id_api PROPERTIES TIMEOUT 30)

@@ -1,0 +1,1 @@
+obs_get_latest_input_type_id

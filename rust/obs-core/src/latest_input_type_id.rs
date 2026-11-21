@@ -6,8 +6,17 @@
 pub fn latest<'a, Id>(
     query: Option<&[u8]>,
     count: usize,
-    entry: impl FnMut(usize) -> (&'a [u8], u32, Id),
+    mut entry: impl FnMut(usize) -> (&'a [u8], u32, Id),
 ) -> Option<Id> {
-    let _ = (query, count, entry);
-    todo!()
+    let query = query?;
+    let mut best = crate::core_setup_rules::LATEST_NONE;
+    let mut selected = None;
+    for i in 0..count {
+        let (name, version, id) = entry(i);
+        if name == query && crate::core_setup_rules::latest_newer(version, best) {
+            best = version.cast_signed();
+            selected = Some(id);
+        }
+    }
+    selected
 }
