@@ -9,7 +9,8 @@ When a CI runner dies, the job stays `in_progress` until its
 44-60-minute stall on #2514. The maintainer's `Decided:` on #2593 sets the
 bounds at about 2x the measured duration: Fast Gate (`rust-tests-linux`) 20;
 `rust-tests-windows` 30 / `rust-tests-macos` 25; `rust-tier2-windows` 25 /
-`rust-tier2-macos` 25.
+`rust-tier2-macos` 25. The macOS Tier 2 lane grew to 17-24 min and timed out
+on master at 25, so the same 2x rule now sets it at 45 (#5415).
 """
 
 from __future__ import annotations
@@ -49,10 +50,13 @@ class JobTimeoutTest(unittest.TestCase):
         self.assertEqual(timeout_line(job_block(self.text, "rust-tests-macos")), "25")
         self.assertEqual(timeout_line(job_block(self.text, "rust-tests-windows")), "30")
 
-    def test_rust_tier2_times_out_at_25(self):
-        """`rust-tier2` runs about 10-15 min; 25 bounds a dead runner (#2593 A)."""
-        self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-macos")), "25")
+    def test_rust_tier2_windows_times_out_at_25(self):
+        """`rust-tier2-windows` runs about 10-15 min; 25 bounds a dead runner (#2593 A)."""
         self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-windows")), "25")
+
+    def test_rust_tier2_macos_times_out_at_45(self):
+        """`rust-tier2-macos` runs 17-24 min and timed out at 25 on master; 2x is 45 (#5415)."""
+        self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-macos")), "45")
 
 
 class Tier2AptTimeoutTest(unittest.TestCase):
