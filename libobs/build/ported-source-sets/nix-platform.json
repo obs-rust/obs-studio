@@ -1,0 +1,8 @@
+{
+  "LIBOBS_LINUX_PORTED_SOURCES": [
+    "build/libobs.ported-nix-platform+.h.c"
+  ],
+  "headers": [
+    "obs-nix-platform-rust.h"
+  ]
+}

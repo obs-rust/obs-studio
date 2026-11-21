@@ -1,0 +1,1 @@
+obs-nix-platform.inc|libobs/obs-nix-platform.c.h|#include "libobs/build/libobs-ported-nix-platform.pch.h"

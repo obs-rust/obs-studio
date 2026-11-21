@@ -15,13 +15,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-nix.pch.h"
+#include "libobs/build/libobs-ported-nix-platform.pch.h"
 
 static enum obs_nix_platform_type obs_nix_platform = OBS_NIX_PLATFORM_X11_EGL;
 
 static void *obs_nix_platform_display = NULL;
 
-void obs_set_nix_platform(enum obs_nix_platform_type platform)
+void obs_nix_platform_set(enum obs_nix_platform_type platform)
 {
 	assert(platform != OBS_NIX_PLATFORM_INVALID);
 	obs_nix_platform = platform;
