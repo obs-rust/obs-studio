@@ -83,7 +83,7 @@
 #include "libobs/obs-service-context-getter-fields.c.h"
 #include "libobs/obs-service-find.c.h"
 #include "libobs/obs-service-handler-getters-fields.c.h"
-#include "libobs/obs-service-info-accessors.c.h"
+#include "libobs/obs-service-info-accessors-fields.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"

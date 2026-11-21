@@ -1,3 +1,3 @@
-/* The hidden service info-table and plugin-data accessors that the Rust
- * service implementation calls (#3840). */
-#include "libobs/obs-service-info-accessors.c.h"
+/* Real private adapter for the Rust service info-table and plugin-data
+ * accessors (#3840), for standalone Rust archive consumers. */
+#include "libobs/obs-service-info-accessors-fields.c.h"

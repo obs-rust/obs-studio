@@ -267,3 +267,5 @@ pub mod output_encoder_getters;
 pub mod output_update;
 
 pub mod service_handler_getters;
+
+pub mod service_info_accessors;
