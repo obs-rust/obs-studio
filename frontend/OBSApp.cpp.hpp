@@ -1282,6 +1282,10 @@ bool OBSApp::OBSInit()
 	mainWindow->OBSInit();
 	initializingWindow.release();
 
+	/* Cmd+Q, logoff and shutdown close the main window first, so a
+	 * floating main dock cannot cancel the quit (obs-rust/obs-studio#5406). */
+	installEventFilter(new QuitClosesMainWindowFirst(mainWindow, this));
+
 	connect(OBSBasic::Get(), &OBSBasic::mainWindowClosed, crashHandler_.get(),
 		&OBS::CrashHandler::applicationShutdownHandler);
 
