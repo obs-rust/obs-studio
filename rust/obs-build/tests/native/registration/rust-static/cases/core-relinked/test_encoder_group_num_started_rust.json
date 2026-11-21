@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_group_num_started_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_group_num_started.c",
+        "test/cmocka/encoder-group-num-started-record-support.c"
+      ],
+      "definitions": [
+        "pthread_mutex_lock=encoder_group_count_record_lock",
+        "pthread_mutex_unlock=encoder_group_count_record_unlock"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_encoder_group_num_started_rust": {
+      "target": "test_encoder_group_num_started_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

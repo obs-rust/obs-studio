@@ -33,7 +33,9 @@ pub trait StartedCount {
 }
 
 /// The group's started-encoder count, read under its mutex.
-#[allow(clippy::todo)]
-pub fn num_started<G: StartedCount>(_group: &mut G) -> u32 {
-    todo!("RED: obs_encoder_group_num_started (#5319)")
+pub fn num_started<G: StartedCount>(group: &mut G) -> u32 {
+    group.lock();
+    let num_started = group.read();
+    group.unlock();
+    num_started
 }

@@ -18,7 +18,6 @@
 #include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
 #include "libobs/obs-encoder-group-lifecycle-fields.c.h"
 #include "libobs/obs-encoder-group-num-started-fields.c.h"
-#include "libobs/obs-encoder-group-num-started.c.h"
 #include "libobs/obs-encoder-init-fields.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-media-getters-fields.c.h"
