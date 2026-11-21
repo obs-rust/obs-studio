@@ -607,6 +607,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-dock-layout"
+version = "0.1.0"
+
+[[package]]
 name = "obs-encoder"
 version = "0.1.0"
 dependencies = [
@@ -629,6 +633,7 @@ name = "obs-frontend"
 version = "0.1.0"
 dependencies = [
  "obs-camera-busy",
+ "obs-dock-layout",
  "obs-exit-watchdog",
  "obs-fallback-warning",
  "obs-gpu-status",
@@ -640,6 +645,7 @@ version = "0.1.0"
 dependencies = [
  "libloading",
  "obs-camera-busy",
+ "obs-dock-layout",
  "obs-exit-watchdog",
  "obs-fallback-warning",
 ]

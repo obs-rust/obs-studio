@@ -9,6 +9,8 @@
 
 /// The camera-busy warning (#3724): `frontend/utility/obs-camera-busy.h`.
 pub use obs_camera_busy::ffi as camera_busy;
+/// The dock layout model (#5230); its header comes with the frontend adapter.
+pub use obs_dock_layout::ffi as dock_layout;
 /// The exit watchdog (#4065): `frontend/utility/obs-exit-watchdog.h`.
 pub use obs_exit_watchdog::ffi as exit_watchdog;
 /// The shared fallback warning (#2218): `frontend/utility/obs-fallback-warning.h`.

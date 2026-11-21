@@ -31,6 +31,7 @@ are in [docs/rust-port/naming.md](../docs/rust-port/naming.md#repository-layout-
 | `obs-nvenc/`, `obs-nvenc-plugin/` | Port of the `plugins/obs-nvenc` CUDA/NVENC loader, and the staticlib that plugin links |
 | `obs-gpu-status/`, `obs-frontend/` | GPU acceleration status (#846), and the staticlib the frontend links |
 | `obs-fallback-warning/` | The shared warning for fallbacks that lower security (#2218): when a dialog shows, how it ends, the countdown and the log line |
+| `obs-dock-layout/` | The dock layout model of the main window (#5230): the dock sizes the user wants, kept apart from window changes, and the resizes that put them back |
 | `obs-c-oracle/` | Test-only: original C sources compiled with `oracle_` symbols for layout and differential tests |
 | `libobs-rust/` | The single staticlib linked into production hybrid `libobs` |
 | `obs-studio-rust/` | Standalone CLI that starts, stops and inspects OBS streaming over obs-websocket v5. Named after the product, with no release tags of its own (`docs/rust-port/naming.md`) |
