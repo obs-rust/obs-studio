@@ -3,7 +3,8 @@
 //! `libobs/obs-hotkey-owned-translations.c.h`,
 //! `libobs/obs-hotkey-press.c.h`, `libobs/obs-hotkey-pair.c.h`,
 //! `libobs/obs-hotkey-save-load.c.h`,
-//! `libobs/obs-hotkey-binding-press.c.h`, `libobs/obs-nix-hotkey-state.c.h`,
+//! `libobs/obs-hotkey-binding-press.c.h`, `libobs/obs-hotkey-dispatch.c.h`,
+//! `libobs/obs-nix-hotkey-state.c.h`,
 //! `libobs/obs-nix-portal-shortcut-ids.c.h`,
 //! `libobs/obs-nix-portal-shortcut-sets.c.h`,
 //! `libobs/obs-nix-portal-shortcut-status.c.h`,
@@ -17,7 +18,8 @@
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
 //! [`owned_translations`], [`background_enum`],
-//! [`press`], [`pair`], [`save_load`], [`binding_press`], [`nix_hotkey_state`],
+//! [`press`], [`pair`], [`save_load`], [`binding_press`], [`dispatch`],
+//! [`nix_hotkey_state`],
 //! [`portal_shortcut_ids`], [`portal_shortcut_sets`],
 //! [`portal_shortcut_status`], [`nix_wayland_key_names`],
 //! [`nix_wayland_keys`], [`nix_wayland_seats`],
@@ -49,6 +51,7 @@ pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
 pub mod combination_background_id;
+pub mod dispatch;
 pub mod enumeration;
 pub mod identity_getters;
 pub mod identity_setters;
