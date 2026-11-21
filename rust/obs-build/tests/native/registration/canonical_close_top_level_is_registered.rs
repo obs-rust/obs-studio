@@ -1,6 +1,7 @@
 use super::*;
 
-/// #1390: retain all five unchanged top-level window close cases.
+/// #1390: retain all five unchanged top-level window close cases. The
+/// floating dock case (#5409) also watches `dock-window.hpp`.
 #[test]
 fn canonical_close_top_level_is_registered() {
     use obs_build::validation::graph::Graph;
@@ -22,7 +23,10 @@ fn canonical_close_top_level_is_registered() {
     assert_eq!(target.includes, ["frontend/utility"]);
     assert_eq!(
         target.watch_inputs,
-        ["frontend/utility/close-top-level.hpp"]
+        [
+            "frontend/utility/close-top-level.hpp",
+            "frontend/utility/dock-window.hpp",
+        ]
     );
     let test = &graph.tests["test_close_top_level"];
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
