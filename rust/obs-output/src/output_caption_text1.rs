@@ -25,5 +25,9 @@ pub const DISPLAY_DURATION: f64 = 2.0;
 /// forwarded. Otherwise `forward` runs once with the output and
 /// [`DISPLAY_DURATION`].
 pub fn caption_text1<O>(output: Option<O>, log_null: impl FnOnce(), forward: impl FnOnce(O, f64)) {
-    let _ = (output, log_null, forward);
+    let Some(output) = output else {
+        log_null();
+        return;
+    };
+    forward(output, DISPLAY_DURATION);
 }
