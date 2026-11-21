@@ -17,6 +17,7 @@
 #include "libobs/obs-encoder-video-tex-active-mix.c.h"
 #include "libobs/obs-enum-scenes-fields.c.h"
 #include "libobs/obs-get-audio-fields.c.h"
+#include "libobs/obs-get-latest-input-type-id.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
 #include "libobs/obs-get-output-source-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
