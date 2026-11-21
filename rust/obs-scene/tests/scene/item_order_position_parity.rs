@@ -95,8 +95,13 @@ fn hybrid_null_and_detached_return_zero_without_lock() {
     for fixture in [bits(0, 0, 0), bits(6, 2, 0), bits(6, 2, HEAD | LINK)] {
         for which in [0, 1] {
             // SAFETY: the oracle passes NULL or its own detached item.
-            let result =
-                unsafe { oracle_scene_item_order_position_hybrid(which, fixture, obs_sceneitem_get_order_position) };
+            let result = unsafe {
+                oracle_scene_item_order_position_hybrid(
+                    which,
+                    fixture,
+                    obs_sceneitem_get_order_position,
+                )
+            };
             assert_eq!(result, 0, "which={which} bits={fixture:#x}");
         }
     }

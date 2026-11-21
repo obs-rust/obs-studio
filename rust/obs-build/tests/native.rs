@@ -31,6 +31,8 @@ mod canonical_rust_static_windows_keys_are_registered;
 mod canonical_scene_item_alignment_setter_swap_is_registered;
 #[path = "native/registration/canonical_scene_item_get_group_swap_is_registered.rs"]
 mod canonical_scene_item_get_group_swap_is_registered;
+#[path = "native/registration/canonical_scene_item_order_position_swap_is_registered.rs"]
+mod canonical_scene_item_order_position_swap_is_registered;
 #[path = "native/registration/canonical_source_canvas_getter_swap_is_registered.rs"]
 mod canonical_source_canvas_getter_swap_is_registered;
 #[path = "native/registration/canonical_source_configurable_swap_is_registered.rs"]

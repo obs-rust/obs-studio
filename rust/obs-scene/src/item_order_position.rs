@@ -25,6 +25,22 @@ pub trait ParentList {
 /// number of items before the target in its parent's list, or the list's
 /// length when the target is not in it, under exactly one lock.
 pub fn order_position<L: ParentList>(list: Option<&mut L>) -> c_int {
-    let _ = list;
-    0
+    let Some(list) = list else {
+        return 0;
+    };
+    let target = list.target();
+    let mut next = list.head();
+    list.lock();
+    // C's `int index`; a list longer than INT_MAX cannot exist, so wrapping
+    // only keeps an impossible overflow from panicking across the C ABI.
+    let mut index: c_int = 0;
+    while let Some(item) = next {
+        if item == target {
+            break;
+        }
+        next = list.next(item);
+        index = index.wrapping_add(1);
+    }
+    list.unlock();
+    index
 }

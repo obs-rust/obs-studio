@@ -94,12 +94,12 @@ mod item_transition_setters_parity;
 
 mod item_get_group;
 mod item_get_group_parity;
-mod item_order_position;
-mod item_order_position_parity;
 mod item_group_scene;
 mod item_group_scene_parity;
 mod item_hotkeys;
 mod item_hotkeys_parity;
+mod item_order_position;
+mod item_order_position_parity;
 mod item_visible;
 mod item_visible_parity;
 

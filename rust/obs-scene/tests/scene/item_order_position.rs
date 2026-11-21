@@ -79,8 +79,8 @@ fn assert_position(first: Option<usize>, items: &[Item], target: usize, expected
 
 /// link_items(): items[0..count] in order, returning the head.
 fn link_items(items: &mut [Item], count: usize) -> Option<usize> {
-    for i in 0..count {
-        items[i].next = (i + 1 < count).then_some(i + 1);
+    for (i, item) in items.iter_mut().enumerate().take(count) {
+        item.next = (i + 1 < count).then_some(i + 1);
     }
     (count != 0).then_some(0)
 }
@@ -110,8 +110,8 @@ fn positions_count_siblings() {
     }
     // Re-link the same handles in a different order.
     let first = Some(5);
-    for i in 0..6 {
-        items[i].next = (i != 0).then(|| i - 1);
+    for (i, item) in items.iter_mut().enumerate() {
+        item.next = i.checked_sub(1);
     }
     for i in 0..6 {
         assert_position(first, &items, 5 - i, i as i32);
