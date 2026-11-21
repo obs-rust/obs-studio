@@ -12,5 +12,5 @@
  * platforms. Call it before the dock first floats. */
 inline void KeepFloatingDockShown(QDockWidget *dock)
 {
-	(void)dock;
+	dock->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
 }
