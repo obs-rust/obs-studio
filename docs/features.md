@@ -2457,6 +2457,12 @@ area.
   OBS was active again. *macOS*, 2026-11-21. Issue
   [#5409](https://github.com/obs-rust/obs-studio/issues/5409), PR
   [#5412](https://github.com/obs-rust/obs-studio/pull/5412).
+- After a floating dock is moved, the main window still lays out its docks:
+  they follow a resize, and a dock that is docked again goes back to its
+  place. Before, on macOS, the docks stayed as they were, and a docked dock
+  kept its floating position outside the window until Reset Docks. *macOS*,
+  2026-11-21. Issue
+  [#5416](https://github.com/obs-rust/obs-studio/issues/5416).
 
 ### Scripting
 
