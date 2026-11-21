@@ -7,6 +7,5 @@ pub fn get_video<C, M, V>(
     mix: impl FnOnce(C) -> Option<M>,
     video: impl FnOnce(M) -> Option<V>,
 ) -> Option<V> {
-    let _ = (canvas, mix, video);
-    todo!()
+    canvas.and_then(mix).and_then(video)
 }
