@@ -62,6 +62,7 @@
 #include "libobs/obs-output-mixer-setters-fields.c.h"
 #include "libobs/obs-output-module-fields.c.h"
 #include "libobs/obs-output-module-roots.c.h"
+#include "libobs/obs-output-output-caption-text1.c.h"
 #include "libobs/obs-output-pause-queries-fields.c.h"
 #include "libobs/obs-output-properties-fields.c.h"
 #include "libobs/obs-output-protocol-getter-fields.c.h"
