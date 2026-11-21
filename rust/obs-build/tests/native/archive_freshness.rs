@@ -299,7 +299,7 @@ fn hybrid_archive_checks_only_its_own_packages_in_a_newer_lockfile() {
     fixture.write_lock(
         &lock.replace(
             " \"pre-release-name\",\n",
-            " \"pre-release-name\",\n \"obs-dock-layout\",\n",
+            " \"pre-release-name\",\n \"obs-unrelated-fixture\",\n",
         ),
         true,
     );
@@ -344,7 +344,7 @@ fn hybrid_archive_reads_the_repository_lockfile() {
             entry,
             &entry.replace(
                 "dependencies = [\n",
-                "dependencies = [\n \"obs-dock-layout\",\n",
+                "dependencies = [\n \"obs-unrelated-fixture\",\n",
             ),
         ),
         true,
@@ -355,7 +355,7 @@ fn hybrid_archive_reads_the_repository_lockfile() {
             entry,
             &entry.replace(
                 "dependencies = [\n",
-                "dependencies = [\n \"obs-dock-layout\",\n",
+                "dependencies = [\n \"obs-unrelated-fixture\",\n",
             ),
         ),
         true,
@@ -453,10 +453,11 @@ impl LockFixture {
 
 const DEPS: &str = " \"obs-core-pkg\",\n \"serde\",\n";
 
-/// A crate libobs-rust does not use, and its registry dependency.
-const UNRELATED: &str = "\n[[package]]\nname = \"obs-dock-layout\"\nversion = \"0.1.0\"\n\
-    dependencies = [\n \"dock-layout-dep\",\n]\n\
-    \n[[package]]\nname = \"dock-layout-dep\"\nversion = \"1.0.9\"\n\
+/// A crate libobs-rust does not use, and its registry dependency. Their
+/// names are in no real lockfile (obs-dock-layout was, once #5362 added it).
+const UNRELATED: &str = "\n[[package]]\nname = \"obs-unrelated-fixture\"\nversion = \"0.1.0\"\n\
+    dependencies = [\n \"unrelated-fixture-dep\",\n]\n\
+    \n[[package]]\nname = \"unrelated-fixture-dep\"\nversion = \"1.0.9\"\n\
     source = \"registry+https://github.com/rust-lang/crates.io-index\"\n";
 
 /// Another crate that locks a second `serde`. Cargo then writes the
