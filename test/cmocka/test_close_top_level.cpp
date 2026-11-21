@@ -22,7 +22,14 @@
  * (obs-rust/obs-studio#5409): Qt hides a tool window while the application is
  * inactive unless it has Qt::WA_MacAlwaysShowToolWindow.
  * floating_dock_stays_shown_while_inactive checks that KeepFloatingDockShown()
- * (frontend/utility/dock-window.hpp) sets it on a dock that then floats. */
+ * (frontend/utility/dock-window.hpp) sets it on a dock that then floats.
+ *
+ * After a floating dock was moved, the main window no longer laid out its
+ * docks (obs-rust/obs-studio#5416): Qt keeps a copy of the layout during a dock
+ * drag, a drag that ends outside the window leaves it set, and
+ * QMainWindowLayout::setGeometry() does nothing while it is set. The moved
+ * dock cases move a floating dock with its title bar, then check that a
+ * resize still lays out the docks and that the dock docks into the window. */
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -30,6 +37,7 @@
 #include <QDockWidget>
 #include <QLibraryInfo>
 #include <QMainWindow>
+#include <QMouseEvent>
 #include <QWidget>
 #include <QWindow>
 
@@ -340,6 +348,120 @@ static void floating_dock_stays_shown_while_inactive(void **state)
 	}
 }
 
+/* The main window of OBS: nested and tabbed docks, no animation
+ * (OBSBasic.ui), two docks with content of a real size. */
+static QMainWindow *moved_main;
+static QDockWidget *moved_dock;
+static QDockWidget *moved_other;
+
+static QDockWidget *add_moved_dock(const char *name, Qt::DockWidgetArea area)
+{
+	auto *dock = new QDockWidget(QString::fromLatin1(name), moved_main);
+	dock->setObjectName(QString::fromLatin1(name));
+	auto *content = new QWidget;
+	content->setMinimumSize(160, 120);
+	dock->setWidget(content);
+	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
+	SetUpDockWindow(dock);
+	moved_main->addDockWidget(area, dock);
+	return dock;
+}
+
+static int moved_setup(void **state)
+{
+	(void)state;
+	moved_main = new QMainWindow;
+	moved_main->setDockOptions(QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
+	auto *central = new QWidget;
+	central->setMinimumSize(200, 150);
+	moved_main->setCentralWidget(central);
+	moved_main->resize(900, 600);
+	moved_dock = add_moved_dock("scenesDock", Qt::LeftDockWidgetArea);
+	moved_other = add_moved_dock("sourcesDock", Qt::LeftDockWidgetArea);
+	moved_main->show();
+	QApplication::processEvents();
+	moved_dock->setFloating(true);
+	moved_dock->show();
+	QApplication::processEvents();
+	return 0;
+}
+
+static int moved_teardown(void **state)
+{
+	(void)state;
+	delete moved_main;
+	moved_main = nullptr;
+	moved_dock = nullptr;
+	moved_other = nullptr;
+	QApplication::processEvents();
+	return 0;
+}
+
+/* Moves a floating dock by its window frame, as a user does on macOS, and lets
+ * it go where it does not dock: a press on the frame above the dock starts
+ * Qt's drag, the window moves (each move hovers the main window, which sets the
+ * copy), and the drag ends without docking. macOS ends it at the release,
+ * other systems at the next frame mouse move; both keep the copy. The
+ * offscreen platform gives a window a frame of 2 pixels. */
+static void move_floating_dock(QDockWidget *dock, QPoint by)
+{
+	auto send = [dock](QEvent::Type type, QPoint to, Qt::MouseButton button, Qt::MouseButtons buttons) {
+		QMouseEvent event(type, dock->mapFromGlobal(QPointF(to)), QPointF(to), button, buttons, Qt::NoModifier);
+		QApplication::sendEvent(dock, &event);
+	};
+	const QPoint frame(dock->geometry().center().x(), dock->geometry().top() - 1);
+	send(QEvent::NonClientAreaMouseButtonPress, frame, Qt::LeftButton, Qt::LeftButton);
+	dock->move(dock->pos() + by);
+	QApplication::processEvents();
+	send(QEvent::NonClientAreaMouseMove, frame + by, Qt::NoButton, Qt::LeftButton);
+	send(QEvent::NonClientAreaMouseButtonRelease, frame + by, Qt::LeftButton, Qt::NoButton);
+	QApplication::processEvents();
+}
+
+static void moved_report(const char *what)
+{
+	const QRect d = moved_dock->geometry();
+	const QRect o = moved_other->geometry();
+	const QRect c = moved_main->centralWidget()->geometry();
+	fprintf(stderr,
+		"%s: dock floating %d visible %d at %d,%d %dx%d; other dock at %d,%d %dx%d; central at %d,%d %dx%d; "
+		"main window %dx%d\n",
+		what, moved_dock->isFloating(), moved_dock->isVisible(), d.x(), d.y(), d.width(), d.height(), o.x(),
+		o.y(), o.width(), o.height(), c.x(), c.y(), c.width(), c.height(), moved_main->width(),
+		moved_main->height());
+}
+
+static void moved_dock_keeps_the_main_window_layout(void **state)
+{
+	(void)state;
+	move_floating_dock(moved_dock, QPoint(1000, 100));
+	const int before = moved_main->centralWidget()->width();
+	moved_main->resize(moved_main->width() + 60, moved_main->height());
+	QApplication::processEvents();
+	const int after = moved_main->centralWidget()->width();
+	if (!moved_dock->isFloating() || after != before + 60) {
+		moved_report("resize after a move");
+		fprintf(stderr, "central width %d before, %d after the resize (expected %d)\n", before, after,
+			before + 60);
+		fail();
+	}
+}
+
+static void moved_dock_docks_into_the_main_window(void **state)
+{
+	(void)state;
+	move_floating_dock(moved_dock, QPoint(1000, 100));
+	/* What a double-click on the title bar does. */
+	moved_dock->setFloating(false);
+	QApplication::processEvents();
+	const QRect d = moved_dock->geometry();
+	if (moved_dock->isFloating() || !moved_dock->isVisible() || d.width() < 160 || d.left() < 0 || d.top() < 0 ||
+	    d.right() >= moved_main->width() || d.bottom() >= moved_main->height()) {
+		moved_report("dock docked after a move");
+		fail();
+	}
+}
+
 #ifdef _WIN32
 /* With no platform plugin, a release Qt on Windows shows a modal message box
  * before it exits when the process has no console window, and under ctest on
@@ -398,6 +520,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
 						quit_teardown),
 		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
+		cmocka_unit_test_setup_teardown(moved_dock_keeps_the_main_window_layout, moved_setup, moved_teardown),
+		cmocka_unit_test_setup_teardown(moved_dock_docks_into_the_main_window, moved_setup, moved_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
