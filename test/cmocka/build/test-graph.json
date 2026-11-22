@@ -10202,6 +10202,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_obs_enum_contexts": {
+      "sources": [
+        "test/cmocka/test_obs_enum_contexts.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_obs_enum_outputs_removal": {
       "sources": [
         "test/cmocka/test_obs_enum_outputs_removal.c"
@@ -26392,6 +26401,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_obs_enum_contexts": {
+      "target": "test_obs_enum_contexts",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 90
     },
     "test_obs_enum_outputs_removal": {
       "target": "test_obs_enum_outputs_removal",
