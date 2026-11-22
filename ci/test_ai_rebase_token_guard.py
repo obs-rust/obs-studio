@@ -197,6 +197,18 @@ class TokenGuardTest(unittest.TestCase):
             self.assertTrue(readers, name)
             self.assertLess(mint[0], min(readers), name)
 
+    def test_rebase_job_installs_the_agent_clud_drives(self) -> None:
+        """`clud --openrouter` runs Claude Code; without it every conflicted
+        rebase is refused with "claude not found on PATH" (run 45005866838)."""
+        job_steps = steps(jobs(WORKFLOW.read_text(encoding="utf-8"))["rebase"])
+        names = [re.search(r"name: (.+)", s).group(1) if re.search(r"name: (.+)", s) else "" for s in job_steps]
+        install = [i for i, s in enumerate(job_steps)
+                   if re.search(r"npm install --global @anthropic-ai/claude-code@\d+\.\d+\.\d+\s*$", s, re.M)]
+        self.assertEqual(len(install), 1, "Claude Code is not installed at a pinned version")
+        self.assertIn("env.HAS_TOKEN == 'true'", step_if(job_steps[install[0]]))
+        self.assertLess(names.index("Install clud"), install[0])
+        self.assertLess(install[0], names.index("Rebase"))
+
     def test_real_workflow_says_why_it_skipped(self) -> None:
         job = jobs(WORKFLOW.read_text(encoding="utf-8"))["rebase"]
         flag = token_flag(job)
