@@ -86,8 +86,8 @@ struct Window {
 	QMainWindow window;
 	DockLayout layout{&window};
 	QList<QDockWidget *> docks;
-	/* What Reset Docks restores: OBSBasic saves it before the user's
-	 * layout is restored (startingDockLayout). */
+	/* What Reset Docks restores: OBSBasic gives it to
+	 * DockLayout::SetDefault() before the user's layout is restored. */
 	QByteArray startingLayout;
 
 	Window()
@@ -105,6 +105,7 @@ struct Window {
 			docks.append(dock);
 		}
 		startingLayout = window.saveState();
+		layout.SetDefault({docks[0], docks[1], docks[2], docks[3], docks[4]});
 		window.resize(1600, 900);
 	}
 
@@ -509,7 +510,7 @@ static void floated_dock_stays_when_the_window_resizes_at_the_same_time(void **)
 	}
 }
 
-/* #5230: Reset Docks restores the default layout (startingDockLayout). When
+/* #5230: Reset Docks restores the default layout (DockLayout::Reset). When
  * the window resizes at the same time, the reset stays, and quit saves the
  * reset layout, not the one the session started with. */
 static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
@@ -522,7 +523,7 @@ static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
 		first.restore(state);
 		settle(first.window);
 		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::LeftDockWidgetArea);
-		first.window.restoreState(first.startingLayout);
+		first.layout.Reset();
 		first.window.resize(1200, 700);
 		settle(first.window);
 		print_message("dock 2 area after reset and resize: %d\n",
@@ -536,6 +537,128 @@ static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
 			      int(restarted.window.dockWidgetArea(restarted.docks[2])));
 		assert_int_equal(restarted.window.dockWidgetArea(restarted.docks[2]), Qt::BottomDockWidgetArea);
 	}
+}
+
+/* #5462: the main window as OBSBasic arranges its default layout: Scenes and
+ * Sources on the left, Mixer, Transitions and Controls at the bottom, Stats a
+ * hidden floating dock outside the default layout. */
+struct DefaultWindow {
+	QMainWindow window;
+	DockLayout layout{&window};
+	QDockWidget *scenes = dock("scenesDock");
+	QDockWidget *sources = dock("sourcesDock");
+	QDockWidget *mixer = dock("mixerDock");
+	QDockWidget *transitions = dock("transitionsDock");
+	QDockWidget *controls = dock("controlsDock");
+	QDockWidget *stats = nullptr;
+
+	QDockWidget *dock(const char *name)
+	{
+		auto *d = new QDockWidget(QString::fromLatin1(name));
+		d->setObjectName(QString::fromLatin1(name));
+		d->setWidget(new QLabel(QStringLiteral("Contents")));
+		d->widget()->setMinimumSize(100, 80);
+		return d;
+	}
+
+	DefaultWindow()
+	{
+		window.setCentralWidget(new QLabel(QStringLiteral("Preview")));
+		/* The .ui file puts the four docks at the bottom. */
+		for (QDockWidget *d : {scenes, sources, mixer, transitions}) {
+			window.addDockWidget(Qt::BottomDockWidgetArea, d);
+		}
+		/* OBSBasic::OBSBasic, setDockCornersVertical(true). */
+		window.setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+		window.setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+		window.setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+		window.setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+		window.addDockWidget(Qt::LeftDockWidgetArea, scenes);
+		window.splitDockWidget(scenes, sources, Qt::Vertical);
+		window.addDockWidget(Qt::BottomDockWidgetArea, controls);
+		layout.SetDefault({scenes, sources, mixer, transitions, controls});
+		stats = dock("statsDock");
+		window.addDockWidget(Qt::BottomDockWidgetArea, stats);
+		stats->setVisible(false);
+		stats->setFloating(true);
+		window.resize(1600, 900);
+	}
+};
+
+/* #5462: Reset Docks after the user changed the layout gives the default
+ * layout with the default sizes: side docks min(30 % of the width, 280 px),
+ * bottom docks 22.5 % of the height, Mixer wider than Controls wider than
+ * Transitions. Stats stays a hidden floating dock. The model starts with no
+ * sizes and saves the reset layout. */
+static void reset_docks_gives_the_default_layout_and_sizes(void **)
+{
+	Qt::DockWidgetArea scenesArea, sourcesArea, mixerArea;
+	bool sourcesBelow, allShown, statsFloating, statsHidden, hasSizes, savesLive;
+	int side, bottom, mixer, transitions, controls;
+	{
+		DefaultWindow w;
+		w.window.show();
+		settle(w.window);
+		/* The user's layout: Scenes to the right, Transitions hidden,
+		 * the bottom docks taller. */
+		w.window.addDockWidget(Qt::RightDockWidgetArea, w.scenes);
+		w.transitions->setVisible(false);
+		w.window.resizeDocks({w.mixer}, {400}, Qt::Vertical);
+		w.stats->setFloating(false);
+		w.stats->setVisible(true);
+		settle(w.window);
+		/* OBSBasic::on_resetDocks_triggered puts Stats away first. */
+		w.stats->setVisible(false);
+		w.stats->setFloating(true);
+		w.layout.Reset();
+		settle(w.window);
+		scenesArea = w.window.dockWidgetArea(w.scenes);
+		sourcesArea = w.window.dockWidgetArea(w.sources);
+		mixerArea = w.window.dockWidgetArea(w.mixer);
+		sourcesBelow = w.sources->geometry().top() > w.scenes->geometry().top();
+		allShown = w.scenes->isVisible() && w.sources->isVisible() && w.mixer->isVisible() &&
+			   w.transitions->isVisible() && w.controls->isVisible();
+		statsFloating = w.stats->isFloating();
+		statsHidden = !w.stats->isVisible();
+		side = w.scenes->width();
+		bottom = w.mixer->height();
+		mixer = w.mixer->width();
+		transitions = w.transitions->width();
+		controls = w.controls->width();
+		hasSizes = w.layout.HasSizes();
+		savesLive = w.layout.StateToSave() == w.window.saveState();
+		print_message("after reset: side %d, bottom %d, mixer %d, transitions %d, controls %d\n", side, bottom,
+			      mixer, transitions, controls);
+	}
+	assert_int_equal(scenesArea, Qt::LeftDockWidgetArea);
+	assert_int_equal(sourcesArea, Qt::LeftDockWidgetArea);
+	assert_int_equal(mixerArea, Qt::BottomDockWidgetArea);
+	assert_true(sourcesBelow);
+	assert_true(allShown);
+	assert_true(statsFloating);
+	assert_true(statsHidden);
+	assert_in_range(side, 278, 282);
+	assert_in_range(bottom, 900 * 225 / 1000 - 4, 900 * 225 / 1000 + 4);
+	assert_true(mixer > controls && controls > transitions);
+	assert_false(hasSizes);
+	assert_true(savesLive);
+}
+
+/* #5462: the side docks get at most 30 % of a narrow window. */
+static void reset_docks_in_a_narrow_window(void **)
+{
+	int side;
+	{
+		DefaultWindow w;
+		w.window.resize(800, 700);
+		w.window.show();
+		settle(w.window);
+		w.layout.Reset();
+		settle(w.window);
+		side = w.scenes->width();
+		print_message("after reset at 800 px: side %d\n", side);
+	}
+	assert_in_range(side, 800 * 30 / 100 - 2, 800 * 30 / 100 + 2);
 }
 
 /* #5455: a config file as OBSBasic and the service logins use it, through
@@ -741,8 +864,7 @@ struct Session {
 	/* The real Reset Docks path (OBSBasic::on_resetDocks_triggered). */
 	void reset_docks()
 	{
-		w.window.restoreState(w.startingLayout);
-		w.layout.Start(nullptr, w.window.saveState());
+		w.layout.Reset();
 		settle(w.window);
 	}
 
@@ -1304,6 +1426,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test(moved_and_floated_docks_stay_after_a_window_resize),
 		cmocka_unit_test(floated_dock_stays_when_the_window_resizes_at_the_same_time),
 		cmocka_unit_test(reset_docks_stays_when_the_window_resizes_at_the_same_time),
+		cmocka_unit_test(reset_docks_gives_the_default_layout_and_sizes),
+		cmocka_unit_test(reset_docks_in_a_narrow_window),
 		cmocka_unit_test(service_layout_keeps_its_sizes),
 		cmocka_unit_test(main_layout_loads_and_saves_through_one_path),
 		cmocka_unit_test(e1_unchanged_layout_both),

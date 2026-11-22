@@ -5,6 +5,7 @@
 
 #include <string>
 
+class QDockWidget;
 class QMainWindow;
 struct config_data;
 struct obs_dock_layout;
@@ -30,6 +31,25 @@ public:
 	explicit DockLayout(QMainWindow *window);
 	~DockLayout() override;
 
+	/* The five docks of the default layout. */
+	struct DefaultDocks {
+		QDockWidget *scenes = nullptr;
+		QDockWidget *sources = nullptr;
+		QDockWidget *mixer = nullptr;
+		QDockWidget *transitions = nullptr;
+		QDockWidget *controls = nullptr;
+	};
+
+	/* The window shows the default layout now (OBSBasic arranges it
+	 * before it restores the user's): Reset() restores this one. */
+	void SetDefault(const DefaultDocks &docks);
+
+	/* Reset Docks (obs-rust/obs-studio#5462): restores the default
+	 * layout, shows its docks, sizes them for the window and starts the
+	 * model with no sizes. The only place the default sizes are set.
+	 * Docks outside the default layout keep their state. */
+	void Reset();
+
 	/* Restores the layout saved in `section` of `config` (`DockState`,
 	 * with its `DockSizes`) and starts the model with it: the start uses
 	 * BasicWindow, a service layout its service's section
@@ -42,8 +62,8 @@ public:
 	void Save(struct config_data *config, const char *section) const;
 
 	/* The window restored `blob`: `record` is the saved
-	 * BasicWindow/DockSizes for it (nullptr or "": none). Load() calls it;
-	 * Reset Docks calls it after it sized the default layout. */
+	 * BasicWindow/DockSizes for it (nullptr or "": none). Load() and
+	 * Reset() call it. */
 	void Start(const char *record, const QByteArray &blob);
 
 	/* The last Start() got sizes that belong to its blob. */
@@ -68,6 +88,9 @@ private:
 	void Apply();
 
 	QMainWindow *window;
+	DefaultDocks defaultDocks;
+	/* The default layout, from SetDefault(). */
+	QByteArray defaultLayout;
 	obs_dock_layout *model = nullptr;
 	/* The blob of the last Start(): what a restore again restores. */
 	QByteArray restored;

@@ -39,6 +39,13 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 #endif
 }
 
+void DockLayout::SetDefault(const DefaultDocks &docks)
+{
+	defaultDocks = docks;
+}
+
+void DockLayout::Reset() {}
+
 bool DockLayout::Load(config_t *config, const char *section)
 {
 	const char *text = config_get_string(config, section, "DockState");
