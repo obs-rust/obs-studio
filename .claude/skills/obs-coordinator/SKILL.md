@@ -339,11 +339,18 @@ it. Don't leave it for the maintainer: SECURITY.md promises an answer
 within 72 hours, and untriaged advisories hold up reporters who have
 fixes ready.
 
+Everything after triage (the private upstream-review entry, the fix in the
+private fork, the disclosure archives for the OBS Project, upstream's
+answers and publishing) follows the `obs-security-disclosure` skill
+([../obs-security-disclosure/SKILL.md](../obs-security-disclosure/SKILL.md)).
+Never tell a reporter to report an advisory upstream: it reaches the OBS
+Project only in a numbered encrypted archive that the maintainer sends.
+
 The computed work list has no advisory kind, so check the advisories
 yourself every tick: `gh api repos/obs-rust/obs-studio/security-advisories`
 for the states, then each advisory's `.../comments`. A reporter with
 security-manager rights can create a report directly as a `draft` with
-no comment at all (GHSA-cw3x-rmx8-h3gh, 2026-10-28), which neither the
+no comment at all (2026-10-28), which neither the
 work list nor a `triage`-state filter shows: treat a draft with no
 `## Maintainer triage` section and no comment of yours as untriaged.
 
@@ -369,16 +376,22 @@ work list nor a `triage`-state filter shows: treat a draft with no
    - Related reports (same file, same reporter) go to one fork and one
      branch.
    - Don't write the fix yourself.
-5. **Tell the reporter** in an advisory comment.
-6. **Answer reporter questions** the same way when the code or the
+5. **Write the upstream-review entry** in the private repo
+   `obs-rust/obs-security-upstream-review`, unless the advisory already has
+   one (`obs-security-disclosure` step 3).
+6. **Tell the reporter** in an advisory comment.
+7. **Answer reporter questions** the same way when the code or the
    policy settles them, for example whether an input path counts as
-   untrusted or which advisory a case belongs to.
+   untrusted or which advisory a case belongs to. To "can it go
+   upstream?", answer with the archive that shipped it, or "the next
+   disclosure archive" (`obs-security-disclosure` step 2).
 
 Leave to the maintainer only:
-- a design choice between behaviours the policy doesn't settle (GHSA-pqf9's
-  "C rule or depth limit" was one);
+- a design choice between behaviours the policy doesn't settle (a "C rule or
+  depth limit" choice on a preprocessor advisory was one);
 - moving an advisory to public;
-- reporting it upstream.
+- cutting, publishing or sending a disclosure archive, agreeing a
+  publication date with upstream, and requesting a CVE.
 
 Never add a collaborator to an advisory; the maintainers decide who sees
 it.
@@ -399,7 +412,7 @@ had not read the reporter's comment, which said the global-callback path
 was still open, and believed the API had no endpoint for comments.
 Publishing closed the comments and made the open path public.
 
-On 2026-10-21 and 2026-10-22, GHSA-fp4m and GHSA-2x36 waited in triage for
+On 2026-10-21 and 2026-10-22, two preprocessor advisories waited in triage for
 several ticks while the coordinator listed them as "waiting on the
 maintainer". The reporter had fixes ready, and SECURITY.md already settled
 the tier.

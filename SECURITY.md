@@ -92,22 +92,25 @@ vulnerability.
 Much of obs-rust's C/C++ code comes from OBS Studio. If a vulnerability
 also affects upstream OBS Studio:
 
-- Report it to obs-rust as described above. You do not need to report
-  it upstream yourself.
-- obs-rust does not hold its own disclosure for upstream. When the
-  advisory is published, a maintainer adds it to the upstream to-do list
-  in Discussion
-  [#1629](https://github.com/obs-rust/obs-studio/discussions/1629),
-  with a ready-to-send report for the OBS Project's official channel
-  (security@obsproject.com). Anyone can send the report and tick off the
-  entry with the date and channel. You are credited in the report unless
-  you ask us not to.
-- Advisories still in triage are never listed there.
-- obs-rust does not follow the OBS Project's 120-day confidentiality
-  request. We disclose on our own timeline (above), whether or not the
-  report has been sent upstream yet.
-- If you have already reported it upstream, tell us, so that we follow
-  the same disclosure timeline.
+- Report it to obs-rust as described above. **Do not report it upstream
+  yourself**, and do not discuss it on an upstream issue.
+- obs-rust discloses to the OBS Project in a coordinated way. Embargoed
+  advisories go to the OBS Project in numbered, AES-256 encrypted
+  disclosure archives. The maintainers send each archive's link, and its
+  password over a separate channel. The OBS Project reviews and fixes
+  first, and both projects then publish on an agreed date. The public
+  tracker at <https://obs-rust.com/security/> shows each archive, its
+  SHA-256 and aggregate counts, but never the title or id of an
+  embargoed advisory.
+- An advisory goes into the first archive cut after it is created. A fix
+  found after its archive was sent goes out as an update in the next
+  archive. You are credited in the archive unless you ask us not to.
+- If you have already reported it upstream, tell us, so that the two
+  reports share one disclosure date.
+
+Agents follow the `obs-security-disclosure` skill
+([.claude/skills/obs-security-disclosure/SKILL.md](.claude/skills/obs-security-disclosure/SKILL.md))
+for every step after triage.
 
 A bug that affects only upstream OBS Studio, and not obs-rust, should
 go to the OBS Project directly: <https://github.com/obsproject/obs-studio/security/policy>.

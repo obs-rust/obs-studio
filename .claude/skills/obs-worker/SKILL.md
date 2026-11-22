@@ -190,7 +190,9 @@ pile up on top of it:
    obs-websocket client, a file someone else sent) or it leaks
    credentials: don't file, claim or push it; report it privately and
    continue on the private fork the maintainers open. Unsure: report it
-   privately (a maintainer can move it to public).
+   privately (a maintainer can move it to public). Never report it
+   upstream yourself: the OBS Project gets it in an encrypted disclosure
+   archive (the `obs-security-disclosure` skill).
 6. No issue yet? File one first using the bug or port template
    (coordination.md section 5), then claim it. A meta or parent issue
    gets one native sub-issue per work item, never a tier list or
