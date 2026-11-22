@@ -2470,6 +2470,11 @@ area.
   floating dock: a main dock goes back, other docks hide. In the main window
   the key does nothing. *All*, 2026-11-22. Issue
   [#5408](https://github.com/obs-rust/obs-studio/issues/5408).
+- The dock layout of a logged-in service (Twitch, YouTube, Restream) keeps the
+  sizes you gave its docks: OBS saves them with the layout
+  (`<service>/DockSizes`, a new key that upstream OBS ignores). Before, each
+  login started that layout without its dock sizes. *All*, 2026-11-22. Issue
+  [#5455](https://github.com/obs-rust/obs-studio/issues/5455).
 
 ### Scripting
 
