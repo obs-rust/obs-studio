@@ -151,8 +151,7 @@ void TwitchAuth::SaveInternal()
 	config_set_string(main->Config(), service(), "UUID", uuid.c_str());
 
 	if (uiLoaded) {
-		config_set_string(main->Config(), service(), "DockState",
-				  main->DockStateToSave().toBase64().constData());
+		main->GetDockLayout()->Save(main->Config(), service());
 	}
 	OAuthStreamKey::SaveInternal();
 }
@@ -275,12 +274,7 @@ void TwitchAuth::LoadUI()
 	if (firstLoad) {
 		chat->setVisible(true);
 	} else {
-		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
-		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
-		/* A service layout has no known dock sizes (obs-rust/obs-studio#5230). */
-		if (main->restoreState(dockState)) {
-			main->DockStateRestored(dockState);
-		}
+		main->GetDockLayout()->Load(main->Config(), service());
 	}
 
 	TryLoadSecondaryUIPanes();
@@ -402,14 +396,8 @@ void TwitchAuth::LoadSecondaryUIPanes()
 			feed->setVisible(false);
 		}
 
-		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
-		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
-
 		if (main->isVisible() || !main->isMaximized()) {
-			/* A service layout has no known dock sizes (obs-rust/obs-studio#5230). */
-			if (main->restoreState(dockState)) {
-				main->DockStateRestored(dockState);
-			}
+			main->GetDockLayout()->Load(main->Config(), service());
 		}
 	}
 }

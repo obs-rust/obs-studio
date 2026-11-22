@@ -6,6 +6,7 @@
 #include <string>
 
 class QMainWindow;
+struct config_data;
 struct obs_dock_layout;
 
 /* The dock layout of the main window (obs-rust/obs-studio#5230), between Qt
@@ -29,9 +30,24 @@ public:
 	explicit DockLayout(QMainWindow *window);
 	~DockLayout() override;
 
+	/* Restores the layout saved in `section` of `config` (`DockState`,
+	 * with its `DockSizes`) and starts the model with it: the start uses
+	 * BasicWindow, a service layout its service's section
+	 * (obs-rust/obs-studio#5455). False when the section has no layout or
+	 * Qt does not accept it; the window is then unchanged. */
+	bool Load(struct config_data *config, const char *section);
+
+	/* Writes the layout to save now to `section` of `config`: `DockState`,
+	 * and `DockSizes` when the model has sizes for it (removed otherwise). */
+	void Save(struct config_data *config, const char *section) const;
+
 	/* The window restored `blob`: `record` is the saved
-	 * BasicWindow/DockSizes for it (nullptr or "": none). */
+	 * BasicWindow/DockSizes for it (nullptr or "": none). Load() calls it;
+	 * Reset Docks calls it after it sized the default layout. */
 	void Start(const char *record, const QByteArray &blob);
+
+	/* The last Start() got sizes that belong to its blob. */
+	bool HasSizes() const { return hasSizes; }
 
 	/* The BasicWindow/DockState to save now. */
 	QByteArray StateToSave() const;
@@ -58,6 +74,7 @@ private:
 	/* Start() was called: before it there is no layout of the user's to
 	 * keep (OBSBasic sets its default layout up first). */
 	bool started = false;
+	bool hasSizes = false;
 	/* The strongest cause queued since the last snapshot (RESTORED over
 	 * SEPARATOR_DRAG over CHANGE), -1 when none is queued. */
 	int queued = -1;

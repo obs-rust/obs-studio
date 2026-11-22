@@ -29,6 +29,7 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 	restored = blob;
 	started = true;
 	const bool known = obs_dock_layout_start(model, record && *record ? record : nullptr, Hash(blob).constData());
+	hasSizes = known;
 	blog(LOG_INFO, "Dock layout: restored %lld bytes, %s", static_cast<long long>(blob.size()),
 	     known ? "with its sizes" : "no sizes for it yet");
 	Queue(OBS_DOCK_LAYOUT_RESTORED);
@@ -36,6 +37,32 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 	UNUSED_PARAMETER(record);
 	UNUSED_PARAMETER(blob);
 #endif
+}
+
+bool DockLayout::Load(config_t *config, const char *section)
+{
+	const char *text = config_get_string(config, section, "DockState");
+	if (!text || !*text) {
+		return false;
+	}
+	const QByteArray blob = QByteArray::fromBase64(QByteArray(text));
+	if (!window->restoreState(blob)) {
+		return false;
+	}
+	Start(config_get_string(config, section, "DockSizes"), blob);
+	return true;
+}
+
+void DockLayout::Save(config_t *config, const char *section) const
+{
+	const QByteArray blob = StateToSave();
+	config_set_string(config, section, "DockState", blob.toBase64().constData());
+	const std::string sizes = SizesRecord(blob);
+	if (sizes.empty()) {
+		config_remove_value(config, section, "DockSizes");
+	} else {
+		config_set_string(config, section, "DockSizes", sizes.c_str());
+	}
 }
 
 QByteArray DockLayout::StateToSave() const

@@ -99,7 +99,7 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 	/* The reset layout is the user's now, with no known sizes: the layout
 	 * this session started with must not come back on a window change or
 	 * be saved at quit (obs-rust/obs-studio#5230). */
-	DockStateRestored(saveState());
+	dockLayout->Start(nullptr, saveState());
 
 	activateWindow();
 }
