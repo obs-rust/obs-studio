@@ -81,7 +81,9 @@ jobs:
   # tokenless pool status at signal.forge-ci.com/v1/pool and publishes
   # vars.FORGE_POOL_LABELS (e.g. ["self-hosted","forge-pool","obs-ubuntu-2604"])
   # only when the variable is set and at least FORGE_POOL_MIN_IDLE (default 1)
-  # matching runners are idle. Every other case, and any selector error, leaves
+  # matching runners are idle or a Dell dispatcher has room to start one (the
+  # obs-rust lane is at floor 0: the queued job makes the dispatcher start a
+  # runner, forge-ci/gh-runner#67). Every other case, and any selector error, leaves
   # heavy-labels empty, which keeps every heavy job hosted. PRs are skipped
   # (hosted), as DELL_PR_ROUTING=off did; push, schedule and manual runs stay
   # hosted. The job runs on the org's forge-quick admin runners (ephemeral,
@@ -102,7 +104,7 @@ jobs:
         id: select
         continue-on-error: true
         if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''
-        uses: forge-ci/ci.yml/actions/pool-select@a36bc81ad6ada5fb17398e3e7ba38435cc67a951 # ci.yml#550, tokenless signal source
+        uses: forge-ci/ci.yml/actions/pool-select@82945f807590d469a2833f2a421a0a7861bc37d1 # ci.yml#564: signal source, counts Dell dispatcher room (gh-runner#67)
         with:
           source: signal
           labels: ${{ vars.FORGE_POOL_LABELS }}

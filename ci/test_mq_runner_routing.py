@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 POOL_SELECT = 'forge-ci/ci.yml/actions/pool-select'
-POOL_SELECT_SHA = 'a36bc81ad6ada5fb17398e3e7ba38435cc67a951'
+POOL_SELECT_SHA = '82945f807590d469a2833f2a421a0a7861bc37d1'  # ci.yml#564: dispatcher room (gh-runner#67)
 
 
 class HostedRunnerRoutingTest(unittest.TestCase):
