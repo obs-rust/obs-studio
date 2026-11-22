@@ -26,6 +26,7 @@
 #include <utility/BasicOutputHandler.hpp>
 #include <utility/close-top-level.hpp>
 #include <utility/DockLayout.hpp>
+#include <utility/ExtraDocks.hpp>
 #include <utility/missing-source-types.h>
 #include <utility/OBSCanvas.hpp>
 #include <utility/PreviewProgramSizeObserver.hpp>
@@ -463,17 +464,18 @@ public slots:
 private:
 	QPointer<QDockWidget> statsDock;
 	DockLayout *dockLayout = nullptr;
-	QStringList extraDockNames;
-	QList<std::shared_ptr<QDockWidget>> extraDocks;
-
-	QStringList extraCustomDockNames;
-	QList<QPointer<QDockWidget>> extraCustomDocks;
+	/* Plugin and custom docks (obs-rust/obs-studio#5471). */
+	ExtraDocks extraDocks;
 
 	QPointer<OBSDock> controlsDock;
 	QPointer<OBSDock> mixerDock;
 
 	/* Plugin, custom browser or browser docks are open. */
 	bool HasExtraDocks() const;
+
+	/* Scenes, Sources, Mixer, Transitions, Controls and Stats, the docks
+	 * OBS always has (#5471). */
+	QList<QDockWidget *> MainDocks() const;
 
 public:
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);

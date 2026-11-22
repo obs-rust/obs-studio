@@ -6,15 +6,18 @@
 #include <QDockWidget>
 #include <QLabel>
 #include <QMainWindow>
+#include <QPointer>
 #include <QTabBar>
 #include <QTemporaryDir>
 #include <QTest>
 
 #include "frontend/utility/DockLayout.hpp"
+#include "frontend/utility/ExtraDocks.hpp"
 #include <util/config-file.h>
 
 #include <cstdio>
 #include <map>
+#include <optional>
 #include <string>
 
 #include <stdarg.h>
@@ -1404,6 +1407,119 @@ static void p7_float_a_dock_sizes_both(void **)
 	run_both(p7_float_a_dock_sizes);
 }
 
+/* #5471: the features of every dock kind come from DockFeatures(). */
+static void dock_features_follow_lock_and_closable(void **)
+{
+	const auto all = QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
+			 QDockWidget::DockWidgetFloatable;
+	const auto noClose = QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable;
+	assert_true(DockFeatures(false) == all);
+	assert_true(DockFeatures(false, true) == all);
+	assert_true(DockFeatures(false, false) == noClose);
+	assert_true(DockFeatures(true) == QDockWidget::NoDockWidgetFeatures);
+	assert_true(DockFeatures(true, false) == QDockWidget::NoDockWidgetFeatures);
+}
+
+static QDockWidget *add_named_dock(QMainWindow &window, const char *name)
+{
+	auto *dock = new QDockWidget(QString::fromUtf8(name));
+	dock->setObjectName(QString::fromUtf8(name));
+	dock->setWidget(new QLabel(QString::fromUtf8(name)));
+	window.addDockWidget(Qt::RightDockWidgetArea, dock);
+	return dock;
+}
+
+/* #5471: Lock Docks reaches plugin and custom docks, and a dock added while
+ * the docks are locked gets the locked features. */
+static void extra_docks_follow_lock_docks(void **)
+{
+	const auto all = DockFeatures(false);
+	const auto none = QDockWidget::NoDockWidgetFeatures;
+	bool addedUnlocked, addedLocked, unlockedBoth, lockedBoth, listed, named, empty;
+	{
+		QMainWindow window;
+		ExtraDocks docks;
+		QDockWidget *plugin = add_named_dock(window, "pluginDock");
+		QDockWidget *custom = add_named_dock(window, "customDock");
+		plugin->setFeatures(none);
+		custom->setFeatures(all);
+		docks.Add(plugin, ExtraDocks::Kind::Plugin, false);
+		docks.Add(custom, ExtraDocks::Kind::Custom, true);
+		addedUnlocked = plugin->features() == all;
+		addedLocked = custom->features() == none;
+		docks.SetLocked(false);
+		unlockedBoth = plugin->features() == all && custom->features() == all;
+		docks.SetLocked(true);
+		lockedBoth = plugin->features() == none && custom->features() == none;
+		listed = docks.Docks(ExtraDocks::Kind::Plugin) == QList<QDockWidget *>{plugin} &&
+			 docks.Docks(ExtraDocks::Kind::Custom) == QList<QDockWidget *>{custom};
+		named = docks.Contains("pluginDock") && docks.Contains("customDock") && !docks.Contains("statsDock");
+		empty = docks.IsEmpty();
+	}
+	assert_true(addedUnlocked);
+	assert_true(addedLocked);
+	assert_true(unlockedBoth);
+	assert_true(lockedBoth);
+	assert_true(listed);
+	assert_true(named);
+	assert_false(empty);
+}
+
+/* #5471: OBS deletes a removed plugin dock; a removed custom dock stays the
+ * plugin's, only out of the window. */
+static void extra_docks_remove_by_kind(void **)
+{
+	bool removedPlugin, pluginDeleted, removedCustom, customAlive, customOut, unknown, gone, empty;
+	{
+		QMainWindow window;
+		ExtraDocks docks;
+		QPointer<QDockWidget> plugin = add_named_dock(window, "pluginDock");
+		QPointer<QDockWidget> custom = add_named_dock(window, "customDock");
+		docks.Add(plugin, ExtraDocks::Kind::Plugin, false);
+		docks.Add(custom, ExtraDocks::Kind::Custom, false);
+		window.show();
+		removedPlugin = docks.Remove(&window, "pluginDock");
+		pluginDeleted = plugin.isNull();
+		removedCustom = docks.Remove(&window, "customDock");
+		customAlive = !custom.isNull();
+		customOut = customAlive && window.dockWidgetArea(custom) == Qt::NoDockWidgetArea;
+		unknown = docks.Remove(&window, "otherDock");
+		gone = !docks.Contains("pluginDock") && !docks.Contains("customDock");
+		empty = docks.IsEmpty();
+	}
+	assert_true(removedPlugin);
+	assert_true(pluginDeleted);
+	assert_true(removedCustom);
+	assert_true(customAlive);
+	assert_true(customOut);
+	assert_false(unknown);
+	assert_true(gone);
+	assert_true(empty);
+}
+
+/* #5471: a custom dock keeps the name it was added with (OBS restores it when
+ * the plugin renames the dock); a plugin dock has no such name. */
+static void extra_docks_keep_the_custom_name(void **)
+{
+	std::optional<QString> customName, pluginName;
+	bool stillNamed;
+	{
+		QMainWindow window;
+		ExtraDocks docks;
+		QDockWidget *plugin = add_named_dock(window, "pluginDock");
+		QDockWidget *custom = add_named_dock(window, "customDock");
+		docks.Add(plugin, ExtraDocks::Kind::Plugin, false);
+		docks.Add(custom, ExtraDocks::Kind::Custom, false);
+		custom->setObjectName("renamedDock");
+		customName = docks.CustomName(custom);
+		pluginName = docks.CustomName(plugin);
+		stillNamed = docks.Contains("customDock") && !docks.Contains("renamedDock");
+	}
+	assert_true(customName.has_value() && *customName == "customDock");
+	assert_false(pluginName.has_value());
+	assert_true(stillNamed);
+}
+
 int main(int argc, char **argv)
 {
 #ifndef OBS_FRONTEND_RUST
@@ -1428,6 +1544,10 @@ int main(int argc, char **argv)
 		cmocka_unit_test(reset_docks_stays_when_the_window_resizes_at_the_same_time),
 		cmocka_unit_test(reset_docks_gives_the_default_layout_and_sizes),
 		cmocka_unit_test(reset_docks_in_a_narrow_window),
+		cmocka_unit_test(dock_features_follow_lock_and_closable),
+		cmocka_unit_test(extra_docks_follow_lock_docks),
+		cmocka_unit_test(extra_docks_remove_by_kind),
+		cmocka_unit_test(extra_docks_keep_the_custom_name),
 		cmocka_unit_test(service_layout_keeps_its_sizes),
 		cmocka_unit_test(main_layout_loads_and_saves_through_one_path),
 		cmocka_unit_test(e1_unchanged_layout_both),

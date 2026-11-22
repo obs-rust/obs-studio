@@ -2556,6 +2556,8 @@
         "frontend/build/frontend-dock-layout.pch.hpp",
         "frontend/utility/DockLayout.cpp.hpp",
         "frontend/utility/DockLayout.hpp",
+        "frontend/utility/ExtraDocks.cpp.hpp",
+        "frontend/utility/ExtraDocks.hpp",
         "frontend/utility/obs-dock-layout.h"
       ]
     },
@@ -2586,6 +2588,8 @@
         "frontend/build/frontend-dock-layout.pch.hpp",
         "frontend/utility/DockLayout.cpp.hpp",
         "frontend/utility/DockLayout.hpp",
+        "frontend/utility/ExtraDocks.cpp.hpp",
+        "frontend/utility/ExtraDocks.hpp",
         "frontend/utility/obs-dock-layout.h"
       ]
     },

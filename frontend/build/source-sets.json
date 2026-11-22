@@ -27,7 +27,8 @@
   ],
   "DOCK_LAYOUT": [
     "build/frontend.dock-layout+.hpp.cpp",
-    "utility/DockLayout.hpp"
+    "utility/DockLayout.hpp",
+    "utility/ExtraDocks.hpp"
   ],
   "EXIT_WATCHDOG_RUST_HEADER": [
     "utility/obs-exit-watchdog.h"

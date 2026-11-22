@@ -61,7 +61,12 @@ bool OBSBasic::HasExtraDocks() const
 		return true;
 	}
 #endif
-	return !extraDocks.isEmpty() || !extraCustomDocks.isEmpty();
+	return !extraDocks.IsEmpty();
+}
+
+QList<QDockWidget *> OBSBasic::MainDocks() const
+{
+	return {ui->scenesDock, ui->sourcesDock, ui->mixerDock, ui->transitionsDock, controlsDock, statsDock};
 }
 
 void OBSBasic::on_resetDocks_triggered(bool force)
@@ -75,8 +80,8 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 		}
 	}
 
-	PutAwayExtraDocks(this, extraDocks);
-	PutAwayExtraDocks(this, extraCustomDocks);
+	PutAwayExtraDocks(this, extraDocks.Docks(ExtraDocks::Kind::Plugin));
+	PutAwayExtraDocks(this, extraDocks.Docks(ExtraDocks::Kind::Custom));
 #ifdef BROWSER_AVAILABLE
 	PutAwayExtraDocks(this, extraBrowserDocks);
 #endif
@@ -91,32 +96,18 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 
 void OBSBasic::on_lockDocks_toggled(bool lock)
 {
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
-
-	QDockWidget::DockWidgetFeatures mainFeatures = features;
-	mainFeatures &= ~QDockWidget::QDockWidget::DockWidgetClosable;
-
-	ui->scenesDock->setFeatures(mainFeatures);
-	ui->sourcesDock->setFeatures(mainFeatures);
-	ui->mixerDock->setFeatures(mainFeatures);
-	ui->transitionsDock->setFeatures(mainFeatures);
-	controlsDock->setFeatures(mainFeatures);
-	statsDock->setFeatures(features);
-
-	for (int i = static_cast<int>(extraDocks.size()) - 1; i >= 0; i--) {
-		extraDocks[i]->setFeatures(features);
+	/* Stats can be closed; the other main docks cannot. */
+	const QList<QDockWidget *> mainDocks = MainDocks();
+	for (QDockWidget *dock : mainDocks) {
+		dock->setFeatures(DockFeatures(lock, dock == statsDock));
 	}
 
-	for (int i = static_cast<int>(extraCustomDocks.size()) - 1; i >= 0; i--) {
-		extraCustomDocks[i]->setFeatures(features);
-	}
+	extraDocks.SetLocked(lock);
 
 #ifdef BROWSER_AVAILABLE
-	for (int i = static_cast<int>(extraBrowserDocks.size()) - 1; i >= 0; i--) {
-		extraBrowserDocks[i]->setFeatures(features);
+	const QList<std::shared_ptr<QDockWidget>> &browserDocks = extraBrowserDocks;
+	for (const std::shared_ptr<QDockWidget> &dock : browserDocks) {
+		dock->setFeatures(DockFeatures(lock));
 	}
 #endif
 }
@@ -134,16 +125,12 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 		return;
 	}
 
-	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	const bool lock = ui->lockDocks->isChecked();
 
 	/* A plugin's own QDockWidget too (obs-rust/obs-studio#5409, #5416, #5408). */
 	DockWindow::SetUp(dock);
 	setupDockAction(dock);
-	dock->setFeatures(features);
+	dock->setFeatures(DockFeatures(lock));
 	addDockWidget(area, dock);
 
 #ifdef BROWSER_AVAILABLE
@@ -166,38 +153,23 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 	ui->menuDocks->addAction(dock->toggleViewAction());
 #endif
 
-	extraDockNames.push_back(dock->objectName());
-	extraDocks.push_back(std::shared_ptr<QDockWidget>(dock));
+	extraDocks.Add(dock, ExtraDocks::Kind::Plugin, lock);
 }
 
 void OBSBasic::RemoveDockWidget(const QString &name)
 {
-	if (extraDockNames.contains(name)) {
-		int idx = static_cast<int>(extraDockNames.indexOf(name));
-		extraDockNames.removeAt(idx);
-		extraDocks[idx].reset();
-		extraDocks.removeAt(idx);
-	} else if (extraCustomDockNames.contains(name)) {
-		int idx = static_cast<int>(extraCustomDockNames.indexOf(name));
-		extraCustomDockNames.removeAt(idx);
-		removeDockWidget(extraCustomDocks[idx]);
-		extraCustomDocks.removeAt(idx);
-	}
+	extraDocks.Remove(this, name);
 }
 
 bool OBSBasic::IsDockObjectNameUsed(const QString &name)
 {
-	QStringList list;
-	list << "scenesDock"
-	     << "sourcesDock"
-	     << "mixerDock"
-	     << "transitionsDock"
-	     << "controlsDock"
-	     << "statsDock";
-	list << extraDockNames;
-	list << extraCustomDockNames;
-
-	return list.contains(name);
+	const QList<QDockWidget *> mainDocks = MainDocks();
+	for (const QDockWidget *dock : mainDocks) {
+		if (dock->objectName() == name) {
+			return true;
+		}
+	}
+	return extraDocks.Contains(name);
 }
 
 void OBSBasic::AddCustomDockWidget(QDockWidget *dock)
@@ -207,17 +179,8 @@ void OBSBasic::AddCustomDockWidget(QDockWidget *dock)
 	// Prevent the object name from being changed
 	connect(dock, &QObject::objectNameChanged, this, &OBSBasic::RepairCustomExtraDockName);
 
-	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
-
-	dock->setFeatures(features);
+	extraDocks.Add(dock, ExtraDocks::Kind::Custom, ui->lockDocks->isChecked());
 	addDockWidget(Qt::RightDockWidgetArea, dock);
-
-	extraCustomDockNames.push_back(dock->objectName());
-	extraCustomDocks.push_back(dock);
 }
 
 void OBSBasic::setDockCornersVertical(bool vertical)
@@ -238,15 +201,15 @@ void OBSBasic::setDockCornersVertical(bool vertical)
 void OBSBasic::RepairCustomExtraDockName()
 {
 	QDockWidget *dock = reinterpret_cast<QDockWidget *>(sender());
-	int idx = static_cast<int>(extraCustomDocks.indexOf(dock));
+	const std::optional<QString> name = extraDocks.CustomName(dock);
 	QSignalBlocker block(dock);
 
-	if (idx == -1) {
+	if (!name) {
 		blog(LOG_WARNING, "A custom dock got its object name changed");
 		return;
 	}
 
-	blog(LOG_WARNING, "The custom dock '%s' got its object name restored", QT_TO_UTF8(extraCustomDockNames[idx]));
+	blog(LOG_WARNING, "The custom dock '%s' got its object name restored", QT_TO_UTF8(name.value()));
 
-	dock->setObjectName(extraCustomDockNames[idx]);
+	dock->setObjectName(name.value());
 }

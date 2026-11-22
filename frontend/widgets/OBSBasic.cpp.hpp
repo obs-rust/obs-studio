@@ -203,8 +203,7 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
-	statsDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			       QDockWidget::DockWidgetFloatable);
+	statsDock->setFeatures(DockFeatures(false));
 	statsDock->setWindowTitle(QTStr("Basic.Stats"));
 	addDockWidget(Qt::BottomDockWidgetArea, statsDock);
 	statsDock->setVisible(false);
@@ -361,18 +360,12 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	/* Setup dock toggle action
 	 * And hide all docks before restoring parent geometry */
-#define SETUP_DOCK(dock)                                    \
-	setupDockAction(dock);                              \
-	ui->menuDocks->addAction(dock->toggleViewAction()); \
-	dock->setVisible(false);
-
-	SETUP_DOCK(ui->scenesDock);
-	SETUP_DOCK(ui->sourcesDock);
-	SETUP_DOCK(ui->mixerDock);
-	SETUP_DOCK(ui->transitionsDock);
-	SETUP_DOCK(controlsDock);
-	SETUP_DOCK(statsDock);
-#undef SETUP_DOCK
+	const QList<QDockWidget *> mainDocks = MainDocks();
+	for (QDockWidget *dock : mainDocks) {
+		setupDockAction(dock);
+		ui->menuDocks->addAction(dock->toggleViewAction());
+		dock->setVisible(false);
+	}
 
 	// Register shortcuts for Undo/Redo
 	ui->actionMainUndo->setShortcut(Qt::CTRL | Qt::Key_Z);

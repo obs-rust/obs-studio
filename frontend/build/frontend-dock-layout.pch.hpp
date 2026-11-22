@@ -29,3 +29,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+/* utility/ExtraDocks.cpp */
+#include "frontend/utility/ExtraDocks.hpp"
+
+#include <optional>
