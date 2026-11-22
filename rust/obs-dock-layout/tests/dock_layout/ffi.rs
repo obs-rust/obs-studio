@@ -9,8 +9,8 @@ use obs_dock_layout::ffi::{
     obs_dock_layout_observe, obs_dock_layout_press, obs_dock_layout_queue, obs_dock_layout_record,
     obs_dock_layout_release, obs_dock_layout_resize_axis, obs_dock_layout_resize_count,
     obs_dock_layout_resize_docks, obs_dock_layout_resize_name, obs_dock_layout_resize_size,
-    obs_dock_layout_restored_blob, obs_dock_layout_saves_restored_blob, obs_dock_layout_start,
-    obs_dock_layout_turn, obs_dock_layout_window,
+    obs_dock_layout_restored_blob, obs_dock_layout_start, obs_dock_layout_turn,
+    obs_dock_layout_window,
 };
 
 fn window(width: i32) -> obs_dock_layout_window {
@@ -115,7 +115,7 @@ fn a_session_through_the_c_abi() {
         assert_eq!(obs_dock_layout_resize_docks(layout, 1), 0);
         assert!(obs_dock_layout_resize_name(layout, 0, 3).is_null());
         assert_eq!(obs_dock_layout_resize_size(layout, 0, 3), 0);
-        assert!(!obs_dock_layout_saves_restored_blob(layout));
+        assert!(obs_dock_layout_blob_to_save(layout, std::ptr::null_mut()).is_null());
         assert_eq!(
             take(obs_dock_layout_record(layout, c"h2".as_ptr())),
             "v1;h2;aB=200;dmixer=396;dscenes=597;dsources=595"
@@ -147,7 +147,7 @@ fn no_record_and_tab_groups_cross_the_abi() {
             2,
             OBS_DOCK_LAYOUT_RESTORED,
         );
-        assert!(!obs_dock_layout_saves_restored_blob(layout));
+        assert!(obs_dock_layout_blob_to_save(layout, std::ptr::null_mut()).is_null());
         assert_eq!(
             take(obs_dock_layout_record(layout, c"h1".as_ptr())),
             "v1;h1;aB=200;dscenes=400;dsources=400"
@@ -176,7 +176,7 @@ fn null_arguments_are_safe() {
         ));
         assert_eq!(obs_dock_layout_resize_count(std::ptr::null()), 0);
         assert!(obs_dock_layout_record(std::ptr::null(), std::ptr::null()).is_null());
-        assert!(!obs_dock_layout_saves_restored_blob(std::ptr::null()));
+        assert!(obs_dock_layout_blob_to_save(std::ptr::null(), std::ptr::null_mut()).is_null());
         obs_dock_layout_free(std::ptr::null_mut());
         obs_dock_layout_destroy(std::ptr::null_mut());
         let layout = obs_dock_layout_create();
@@ -248,7 +248,6 @@ fn the_started_blob_crosses_the_abi() {
             3,
             OBS_DOCK_LAYOUT_RESTORED,
         );
-        assert!(obs_dock_layout_saves_restored_blob(layout));
         let saved = obs_dock_layout_blob_to_save(layout, &mut size);
         assert_eq!(blob(saved, size), Some(b"blob".to_vec()));
         let restored = obs_dock_layout_restored_blob(layout, &mut size);

@@ -101,12 +101,9 @@ size_t obs_dock_layout_resize_docks(const struct obs_dock_layout *layout, size_t
 const char *obs_dock_layout_resize_name(const struct obs_dock_layout *layout, size_t i, size_t j);
 int obs_dock_layout_resize_size(const struct obs_dock_layout *layout, size_t i, size_t j);
 
-/* Whether a save now writes the started blob, not the live layout: no sizes
- * are known yet and the user changed nothing. */
-bool obs_dock_layout_saves_restored_blob(const struct obs_dock_layout *layout);
-
-/* The blob a save writes instead of the live layout, its size in `*size`;
- * NULL and 0: save the live layout. Valid until the next start. */
+/* The blob a save writes instead of the live layout (no sizes are known yet
+ * and the user changed nothing), its size in `*size`; NULL and 0: save the
+ * live layout. Valid until the next start. */
 const char *obs_dock_layout_blob_to_save(const struct obs_dock_layout *layout, size_t *size);
 
 /* The blob of the last start, to restore when obs_dock_layout_observe says

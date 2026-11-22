@@ -26,8 +26,6 @@ QByteArray DockLayout::Hash(const QByteArray &blob)
 void DockLayout::Start(const char *record, const QByteArray &blob)
 {
 #ifdef OBS_FRONTEND_RUST
-	restored = blob;
-	started = true;
 	const bool known = obs_dock_layout_start(model, record && *record ? record : nullptr, Hash(blob).constData(),
 						 blob.constData(), static_cast<size_t>(blob.size()));
 	hasSizes = known;
@@ -105,8 +103,9 @@ void DockLayout::Save(config_t *config, const char *section) const
 QByteArray DockLayout::StateToSave() const
 {
 #ifdef OBS_FRONTEND_RUST
-	if (obs_dock_layout_saves_restored_blob(model) && !restored.isEmpty()) {
-		return restored;
+	size_t size = 0;
+	if (const char *blob = obs_dock_layout_blob_to_save(model, &size)) {
+		return QByteArray(blob, static_cast<qsizetype>(size));
 	}
 #endif
 	return window->saveState();
@@ -139,11 +138,10 @@ bool DockLayout::eventFilter(QObject *obj, QEvent *event)
 		} else if (type == QEvent::MouseButtonPress &&
 			   static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
 			/* QMainWindow handles its dock separators itself. */
-			dragging = true;
+			obs_dock_layout_press(model);
 		} else if (type == QEvent::MouseButtonRelease &&
-			   static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton && dragging) {
-			dragging = false;
-			Queue(OBS_DOCK_LAYOUT_SEPARATOR_DRAG);
+			   static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
+			Post(obs_dock_layout_release(model));
 		} else if (type == QEvent::Resize || type == QEvent::Show) {
 			Queue(OBS_DOCK_LAYOUT_CHANGE);
 		}
@@ -157,38 +155,32 @@ bool DockLayout::eventFilter(QObject *obj, QEvent *event)
 	return false;
 }
 
-/* One snapshot per event loop turn, once Qt has placed every dock: the
- * layout resizes the docks of a row one at a time. */
 void DockLayout::Queue(int cause)
 {
-	queued = std::max(queued, cause);
-	if (!observeQueued) {
-		observeQueued = true;
+#ifdef OBS_FRONTEND_RUST
+	Post(obs_dock_layout_queue(model, cause));
+#else
+	UNUSED_PARAMETER(cause);
+#endif
+}
+
+/* One snapshot per event loop turn, once Qt has placed every dock: the
+ * layout resizes the docks of a row one at a time. The model says when a
+ * turn is due and what it takes (obs-rust/obs-studio#5475). */
+void DockLayout::Post(bool due)
+{
+	if (due) {
 		QMetaObject::invokeMethod(this, [this] { Observe(); }, Qt::QueuedConnection);
 	}
 }
 
 void DockLayout::Observe()
 {
-	observeQueued = false;
 #ifdef OBS_FRONTEND_RUST
-	if (!started) {
-		queued = -1;
+	const int cause = obs_dock_layout_turn(model, window->isVisible());
+	if (cause < 0) {
 		return;
 	}
-	if (dragging || queued < 0) {
-		/* The release queues the drag's snapshot. */
-		return;
-	}
-	if (!window->isVisible()) {
-		/* Minimized to the tray, or not shown yet: nothing to decide.
-		 * A restore is looked at once the window shows. */
-		if (queued != OBS_DOCK_LAYOUT_RESTORED) {
-			queued = -1;
-		}
-		return;
-	}
-	const int cause = std::exchange(queued, -1);
 
 	const QList<QDockWidget *> docks = window->findChildren<QDockWidget *>(Qt::FindDirectChildrenOnly);
 	const size_t count = static_cast<size_t>(docks.size());
@@ -232,7 +224,9 @@ void DockLayout::Observe()
 	if (obs_dock_layout_observe(model, &snap, raw.data(), raw.size(), cause)) {
 		/* No sizes for this layout yet: show it as it was saved, at
 		 * the new window size. */
-		window->restoreState(restored);
+		size_t size = 0;
+		const char *blob = obs_dock_layout_restored_blob(model, &size);
+		window->restoreState(QByteArray(blob, static_cast<qsizetype>(size)));
 		Queue(OBS_DOCK_LAYOUT_RESTORED);
 		return;
 	}

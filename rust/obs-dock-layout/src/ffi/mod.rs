@@ -348,18 +348,6 @@ pub unsafe extern "C" fn obs_dock_layout_resize_size(
         .unwrap_or(0)
 }
 
-/// [`Model::saves_restored_blob`].
-///
-/// # Safety
-/// `layout` is null or from [`obs_dock_layout_create`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_dock_layout_saves_restored_blob(
-    layout: *const obs_dock_layout,
-) -> bool {
-    // SAFETY: as the caller promises.
-    unsafe { layout.as_ref() }.is_some_and(|l| l.session.model().saves_restored_blob())
-}
-
 /// [`Session::blob_to_save`]: the blob and its size in `*size`, null and 0
 /// for none (save the live layout). Valid until the next start.
 ///
