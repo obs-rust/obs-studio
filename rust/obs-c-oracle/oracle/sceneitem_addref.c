@@ -5,6 +5,8 @@
 #include "libobs/build/libobs.pch.h"
 #include "sceneitem-addref.inc"
 #undef obs_sceneitem_addref
+/* The real production adapter the shim calls. */
+#include "sceneitem_addref_fields.inc"
 #include <stdlib.h>
 #include <string.h>
 

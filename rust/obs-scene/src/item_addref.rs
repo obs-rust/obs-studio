@@ -11,6 +11,7 @@ pub trait ItemRef {
 /// increment and nothing else. Zero, negative and wrapped counts are not
 /// inspected (characterized, not endorsed).
 pub fn addref(item: Option<&impl ItemRef>) {
-    let _ = item;
-    todo!()
+    if let Some(item) = item {
+        item.increment();
+    }
 }
