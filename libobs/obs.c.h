@@ -2127,18 +2127,6 @@ void obs_render_canvas_texture_src_color_only(obs_canvas_t *canvas)
 	obs_render_canvas_texture_internal(canvas, GS_BLEND_ONE, GS_BLEND_ZERO, GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
 }
 
-gs_texture_t *obs_get_main_texture(void)
-{
-	/* The main canvas has no mix until the first obs_reset_video() (#2253). */
-	const obs_canvas_t *canvas = obs->data.main_canvas;
-	struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
-
-	if (!video || !os_atomic_load_bool(&video->texture_rendered))
-		return NULL;
-
-	return video->render_texture;
-}
-
 /* obs-source-load.h copies these */
 _Static_assert(OBS_SOURCE_LOAD_MONITOR_ONLY_BEFORE == MAKE_SEMANTIC_VERSION(23, 2, 2), "23.2.2");
 _Static_assert(OBS_SOURCE_LOAD_MONITORING_ENABLED_BEFORE == MAKE_SEMANTIC_VERSION(33, 0, 0), "33.0.0");
