@@ -1445,24 +1445,6 @@
         "OBS::native-test-cmocka"
       ]
     },
-    "test_close_top_level": {
-      "sources": [
-        "test/cmocka/test_close_top_level.cpp"
-      ],
-      "requires": "HAVE_QT6_WIDGETS",
-      "includes": [
-        "frontend/utility"
-      ],
-      "libraries": [
-        "Qt6::Widgets",
-        "OBS::native-test-cmocka"
-      ],
-      "watch_inputs": [
-        "frontend/utility/close-top-level.hpp",
-        "frontend/utility/dock-window.hpp"
-      ],
-      "cpp_standard": "17"
-    },
     "test_cocoa_keys_steps": {
       "sources": [
         "test/cmocka/test_cocoa_keys_steps.c",
@@ -19743,6 +19725,24 @@
         }
       ]
     },
+    "test_top_level_windows": {
+      "sources": [
+        "test/cmocka/test_top_level_windows.cpp"
+      ],
+      "requires": "HAVE_QT6_WIDGETS",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/close-top-level.hpp",
+        "frontend/utility/dock-window.hpp"
+      ],
+      "cpp_standard": "17"
+    },
     "test_transition_audio_clock": {
       "sources": [
         "test/cmocka/test_transition_audio_clock.c"
@@ -23750,12 +23750,6 @@
       "command": [
         "${target}"
       ]
-    },
-    "test_close_top_level": {
-      "target": "test_close_top_level",
-      "suite": "qt",
-      "timeout_seconds": 120,
-      "qt_runtime": "Qt6::Core"
     },
     "test_cocoa_keys_steps": {
       "target": "test_cocoa_keys_steps",
@@ -29996,6 +29990,12 @@
     },
     "test_threading": {
       "target": "test_threading"
+    },
+    "test_top_level_windows": {
+      "target": "test_top_level_windows",
+      "suite": "qt",
+      "timeout_seconds": 120,
+      "qt_runtime": "Qt6::Core"
     },
     "test_transition_audio_clock": {
       "target": "test_transition_audio_clock",

@@ -133,7 +133,7 @@ static void empty_queue_sends_no_invalid_range(void **)
  * before it exits when the process has no console window, and under ctest on
  * a CI runner nobody closes it. Look for the plugin where Qt does
  * (QT_QPA_PLATFORM_PLUGIN_PATH, then <library path>/platforms) and fail on
- * stderr instead. Same check as test_close_top_level. */
+ * stderr instead. Same check as test_top_level_windows. */
 static bool platform_plugin_found(const char *name)
 {
 	const QString file =
