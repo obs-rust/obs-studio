@@ -152,6 +152,7 @@ pub mod find_modules;
 pub mod get_audio;
 pub mod get_main_canvas;
 pub mod get_output_source;
+pub mod get_video;
 pub mod global_getters;
 pub mod hotkeys_background_status;
 pub mod module_disable_query;
