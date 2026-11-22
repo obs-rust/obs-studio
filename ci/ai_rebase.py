@@ -54,8 +54,17 @@ NEVER_AI = re.compile(r"(Cargo\.lock|\.lock$|\.snap$|\.png$|\.bin$)")
 MARKER = re.compile(r"^(<{7}|={7}|>{7}|\|{7})( |$)", re.M)
 
 
+def plain_env() -> dict[str, str]:
+    """The environment with color forcing removed. setup-soldr exports
+    CLICOLOR_FORCE=1 and FORCE_COLOR=1, and gh then colors --json output even
+    into a pipe; CLICOLOR_FORCE=0 is what turns it back off."""
+    env = {k: v for k, v in os.environ.items() if k not in ("FORCE_COLOR", "GH_FORCE_TTY")}
+    env.update(CLICOLOR_FORCE="0", NO_COLOR="1")
+    return env
+
+
 def run(*cmd: str, check: bool = True, input: str | None = None) -> str:
-    p = subprocess.run(cmd, capture_output=True, text=True, input=input)
+    p = subprocess.run(cmd, capture_output=True, text=True, input=input, env=plain_env())
     if check and p.returncode:
         raise RuntimeError(f"{' '.join(cmd)}: {p.stderr.strip() or p.stdout.strip()}")
     return p.stdout
