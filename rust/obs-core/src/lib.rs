@@ -146,6 +146,7 @@ pub mod core_texture_activity;
 pub mod display;
 pub mod display_size;
 pub mod display_state;
+pub mod enum_contexts;
 pub mod enum_modules;
 pub mod enum_scenes;
 pub mod find_modules;
