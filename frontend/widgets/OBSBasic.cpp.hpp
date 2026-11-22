@@ -1088,20 +1088,10 @@ void OBSBasic::OBSInit()
 	}
 #endif
 
-	const char *dockStateStr = config_get_string(App()->GetUserConfig(), "BasicWindow", "DockState");
-
-	if (!dockStateStr) {
+	/* The layout and the sizes the user gave its docks
+	 * (obs-rust/obs-studio#5230); none saved or not valid: the default. */
+	if (!dockLayout->Load(App()->GetUserConfig(), "BasicWindow")) {
 		on_resetDocks_triggered(true);
-	} else {
-		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
-		if (!restoreState(dockState)) {
-			on_resetDocks_triggered(true);
-		} else {
-			/* The sizes the user gave the docks, saved with this
-			 * layout (obs-rust/obs-studio#5230). */
-			DockStateRestored(dockState,
-					  config_get_string(App()->GetUserConfig(), "BasicWindow", "DockSizes"));
-		}
 	}
 
 	bool pre23Defaults = config_get_bool(App()->GetUserConfig(), "General", "Pre23Defaults");
@@ -1744,18 +1734,6 @@ config_t *OBSBasic::Config() const
 	return activeConfiguration;
 }
 
-QByteArray OBSBasic::DockStateToSave() const
-{
-	return dockLayout ? dockLayout->StateToSave() : saveState();
-}
-
-void OBSBasic::DockStateRestored(const QByteArray &state, const char *sizes)
-{
-	if (dockLayout) {
-		dockLayout->Start(sizes, state);
-	}
-}
-
 void OBSBasic::saveAll()
 {
 	if (isVisible()) {
@@ -1769,14 +1747,7 @@ void OBSBasic::saveAll()
 
 		/* The layout and the sizes the user gave its docks
 		 * (obs-rust/obs-studio#5230). */
-		const QByteArray dockState = DockStateToSave();
-		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState", dockState.toBase64().constData());
-		const std::string dockSizes = dockLayout ? dockLayout->SizesRecord(dockState) : std::string();
-		if (dockSizes.empty()) {
-			config_remove_value(App()->GetUserConfig(), "BasicWindow", "DockSizes");
-		} else {
-			config_set_string(App()->GetUserConfig(), "BasicWindow", "DockSizes", dockSizes.c_str());
-		}
+		dockLayout->Save(App()->GetUserConfig(), "BasicWindow");
 
 #ifdef BROWSER_AVAILABLE
 		if (cef) {

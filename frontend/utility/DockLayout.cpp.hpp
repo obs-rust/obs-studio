@@ -41,15 +41,28 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 
 bool DockLayout::Load(config_t *config, const char *section)
 {
-	UNUSED_PARAMETER(config);
-	UNUSED_PARAMETER(section);
-	return false;
+	const char *text = config_get_string(config, section, "DockState");
+	if (!text || !*text) {
+		return false;
+	}
+	const QByteArray blob = QByteArray::fromBase64(QByteArray(text));
+	if (!window->restoreState(blob)) {
+		return false;
+	}
+	Start(config_get_string(config, section, "DockSizes"), blob);
+	return true;
 }
 
 void DockLayout::Save(config_t *config, const char *section) const
 {
-	UNUSED_PARAMETER(config);
-	UNUSED_PARAMETER(section);
+	const QByteArray blob = StateToSave();
+	config_set_string(config, section, "DockState", blob.toBase64().constData());
+	const std::string sizes = SizesRecord(blob);
+	if (sizes.empty()) {
+		config_remove_value(config, section, "DockSizes");
+	} else {
+		config_set_string(config, section, "DockSizes", sizes.c_str());
+	}
 }
 
 QByteArray DockLayout::StateToSave() const

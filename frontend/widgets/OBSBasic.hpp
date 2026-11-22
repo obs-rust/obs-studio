@@ -327,13 +327,10 @@ public:
 	void SetDisplayAffinity(QWindow *window);
 
 	void saveAll();
-	/* The dock layout to persist (obs-rust/obs-studio#5230): the live
-	 * layout, or the restored one while it has no known sizes and the user
-	 * changed nothing. */
-	QByteArray DockStateToSave() const;
-	/* A restore just loaded `state`; `sizes` is the BasicWindow/DockSizes
-	 * saved with it (nullptr: none, as for a service or reset layout). */
-	void DockStateRestored(const QByteArray &state, const char *sizes = nullptr);
+	/* The dock layout of the main window: load and save it with its dock
+	 * sizes (obs-rust/obs-studio#5230, #5455). The service logins use it
+	 * for their layouts. */
+	DockLayout *GetDockLayout() const { return dockLayout; }
 	bool shouldPromptForClose();
 	/* A quit that nobody can answer a dialog for (SIGTERM): the next close
 	 * goes ahead without the exit confirmation. */
