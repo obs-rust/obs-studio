@@ -1,26 +1,27 @@
 #!/usr/bin/env -S uv run --script
-"""The dock layout is persisted only through the clamp-safe accessor (#2225).
+"""The dock layout is loaded and saved only through `DockLayout` (#2225, #5455).
 
 Usage:
     uv run python -m unittest ci/test_dock_state_writers.py
 
 `OBSBasic::saveAll()` used to write whatever `QMainWindow::saveState()`
 returned, so a session that was narrower than the docks' minimums saved every
-dock at its minimum and the next start restored that clamp at full width.
-#2727 fixed the global writer (`BasicWindow/DockState`) with
-`OBSBasic::DockStateToSave()`; since #5230 the `DockLayout` adapter decides
-what it returns, and the sizes the user wants go to `BasicWindow/DockSizes`.
+dock at its minimum and the next start restored that clamp at full width
+(#2225). The browser auth panels (Twitch, Restream, YouTube) wrote and
+restored a whole main-window snapshot of their own (`<service>/DockState`) the
+same way, and every restore had to be followed by a second call so that the
+layout model knew it (#5230).
 
-The browser auth panels write and restore a whole main-window snapshot of
-their own (`<service>/DockState`) from `Auth::Save()`, which runs inside
-`saveAll()` before the global write. Those calls still used the live
-`saveState()`, so the same clamp was persisted for anyone with a Twitch,
-Restream or YouTube dock and restored over the good layout on the next start:
-the same lost layout by the other writer.
+Since #5455, `DockLayout::Load(config, section)` restores `<section>/DockState`
+and starts the model with `<section>/DockSizes`, and `DockLayout::Save()`
+writes what the model selects (the restored layout while a clamped start has
+changed nothing) with its sizes. This pins the rule rather than the helper:
 
-This pins the rule rather than the helper: every writer of a dock-state
-snapshot goes through `OBSBasic::DockStateToSave()`, and no frontend source
-writes a dock state from the live `saveState()`.
+- no frontend source but `DockLayout` writes `DockState` or `DockSizes`;
+- no frontend source but `DockLayout` restores a saved dock state (Reset
+  Docks restores `startingDockLayout`, the default layout, and tells the
+  model itself);
+- the start, `saveAll()` and the three auth panels use `Load()` and `Save()`.
 """
 
 import re
@@ -28,81 +29,75 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OBS_BASIC_HPP = ROOT / "frontend" / "widgets" / "OBSBasic.hpp"
-OBS_BASIC = ROOT / "frontend" / "widgets" / "OBSBasic.cpp.hpp"
-OAUTH = ROOT / "frontend" / "oauth"
+FRONTEND = ROOT / "frontend"
+DOCK_LAYOUT = FRONTEND / "utility" / "DockLayout.cpp.hpp"
+OBS_BASIC_HPP = FRONTEND / "widgets" / "OBSBasic.hpp"
+OBS_BASIC = FRONTEND / "widgets" / "OBSBasic.cpp.hpp"
+OBS_BASIC_DOCKS = FRONTEND / "widgets" / "OBSBasic_Docks.cpp.hpp"
+OAUTH = FRONTEND / "oauth"
 
-# The three browser auth panels that persist a whole-window dock snapshot in
-# their own config section (`<service>/DockState`).
-OAUTH_WRITERS = (
+# The three browser auth panels that keep a whole-window dock layout in their
+# own config section (`<service>/DockState`).
+OAUTH_PANELS = (
     OAUTH / "TwitchAuth.cpp.hpp",
     OAUTH / "RestreamAuth.cpp.hpp",
     OAUTH / "YoutubeAuth.cpp.hpp",
 )
 
-# `main->saveState()` / `App()->saveState()`: a live layout, clamp included.
-LIVE_SAVE = re.compile(r"(?:main|this|App\(\))->saveState\(\)")
+# A config write of a dock layout key.
+WRITE = re.compile(r"config_set_string\([^;]*\"Dock(State|Sizes)\"")
+# A restore of a saved dock state (Reset Docks restores startingDockLayout).
+RESTORE = re.compile(r"\brestoreState\((?!startingDockLayout\b)")
 
-# A restored dock snapshot, and the call that records it as the baseline a
-# clamped start saves instead.
-RESTORE = re.compile(r"\brestoreState\(dockState\)")
-RECORDED = re.compile(r"\bDockStateRestored\(dockState\b")
+
+def frontend_sources():
+    for path in sorted(FRONTEND.rglob("*")):
+        if path.suffix in (".hpp", ".cpp", ".h") and path != DOCK_LAYOUT:
+            yield path
 
 
 class DockStateWritersTest(unittest.TestCase):
-    def test_obsbasic_declares_the_clamp_safe_accessor(self):
-        """`OBSBasic::DockStateToSave()` is the one accessor writers use."""
-        declaration = OBS_BASIC_HPP.read_text(encoding="utf-8")
+    def test_only_dock_layout_writes_a_dock_state(self):
+        """Every `DockState`/`DockSizes` write is `DockLayout::Save()`."""
+        writes = [
+            f"{path.relative_to(ROOT)}: {line.strip()}"
+            for path in frontend_sources()
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if WRITE.search(line)
+        ]
+        self.assertEqual(writes, [], "dock layout written outside DockLayout")
         self.assertTrue(
-            "QByteArray DockStateToSave() const;" in declaration,
-            "OBSBasic does not declare DockStateToSave()",
+            '"DockState", blob.toBase64()' in DOCK_LAYOUT.read_text(encoding="utf-8"),
+            "DockLayout::Save() does not write DockState",
         )
 
-    def test_obsbasic_persists_the_clamp_safe_state(self):
-        """The global `BasicWindow/DockState` writer uses the accessor."""
-        source = OBS_BASIC.read_text(encoding="utf-8")
-        self.assertTrue(
-            '"DockState", dockState.toBase64()' in source,
-            "saveAll() does not write the clamp-safe dock state",
-        )
-        self.assertTrue(
-            '"DockState", saveState().toBase64()' not in source,
-            "saveAll() still writes the live dock state",
-        )
+    def test_only_dock_layout_restores_a_dock_state(self):
+        """Every restore of the main window's saved layout is `DockLayout::Load()`.
 
-    def test_auth_panels_do_not_write_a_live_snapshot(self):
-        """The OAuth `<service>/DockState` writer uses the accessor too."""
-        for path in OAUTH_WRITERS:
-            source = path.read_text(encoding="utf-8")
-            self.assertTrue(
-                "DockStateToSave()" in source,
-                f"{path.name} does not use DockStateToSave()",
-            )
-            writes = [
-                line.strip()
-                for line in source.splitlines()
-                if '"DockState"' in line and LIVE_SAVE.search(line)
-            ]
-            self.assertEqual(writes, [], f"{path.name} writes a live snapshot")
-
-    def test_every_dock_state_restore_records_the_baseline(self):
-        """A restored snapshot is the layout a clamped start must save.
-
-        The window can come up narrower than the snapshot it restored, with
-        every dock at its minimum, before any resize is observed. Without
-        the baseline the first save writes that clamp over the layout the
-        ini still holds (#2225).
+        Other windows restore their own splitters and geometry; only the
+        files that hold the main window's dock layout are checked.
         """
-        for path in (OBS_BASIC, *OAUTH_WRITERS):
+        restores = [
+            f"{path.relative_to(ROOT)}: {line.strip()}"
+            for path in (OBS_BASIC, OBS_BASIC_DOCKS, *OAUTH_PANELS)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if RESTORE.search(line)
+        ]
+        self.assertEqual(restores, [], "dock layout restored outside DockLayout")
+
+    def test_main_window_loads_and_saves_through_dock_layout(self):
+        """The start and `saveAll()` use `BasicWindow` through DockLayout."""
+        source = OBS_BASIC.read_text(encoding="utf-8")
+        self.assertIn('dockLayout->Load(App()->GetUserConfig(), "BasicWindow")', source)
+        self.assertIn('dockLayout->Save(App()->GetUserConfig(), "BasicWindow")', source)
+        self.assertIn("DockLayout *GetDockLayout() const", OBS_BASIC_HPP.read_text(encoding="utf-8"))
+
+    def test_auth_panels_load_and_save_through_dock_layout(self):
+        """Each auth panel's `<service>` layout goes through DockLayout."""
+        for path in OAUTH_PANELS:
             source = path.read_text(encoding="utf-8")
-            restores = RESTORE.findall(source)
-            recorded = RECORDED.findall(source)
-            self.assertEqual(
-                len(recorded),
-                len(restores),
-                f"{path.name}: {len(restores)} dock-state restores, "
-                f"{len(recorded)} DockStateRestored() calls",
-            )
+            self.assertIn("GetDockLayout()->Save(main->Config(), service())", source, path.name)
+            self.assertIn("GetDockLayout()->Load(main->Config(), service())", source, path.name)
 
 
 if __name__ == "__main__":
