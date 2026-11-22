@@ -3,9 +3,10 @@
 /* How often the countdown progress moves. */
 static constexpr int fallback_warning_tick_ms = 50;
 
-OBSFallbackWarning::OBSFallbackWarning(QWidget *parent, const Texts &texts, qint64 countdownMs_)
+OBSFallbackWarning::OBSFallbackWarning(QWidget *parent, const Texts &texts, qint64 countdownMs_, Clock now_)
 	: QDialog(parent),
-	  countdownMs(std::clamp<qint64>(countdownMs_, 0, std::numeric_limits<int>::max()))
+	  countdownMs(std::clamp<qint64>(countdownMs_, 0, std::numeric_limits<int>::max())),
+	  now(std::move(now_))
 {
 	setAttribute(Qt::WA_DeleteOnClose);
 	setModal(false);
@@ -55,7 +56,13 @@ OBSFallbackWarning::OBSFallbackWarning(QWidget *parent, const Texts &texts, qint
 	timer = new QTimer(this);
 	timer->setInterval(fallback_warning_tick_ms);
 	connect(timer, &QTimer::timeout, this, &OBSFallbackWarning::tick);
-	clock.start();
+	if (!now) {
+		clock.start();
+		now = [this]() {
+			return clock.elapsed();
+		};
+	}
+	lastTick = now();
 	timer->start();
 }
 
@@ -84,7 +91,9 @@ void OBSFallbackWarning::tick()
 	if (done) {
 		return;
 	}
-	qint64 step = clock.restart();
+	qint64 tickTime = now();
+	qint64 step = tickTime - lastTick;
+	lastTick = tickTime;
 	/* Another modal dialog covers this one or takes its input (the
 	 * first-run wizard opens right after the main window has loaded): do
 	 * not accept unseen. Go on, in front, once it has closed. */

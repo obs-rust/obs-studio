@@ -4,6 +4,8 @@
 #include <QElapsedTimer>
 #include <QString>
 
+#include <functional>
+
 class QLabel;
 class QProgressBar;
 class QPushButton;
@@ -34,7 +36,12 @@ public:
 		QString cancel;
 	};
 
-	OBSFallbackWarning(QWidget *parent, const Texts &texts, qint64 countdownMs);
+	/* Monotonic milliseconds the countdown reads. Empty (every real
+	 * caller): a QElapsedTimer started here. A test passes a manual clock,
+	 * so its countdown never races wall time (#3908). */
+	using Clock = std::function<qint64()>;
+
+	OBSFallbackWarning(QWidget *parent, const Texts &texts, qint64 countdownMs, Clock now = {});
 
 	/* The countdown progress shown, 0 to countdownMs. */
 	qint64 elapsedShown() const;
@@ -57,6 +64,9 @@ private:
 	qint64 elapsed = 0;
 	bool paused = false;
 	QElapsedTimer clock;
+	Clock now;
+	/* now() at the previous tick. */
+	qint64 lastTick = 0;
 	QTimer *timer = nullptr;
 	QLabel *messageLabel = nullptr;
 	QLabel *futureErrorLabel = nullptr;
