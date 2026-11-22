@@ -43,21 +43,28 @@ static OBSFallbackWarning::Texts texts(bool can_cancel)
 	return t;
 }
 
+/* One test's dialog, allocated in setup and freed in teardown, so a failed
+ * assertion (cmocka leaves the test with longjmp) leaks nothing. */
 struct Shown {
 	/* The context of the ended() connection: it goes with this struct, so a
 	 * dialog that a later teardown closes cannot write into a finished test. */
 	QObject context;
 	QPointer<OBSFallbackWarning> dialog;
 	std::vector<End> ends;
+	/* The dialog's countdown clock, in ms. Only advance() moves it, so the
+	 * countdown never races a loaded runner's wall time (#3908). */
+	qint64 now = 0;
 };
 
-static void show(Shown &s, bool can_cancel, qint64 countdown_ms)
+static Shown &shown(void **state)
 {
-	s.dialog = new OBSFallbackWarning(nullptr, texts(can_cancel), countdown_ms);
-	QObject::connect(s.dialog.data(), &OBSFallbackWarning::ended, &s.context,
-			 [&s](End end) { s.ends.push_back(end); });
-	s.dialog->show();
-	QTest::qWait(20);
+	return *static_cast<Shown *>(*state);
+}
+
+static int setup(void **state)
+{
+	*state = new Shown;
+	return 0;
 }
 
 /* Lets deferred deletes run, so a dialog that deletes itself on close is gone. */
@@ -66,6 +73,53 @@ static void settle(int ms)
 	QTest::qWait(ms);
 	QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 	QCoreApplication::processEvents();
+}
+
+static int teardown(void **state)
+{
+	QApplication::closeAllWindows();
+	settle(0);
+	Shown *s = static_cast<Shown *>(*state);
+	/* Its clock reads s->now: it must not outlive s. */
+	delete s->dialog.data();
+	delete s;
+	*state = nullptr;
+	return 0;
+}
+
+/* real_clock: the dialog's own QElapsedTimer, as every caller in OBS uses. */
+static void show(Shown &s, bool can_cancel, qint64 countdown_ms, bool real_clock = false)
+{
+	OBSFallbackWarning::Clock clock;
+	if (!real_clock) {
+		clock = [&s]() {
+			return s.now;
+		};
+	}
+	s.dialog = new OBSFallbackWarning(nullptr, texts(can_cancel), countdown_ms, clock);
+	QObject::connect(s.dialog.data(), &OBSFallbackWarning::ended, &s.context,
+			 [&s](End end) { s.ends.push_back(end); });
+	s.dialog->show();
+	QTest::qWait(20);
+	assert_non_null(s.dialog.data());
+}
+
+static void advance(Shown &s, qint64 ms)
+{
+	s.now += ms;
+}
+
+/* Waits on an event, not on time: the bound only turns a hang into a failure. */
+template<typename Condition> static void wait_for(Condition condition)
+{
+	assert_true(QTest::qWaitFor(condition, 30000));
+}
+
+/* The progress the dialog shows; fails instead of crashing once it is gone. */
+static qint64 shown_progress(Shown &s)
+{
+	assert_non_null(s.dialog.data());
+	return s.dialog->elapsedShown();
 }
 
 static void check_one_end(Shown &s, End expected)
@@ -78,21 +132,22 @@ static void check_one_end(Shown &s, End expected)
 
 static void click(Shown &s, const char *name)
 {
+	assert_non_null(s.dialog.data());
 	auto *button = s.dialog->findChild<QPushButton *>(name);
 	assert_non_null(button);
 	QTest::mouseClick(button, Qt::LeftButton);
 }
 
-static int teardown(void **)
+/* Past the countdown: a stopped countdown must not end the dialog again. */
+static void advance_past_countdown(Shown &s)
 {
-	QApplication::closeAllWindows();
-	settle(0);
-	return 0;
+	advance(s, 700);
+	settle(200);
 }
 
-static void shows_the_callers_texts(void **)
+static void shows_the_callers_texts(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 60000);
 
 	assert_true(s.dialog->windowTitle() == "Browser source without sandbox");
@@ -114,9 +169,9 @@ static void shows_the_callers_texts(void **)
 	assert_true(s.ends.empty());
 }
 
-static void no_cancel_button_without_cancel_text(void **)
+static void no_cancel_button_without_cancel_text(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, false, 60000);
 
 	auto *accept = s.dialog->findChild<QPushButton *>("acceptButton");
@@ -126,12 +181,14 @@ static void no_cancel_button_without_cancel_text(void **)
 	assert_true(cancel == nullptr || !cancel->isVisible());
 }
 
-static void countdown_moves_the_progress(void **)
+static void countdown_moves_the_progress(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 2000);
-	settle(400);
+	advance(s, 400);
+	wait_for([&s]() { return !s.dialog || s.dialog->elapsedShown() > 0; });
 
+	assert_non_null(s.dialog.data());
 	auto *progress = s.dialog->findChild<QProgressBar *>("progress");
 	assert_non_null(progress);
 	assert_true(s.dialog->elapsedShown() > 0);
@@ -141,42 +198,55 @@ static void countdown_moves_the_progress(void **)
 	assert_true(s.ends.empty());
 }
 
-static void countdown_accepts_once(void **)
+static void countdown_accepts_once(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 200);
-	settle(700);
+	advance(s, 700);
+	wait_for([&s]() { return !s.ends.empty(); });
+	settle(200);
 
 	check_one_end(s, End::CountdownDone);
 }
 
-static void accept_click_ends_once(void **)
+/* Without a test clock the countdown runs on real time. This waits for the
+ * end instead of timing it, so a loaded runner only makes it slower. */
+static void countdown_accepts_once_on_real_time(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
+	show(s, true, 200, true);
+	wait_for([&s]() { return !s.ends.empty(); });
+	settle(200);
+
+	check_one_end(s, End::CountdownDone);
+}
+
+static void accept_click_ends_once(void **state)
+{
+	Shown &s = shown(state);
 	show(s, true, 300);
 	click(s, "acceptButton");
-	/* Past the countdown: a stopped countdown must not end it again. */
-	settle(700);
+	advance_past_countdown(s);
 
 	check_one_end(s, End::AcceptClicked);
 }
 
-static void cancel_click_ends_once(void **)
+static void cancel_click_ends_once(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 300);
 	click(s, "cancelButton");
-	settle(700);
+	advance_past_countdown(s);
 
 	check_one_end(s, End::CancelClicked);
 }
 
-static void escape_closes(void **)
+static void escape_closes(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 300);
 	QTest::keyClick(s.dialog.data(), Qt::Key_Escape);
-	settle(700);
+	advance_past_countdown(s);
 
 	check_one_end(s, End::Closed);
 }
@@ -185,19 +255,21 @@ static void escape_closes(void **)
  * wizard right after the main window has loaded): the warning is hidden or
  * takes no input, so its countdown must not accept it unseen. It pauses
  * while that dialog is open and goes on after it has closed. */
-static void countdown_pauses_while_another_dialog_is_modal(void **)
+static void countdown_pauses_while_another_dialog_is_modal(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, true, 400);
-	settle(100);
+	advance(s, 100);
+	wait_for([&s]() { return !s.dialog || s.dialog->elapsedShown() > 0; });
 
 	QDialog *modal = new QDialog();
 	modal->setModal(true);
 	modal->show();
 	settle(50);
 	assert_true(QApplication::activeModalWidget() == modal);
-	qint64 before = s.dialog->elapsedShown();
-	settle(900);
+	qint64 before = shown_progress(s);
+	advance(s, 900);
+	settle(200);
 	assert_true(s.ends.empty());
 	assert_non_null(s.dialog.data());
 	/* One tick may still have counted when the modal opened. */
@@ -205,16 +277,18 @@ static void countdown_pauses_while_another_dialog_is_modal(void **)
 
 	modal->close();
 	delete modal;
-	settle(900);
+	advance(s, 900);
+	wait_for([&s]() { return !s.ends.empty(); });
+	settle(200);
 	check_one_end(s, End::CountdownDone);
 }
 
-static void window_close_closes(void **)
+static void window_close_closes(void **state)
 {
-	Shown s;
+	Shown &s = shown(state);
 	show(s, false, 300);
 	s.dialog->close();
-	settle(700);
+	advance_past_countdown(s);
 
 	check_one_end(s, End::Closed);
 }
@@ -225,15 +299,16 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test_teardown(shows_the_callers_texts, teardown),
-		cmocka_unit_test_teardown(no_cancel_button_without_cancel_text, teardown),
-		cmocka_unit_test_teardown(countdown_moves_the_progress, teardown),
-		cmocka_unit_test_teardown(countdown_accepts_once, teardown),
-		cmocka_unit_test_teardown(accept_click_ends_once, teardown),
-		cmocka_unit_test_teardown(cancel_click_ends_once, teardown),
-		cmocka_unit_test_teardown(escape_closes, teardown),
-		cmocka_unit_test_teardown(window_close_closes, teardown),
-		cmocka_unit_test_teardown(countdown_pauses_while_another_dialog_is_modal, teardown),
+		cmocka_unit_test_setup_teardown(shows_the_callers_texts, setup, teardown),
+		cmocka_unit_test_setup_teardown(no_cancel_button_without_cancel_text, setup, teardown),
+		cmocka_unit_test_setup_teardown(countdown_moves_the_progress, setup, teardown),
+		cmocka_unit_test_setup_teardown(countdown_accepts_once, setup, teardown),
+		cmocka_unit_test_setup_teardown(countdown_accepts_once_on_real_time, setup, teardown),
+		cmocka_unit_test_setup_teardown(accept_click_ends_once, setup, teardown),
+		cmocka_unit_test_setup_teardown(cancel_click_ends_once, setup, teardown),
+		cmocka_unit_test_setup_teardown(escape_closes, setup, teardown),
+		cmocka_unit_test_setup_teardown(window_close_closes, setup, teardown),
+		cmocka_unit_test_setup_teardown(countdown_pauses_while_another_dialog_is_modal, setup, teardown),
 	};
 	if (argc > 1) {
 		cmocka_set_test_filter(argv[1]);
