@@ -41,14 +41,32 @@ void setupDockAction(QDockWidget *dock)
 	QObject::connect(action, &QAction::enabledChanged, action, neverDisable);
 }
 
-void OBSBasic::on_resetDocks_triggered(bool force)
+/* Reset Docks puts the docks outside the default layout away: floating,
+ * centered on the main window, hidden. Last one first. */
+template<typename Docks> static void PutAwayExtraDocks(QMainWindow *window, const Docks &docks)
+{
+	for (qsizetype i = docks.size() - 1; i >= 0; i--) {
+		QDockWidget *dock = &*docks[i];
+		dock->setVisible(true);
+		dock->setFloating(true);
+		dock->move(window->frameGeometry().topLeft() + window->rect().center() - dock->rect().center());
+		dock->setVisible(false);
+	}
+}
+
+bool OBSBasic::HasExtraDocks() const
 {
 #ifdef BROWSER_AVAILABLE
-	if ((extraDocks.size() || extraCustomDocks.size() || extraBrowserDocks.size()) && !force)
-#else
-	if ((extraDocks.size() || extraCustomDocks.size()) && !force)
+	if (!extraBrowserDocks.isEmpty()) {
+		return true;
+	}
 #endif
-	{
+	return !extraDocks.isEmpty() || !extraCustomDocks.isEmpty();
+}
+
+void OBSBasic::on_resetDocks_triggered(bool force)
+{
+	if (!force && HasExtraDocks()) {
 		QMessageBox::StandardButton button =
 			OBSMessageBox::question(this, QTStr("ResetUIWarning.Title"), QTStr("ResetUIWarning.Text"));
 
@@ -57,49 +75,16 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 		}
 	}
 
-#define RESET_DOCKLIST(dockList)                                                                               \
-	for (int i = static_cast<int>(dockList.size()) - 1; i >= 0; i--) {                                                       \
-		dockList[i]->setVisible(true);                                                                 \
-		dockList[i]->setFloating(true);                                                                \
-		dockList[i]->move(frameGeometry().topLeft() + rect().center() - dockList[i]->rect().center()); \
-		dockList[i]->setVisible(false);                                                                \
-	}
-
-	RESET_DOCKLIST(extraDocks)
-	RESET_DOCKLIST(extraCustomDocks)
+	PutAwayExtraDocks(this, extraDocks);
+	PutAwayExtraDocks(this, extraCustomDocks);
 #ifdef BROWSER_AVAILABLE
-	RESET_DOCKLIST(extraBrowserDocks)
+	PutAwayExtraDocks(this, extraBrowserDocks);
 #endif
-#undef RESET_DOCKLIST
-
-	restoreState(startingDockLayout);
-	ui->sideDocks->setChecked(true);
-
-	int cx = width();
-	int bottomDocksHeight = height();
-
-	bottomDocksHeight = bottomDocksHeight * 225 / 1000;
-
-	ui->scenesDock->setVisible(true);
-	ui->sourcesDock->setVisible(true);
-	ui->mixerDock->setVisible(true);
-	ui->transitionsDock->setVisible(true);
-	controlsDock->setVisible(true);
 	statsDock->setVisible(false);
 	statsDock->setFloating(true);
+	ui->sideDocks->setChecked(true);
 
-	QList<QDockWidget *> bottomDocks{ui->mixerDock, ui->transitionsDock, controlsDock};
-
-	resizeDocks(bottomDocks, {bottomDocksHeight, bottomDocksHeight, bottomDocksHeight}, Qt::Vertical);
-	resizeDocks(bottomDocks, {cx * 45 / 100, cx * 14 / 100, cx * 16 / 100}, Qt::Horizontal);
-
-	int sideDockWidth = std::min(width() * 30 / 100, 280);
-	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
-
-	/* The reset layout is the user's now, with no known sizes: the layout
-	 * this session started with must not come back on a window change or
-	 * be saved at quit (obs-rust/obs-studio#5230). */
-	dockLayout->Start(nullptr, saveState());
+	dockLayout->Reset();
 
 	activateWindow();
 }

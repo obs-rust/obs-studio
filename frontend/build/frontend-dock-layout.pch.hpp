@@ -20,6 +20,7 @@
 #include <QCryptographicHash>
 #include <QDockWidget>
 #include <QEvent>
+#include <QLayout>
 #include <QMainWindow>
 #include <QMetaObject>
 #include <QMouseEvent>

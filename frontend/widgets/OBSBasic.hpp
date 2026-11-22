@@ -462,7 +462,6 @@ public slots:
 	 */
 private:
 	QPointer<QDockWidget> statsDock;
-	QByteArray startingDockLayout;
 	DockLayout *dockLayout = nullptr;
 	QStringList extraDockNames;
 	QList<std::shared_ptr<QDockWidget>> extraDocks;
@@ -472,6 +471,9 @@ private:
 
 	QPointer<OBSDock> controlsDock;
 	QPointer<OBSDock> mixerDock;
+
+	/* Plugin, custom browser or browser docks are open. */
+	bool HasExtraDocks() const;
 
 public:
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);
