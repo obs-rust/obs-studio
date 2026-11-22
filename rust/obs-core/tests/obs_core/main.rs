@@ -70,6 +70,8 @@ mod display_size;
 mod display_size_parity;
 mod display_state;
 mod display_state_parity;
+mod enter_leave_graphics;
+mod enter_leave_graphics_parity;
 mod enum_contexts;
 mod enum_contexts_parity;
 mod enum_modules_parity;
