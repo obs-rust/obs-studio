@@ -159,6 +159,7 @@ mod set_locale;
 mod set_locale_parity;
 mod set_output_source;
 mod set_output_source_parity;
+mod set_video_levels;
 mod shutdown_detach;
 mod shutdown_detach_layout;
 mod shutdown_detach_parity;

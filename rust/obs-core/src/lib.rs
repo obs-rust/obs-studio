@@ -190,6 +190,7 @@ pub mod private_data;
 pub mod raw_audio_remove;
 pub mod set_locale;
 pub mod set_output_source;
+pub mod set_video_levels;
 pub mod shutdown_detach;
 pub mod source_load;
 pub mod source_profiler;
