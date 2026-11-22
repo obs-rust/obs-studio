@@ -76,71 +76,38 @@ jobs:
       actions: write
       contents: read
 
-  # Probe using only immutable BASE code for PR routing. merge_group runs use the
-  # org's forge-quick admin runners (ephemeral, one job per container, 120 s,
-  # 256 MiB, 0.5 CPU, no Docker or LAN) so the decision never waits in the
-  # hosted queue; PR, fork and push runs stay hosted. Kill switch: clear
-  # vars.FORGE_QUICK_LABELS to send this job back to ubuntu-latest (#5376).
+  # Forge pool routing (forge-ci/gh-runner docs/pool.md), the same selector as
+  # FastLED, soldr, clud, ghd and bosn. On merge_group, pool-select reads the
+  # tokenless pool status at signal.forge-ci.com/v1/pool and publishes
+  # vars.FORGE_POOL_LABELS (e.g. ["self-hosted","forge-pool","obs-ubuntu-2604"])
+  # only when the variable is set and at least FORGE_POOL_MIN_IDLE (default 1)
+  # matching runners are idle. Every other case, and any selector error, leaves
+  # heavy-labels empty, which keeps every heavy job hosted. PRs are skipped
+  # (hosted), as DELL_PR_ROUTING=off did; push, schedule and manual runs stay
+  # hosted. The job runs on the org's forge-quick admin runners (ephemeral,
+  # 120 s, 256 MiB, 0.5 CPU, no Docker or LAN) so the decision never waits in
+  # the hosted queue (#5376). Kill switches: unset FORGE_POOL_LABELS (heavy
+  # jobs hosted), unset FORGE_QUICK_LABELS (this job on ubuntu-latest).
   select-mq-runner:
     name: Select Merge Queue Runner
-    permissions:
-      contents: read
-      actions: read
-    if: github.event_name != 'pull_request' || (vars.DELL_PR_ROUTING == 'on' && github.event.pull_request.head.repo.full_name == github.repository)
+    permissions: {}
+    if: github.event_name != 'pull_request'
     runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
     timeout-minutes: 2
     outputs:
-      heavy-labels: ${{ steps.select.outputs.heavy-labels }}
+      # Labels only when pool-select chose the pool; empty (hosted) otherwise.
+      heavy-labels: ${{ steps.select.outputs.pool == 'true' && steps.select.outputs.runs-on || '' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        id: checkout
-        continue-on-error: true
-        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''
-        with:
-          ref: ${{ github.event.pull_request.base.sha || github.sha }}
-          sparse-checkout: ci
-          # forge-quick's tmpfs workspace counts against its 256 MiB.
-          filter: blob:none
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
-        id: uv
-        continue-on-error: true
-        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''
-        with:
-          # forge-quick's tool cache holds this uv; no lookup, no install.
-          version: '0.13.7'
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          enable-cache: false
-      - name: Create Runner Probe App Token
-        id: mq-probe-app
-        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
-        continue-on-error: true
-        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != '' && vars.MQ_PROBE_APP_ID != ''
-        with:
-          app-id: ${{ vars.MQ_PROBE_APP_ID }}
-          private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-      - name: Check Runner Availability
+      - name: Select Pool or Hosted
         id: select
         continue-on-error: true
-        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != '' && steps.checkout.outcome == 'success' && steps.uv.outcome == 'success'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.sha }}
-          DELL_PR_ROUTING: ${{ vars.DELL_PR_ROUTING || 'off' }}
-          MQ_PR_RESERVE: ${{ vars.MQ_PR_RESERVE }}
-          MQ_PR_DEMAND: ${{ vars.MQ_PR_DEMAND }}
-          MQ_RUNNER_LABELS: ${{ vars.MQ_RUNNER_LABELS }}
-          MQ_RUNNER_MODE: ${{ vars.MQ_RUNNER_MODE }}
-          MQ_RUNNER_MIN_IDLE: ${{ vars.MQ_RUNNER_MIN_IDLE }}
-          MQ_RUNNER_MAX_RUNS: ${{ vars.MQ_RUNNER_MAX_RUNS }}
-          # Tier 2 build + OFF/ON tests + two cross-lint legs + release lint.
-          MQ_RUNNER_DEMAND: ${{ vars.MQ_RUNNER_DEMAND || '6' }}
-          MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: uv run --no-project ci/run_base_runner_selector.py
-      - name: Report Probe Setup Failure
-        if: ${{ !cancelled() && (steps.checkout.outcome == 'failure' || steps.uv.outcome == 'failure' || steps.select.outcome == 'failure') }}
-        run: echo '::warning::Merge-queue runner probe could not complete; using hosted runners.'
+        if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''
+        uses: forge-ci/ci.yml/actions/pool-select@a36bc81ad6ada5fb17398e3e7ba38435cc67a951 # ci.yml#550, tokenless signal source
+        with:
+          source: signal
+          labels: ${{ vars.FORGE_POOL_LABELS }}
+          fallback: ubuntu-26.04
+          min-idle: ${{ vars.FORGE_POOL_MIN_IDLE || '1' }}
 
   # When master moves, GitHub starts a new queue run per queued PR, but a
   # queue ref carries the base commit, so the concurrency group above never
