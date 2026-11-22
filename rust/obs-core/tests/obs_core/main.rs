@@ -168,6 +168,8 @@ mod type_catalog_enum;
 mod type_catalog_enum_parity;
 mod ui_task_handler;
 mod ui_task_handler_parity;
+mod video_active;
+mod video_active_parity;
 mod video_copy_plan;
 mod video_copy_plan_parity;
 mod video_frame_copy;
