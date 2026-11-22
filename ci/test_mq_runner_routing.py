@@ -1,0 +1,115 @@
+#!/usr/bin/env -S uv run --script
+"""Merge queue runner selection: forge pool-select with a hosted fallback (no network)."""
+
+import re
+import unittest
+from pathlib import Path
+
+POOL_SELECT = 'forge-ci/ci.yml/actions/pool-select'
+POOL_SELECT_SHA = 'a36bc81ad6ada5fb17398e3e7ba38435cc67a951'
+
+
+class HostedRunnerRoutingTest(unittest.TestCase):
+    """Pin the hosted fallback and the pool-select route (#5332, #5376)."""
+
+    def job(self, workflow, name):
+        path = Path(__file__).resolve().parent.parent / '.github/workflows' / workflow
+        match = re.search(
+            rf'^  {re.escape(name)}:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)',
+            path.read_text(), re.S | re.M,
+        )
+        self.assertIsNotNone(match, name)
+        return match.group(1)
+
+    def assert_runner(self, workflow, name, expected):
+        match = re.search(r'^    runs-on: (.+)$', self.job(workflow, name), re.M)
+        self.assertIsNotNone(match, name)
+        self.assertEqual(match.group(1), expected, name)
+
+    def test_tier2_selector_fallback_and_dell_route(self):
+        # heavy-labels carries labels only when pool-select chose the pool; a
+        # skipped, failed or hosted selection leaves it empty at the consumers.
+        job = self.job('ci.yml', 'select-mq-runner')
+        self.assertIn(
+            "heavy-labels: ${{ steps.select.outputs.pool == 'true' && steps.select.outputs.runs-on || '' }}\n", job)
+        for name in ('rust-linux-tier2-build', 'rust-linux-tier2'):
+            with self.subTest(job=name):
+                self.assert_runner('build-project.yaml', name,
+                    "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
+
+    def test_pool_select_reads_signal_behind_kill_switch(self):
+        job = self.job('ci.yml', 'select-mq-runner')
+        step = job.split('      - name: Select Pool or Hosted\n', 1)[1]
+        # Only merge_group with FORGE_POOL_LABELS set asks the pool; PRs never run the job.
+        self.assertIn("    if: github.event_name != 'pull_request'\n", job)
+        self.assertIn("        if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''\n", step)
+        self.assertIn('        continue-on-error: true\n', step)
+        self.assertIn('          source: signal\n', step)
+        self.assertIn('          labels: ${{ vars.FORGE_POOL_LABELS }}\n', step)
+        # Tokenless: no App token, no secret and no write scope in the selector.
+        self.assertIn('    permissions: {}\n', job)
+        self.assertNotIn('secrets.', job)
+        self.assertNotIn('token:', job)
+
+    def test_queue_selector_uses_forge_quick_with_kill_switch(self):
+        # Only merge_group selection leaves the hosted queue (#5376); an empty
+        # FORGE_QUICK_LABELS is the kill switch back to ubuntu-latest.
+        self.assert_runner('ci.yml', 'select-mq-runner',
+            "${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && "
+            "fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}")
+        job = self.job('ci.yml', 'select-mq-runner')
+        # forge-quick: 120 s wall clock, 256 MiB including the tmpfs workspace.
+        self.assertIn('    timeout-minutes: 2\n', job)
+        self.assertNotIn('container:', job)
+        self.assertNotIn('services:', job)
+        # No checkout: pool-select needs no repository files.
+        self.assertNotIn('actions/checkout', job)
+
+    # forge-quick pre-seeds these actions at these SHAs; anything else is
+    # downloaded inside the job's 256 MiB / 120 s (forge-ci/ci.yml RUN-004,
+    # ci_lint/data/forge_quick_allowlist.toml) (#5388). pool-select's own
+    # composite step pins the allowlisted setup-uv 1db35dd.
+    FORGE_QUICK_ALLOWLIST = {
+        POOL_SELECT: POOL_SELECT_SHA,
+    }
+
+    def test_queue_selector_uses_only_forge_quick_allowlisted_actions(self):
+        job = self.job('ci.yml', 'select-mq-runner')
+        uses = re.findall(r'^\s+(?:- )?uses: ([^@\s]+)@(\S+)', job, re.M)
+        self.assertEqual(sorted(action for action, _ in uses), sorted(self.FORGE_QUICK_ALLOWLIST))
+        for action, sha in uses:
+            with self.subTest(action=action):
+                self.assertEqual(sha, self.FORGE_QUICK_ALLOWLIST[action])
+
+    def test_light_jobs_use_latest(self):
+        for workflow, names in (
+            ('build-project.yaml', ('check-event', 'ci-mode', 'rust-cross-proof')),
+            ('ci.yml', ('update-documentation', 'native-cache-consumer', 'tier2-lane-proof')),
+        ):
+            for name in names:
+                with self.subTest(workflow=workflow, job=name):
+                    self.assert_runner(workflow, name, 'ubuntu-latest')
+
+    def test_host_package_jobs_keep_2604(self):
+        for name in ('rust-tests-linux', 'cross-compile', 'linux-qt-frontend',
+                     'rust-cross-lint', 'rust-cross-lint-release', 'rust-windows-link',
+                     'cmocka-link', 'rust-tests-macos-build'):
+            with self.subTest(job=name):
+                pr_only = "github.event_name == 'pull_request' && " if name in (
+                    'rust-tests-linux', 'cross-compile', 'linux-qt-frontend') else ''
+                self.assert_runner('build-project.yaml', name,
+                    "${{ " + pr_only + "inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}")
+
+    def test_packaging_and_setup_probes_keep_2604(self):
+        for workflow, names in (
+            ('build-project.yaml', ('flatpak-build', 'flatpak-compiler-consumer', 'flatpak-runtime-test')),
+            ('ci.yml', ('flatpak-runtime-reuse', 'tier2-setup-producer', 'tier2-setup-consumer')),
+        ):
+            for name in names:
+                with self.subTest(workflow=workflow, job=name):
+                    self.assert_runner(workflow, name, 'ubuntu-26.04')
+        self.assertIn('os: [ubuntu-26.04]', self.job('build-project.yaml', 'ubuntu-build'))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -359,22 +359,6 @@ class CiScopeTest(unittest.TestCase):
             if name == "build-project.yaml":
                 self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
 
-    def test_queue_heavy_demand_fallback_matches_expanded_jobs(self):
-        import re
-        from tier2_matrix import matrix
-
-        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        cross = build.split("  rust-cross-lint:\n", 1)[1].split("  rust-cross-proof:\n", 1)[0]
-        targets = re.search(r"target: \[(.*?)\]", cross)[1].split(",")
-        tier2 = matrix("merge_group")
-        # Tier 2's build and tests are sequential. The Darwin artifact producer
-        # may overlap the larger phase and all three Cross Lint jobs (#5008).
-        demand = max(1, len(tier2["mode"]) * len(tier2["part"])) + len(targets) + 1 + 1
-        ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn(
-            f"MQ_RUNNER_DEMAND: ${{{{ vars.MQ_RUNNER_DEMAND || '{demand}' }}}}", ci,
-        )
-
     def test_queue_runner_probe_and_reusable_inputs(self):
         import re
 
@@ -385,44 +369,20 @@ class CiScopeTest(unittest.TestCase):
         probe = blocks["select-mq-runner"]
         # Hosted except merge_group with FORGE_QUICK_LABELS set (#5376).
         self.assertIn("runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}", probe)
-        self.assertIn("actions: read", probe)
-        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", probe)
         self.assertIn("if: github.event_name != 'pull_request'", probe)
         self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
-        self.assertIn("(github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''", probe)
-        steps = dict(re.findall(
-            r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)", probe, re.MULTILINE | re.DOTALL
-        ))
-        app = steps["Create Runner Probe App Token"]
-        self.assertRegex(app, r"uses: actions/create-github-app-token@[0-9a-f]{40} # v[23]\.")
-        self.assertIn("id: mq-probe-app", app)
-        self.assertIn("continue-on-error: true", app)
+        # pool-select (tokenless signal source) asks only on merge_group with
+        # FORGE_POOL_LABELS set; anything else publishes empty heavy-labels.
+        self.assertIn("permissions: {}", probe)
+        self.assertIn("if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''", probe)
+        self.assertRegex(probe, r"uses: forge-ci/ci\.yml/actions/pool-select@[0-9a-f]{40} ")
+        self.assertIn("source: signal", probe)
         self.assertIn(
-            "if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''"
-            " && vars.MQ_PROBE_APP_ID != ''\n", app,
-        )
-        for setting in (
-            "app-id: ${{ vars.MQ_PROBE_APP_ID }}",
-            "private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}",
-            "owner: ${{ github.repository_owner }}",
-        ):
-            self.assertIn(setting, app)
-        self.assertLess(probe.index("id: mq-probe-app"), probe.index("id: select"))
-        self.assertIn(
-            "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
-            " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
-        )
-        for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_MAX_RUNS"):
-            self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
-        self.assertIn('run: uv run --no-project ci/run_base_runner_selector.py', probe)
-        self.assertIn("heavy-labels: ${{ steps.select.outputs.heavy-labels }}", probe)
+            "heavy-labels: ${{ steps.select.outputs.pool == 'true' && steps.select.outputs.runs-on || '' }}", probe)
+        for legacy in ("MQ_RUNNER_LABELS", "MQ_PROBE_APP_ID", "DELL_PR_ROUTING", "run_base_runner_selector"):
+            self.assertNotIn(legacy, probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
-        self.assertEqual(probe.count("continue-on-error: true"), 4)
-        for step in ("checkout", "uv"):
-            self.assertIn(f"steps.{step}.outcome == 'success'", probe)
-            self.assertIn(f"steps.{step}.outcome == 'failure'", probe)
-        self.assertIn("steps.select.outcome == 'failure'", probe)
-        self.assertIn("::warning::", probe)
+        self.assertEqual(probe.count("continue-on-error: true"), 1)
         for job in ("check-format", "build-project"):
             self.assertIn("select-mq-runner", blocks[job].split("    if:", 1)[0])
             if job == "check-format":
