@@ -80,6 +80,7 @@ mod get_audio_parity;
 mod get_main_canvas;
 mod get_main_canvas_parity;
 mod get_main_texture;
+mod get_main_texture_parity;
 mod get_output_source;
 mod get_output_source_parity;
 mod get_video;

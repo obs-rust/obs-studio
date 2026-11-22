@@ -10,6 +10,5 @@ pub fn get_main_texture<C, M, T>(
     rendered: impl FnOnce(&M) -> bool,
     texture: impl FnOnce(M) -> Option<T>,
 ) -> Option<T> {
-    let _ = (canvas, mix, rendered, texture);
-    todo!("port obs_get_main_texture")
+    canvas.and_then(mix).filter(rendered).and_then(texture)
 }
