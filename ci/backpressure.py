@@ -61,8 +61,14 @@ EXIT_CLOSED = 75
 def gh_json(*args: str):
     command = (["uv", "run", "--no-project", "--script", str(Path(__file__).with_name("gh_graphql.py")),
                 *args[1:]] if args[0] == "graphql" else ["gh", *args])
-    out = subprocess.run(command, check=True, capture_output=True, text=True).stdout
-    return json.loads(out or "null")
+    done = subprocess.run(command, check=True, capture_output=True, text=True)
+    try:
+        return json.loads(done.stdout or "null")
+    except json.JSONDecodeError as e:
+        # gh exited 0 but printed something that is not JSON; say what, so a CI
+        # failure is diagnosable instead of a bare JSONDecodeError.
+        raise RuntimeError(f"`{' '.join(['gh', *args])}` printed non-JSON output: "
+                           f"stdout={done.stdout[:500]!r} stderr={(done.stderr or '')[:500]!r}") from e
 
 
 def now() -> dt.datetime:

@@ -451,5 +451,31 @@ class AdmissionTests(unittest.TestCase):
         self.assertEqual(self.measure()["in_flight"], 0)
 
 
+
+class GhJsonTests(unittest.TestCase):
+    """gh_json names the command and shows gh's output when it is not JSON, so a
+    CI failure says why instead of a bare JSONDecodeError (ai-rebase run 44999369121)."""
+
+    def run_gh(self, stdout, stderr=""):
+        bp = load("backpressure")
+        done = bp.subprocess.CompletedProcess(["gh"], 0, stdout=stdout, stderr=stderr)
+        with patch.object(bp.subprocess, "run", return_value=done):
+            return bp.gh_json("pr", "list", "--repo", "o/r", "--json", "number")
+
+    def test_json_output_parses(self):
+        self.assertEqual(self.run_gh('[{"number": 1}]'), [{"number": 1}])
+
+    def test_empty_output_is_null(self):
+        self.assertIsNone(self.run_gh(""))
+
+    def test_non_json_output_names_command_and_output(self):
+        with self.assertRaises(RuntimeError) as caught:
+            self.run_gh("no pull requests match your search\n", stderr="warning: something")
+        message = str(caught.exception)
+        self.assertIn("gh pr list --repo o/r --json number", message)
+        self.assertIn("no pull requests match your search", message)
+        self.assertIn("warning: something", message)
+
+
 if __name__ == "__main__":
     unittest.main()
