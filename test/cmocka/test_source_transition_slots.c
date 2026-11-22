@@ -188,9 +188,12 @@ static void drop_child(size_t i)
 	live.child[i] = NULL;
 }
 
-/* Whether anything still holds a reference on child i. */
+/* Whether anything still holds a reference on child i. A video tick holds
+ * its own reference on every source while it ticks, so wait for the destroy
+ * queue (which waits a tick) before reading the weak reference (#4680). */
 static bool child_alive(size_t i)
 {
+	obs_wait_for_destroy_queue();
 	obs_source_t *s = obs_weak_source_get_source(live.weak[i]);
 	obs_source_release(s);
 	return s != NULL;
