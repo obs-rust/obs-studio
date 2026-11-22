@@ -36,19 +36,15 @@ pub trait Graphics {
 
 /// `obs_enter_graphics()`: enter the core's graphics context when there is one.
 pub fn enter_graphics<G: Graphics>(host: &mut G) {
-    #[allow(clippy::todo)]
-    {
-        let _ = host;
-        todo!()
+    if let Some(graphics) = host.graphics() {
+        host.enter_context(graphics);
     }
 }
 
 /// `obs_leave_graphics()`: leave the current graphics context when the core
 /// has a graphics subsystem.
 pub fn leave_graphics<G: Graphics>(host: &mut G) {
-    #[allow(clippy::todo)]
-    {
-        let _ = host;
-        todo!()
+    if host.graphics().is_some() {
+        host.leave_context();
     }
 }

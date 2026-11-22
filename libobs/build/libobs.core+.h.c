@@ -16,7 +16,7 @@
 #include "libobs/obs-core-texture-activity-fields.c.h"
 #include "libobs/obs-core-tick-callbacks-fields.c.h"
 #include "libobs/obs-encoder-video-tex-active-mix.c.h"
-#include "libobs/obs-enter-leave-graphics.c.h"
+#include "libobs/obs-enter-leave-graphics-fields.c.h"
 #include "libobs/obs-enum-contexts-fields.c.h"
 #include "libobs/obs-enum-scenes-fields.c.h"
 #include "libobs/obs-get-audio-fields.c.h"
