@@ -7,7 +7,7 @@
     uv run --no-project --script ci/mq_acquire_retry.py [--run-id ID] [--dry-run]
 
 Needs GH_TOKEN, actions: write, checks: read and contents: read. Re-arming ejected groups
-also needs pull-requests: write and a workflow-triggering token (AI_REBASE_TOKEN).
+also needs pull-requests: write and a workflow-triggering token (the obs-rust-ai-rebase App token).
 Unknown evidence never permits a retry. CI Gate must still pass on the rerun.
 """
 
@@ -264,7 +264,7 @@ def recover_group(repo: str, run: dict, label: str, *, dry_run: bool, can_requeu
         print(f"{label}: skipped: automatic retry already spent for this PR head")
         return
     if not can_requeue:
-        print(f"::warning::{label}: AI_REBASE_TOKEN is required to trigger fresh merge-group CI; no requeue")
+        print(f"::warning::{label}: the ai-rebase App token is required to trigger fresh merge-group CI; no requeue")
         return
     if pr_snapshot(repo, number, fresh=True) != pr or not run_unchanged(repo, run):
         print(f"{label}: skipped: PR changed during inspection")

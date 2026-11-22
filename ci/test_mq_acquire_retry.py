@@ -324,7 +324,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("github.event.workflow_run.id", recovery)
         self.assertIn("ref: master", recovery)
         self.assertIn("persist-credentials: false", recovery)
-        self.assertIn("secrets.AI_REBASE_TOKEN || github.token", recovery)
+        self.assertIn("steps.app.outputs.token || github.token", recovery)
         self.assertIn("github.event_name != 'workflow_run'", jobs["rebase"])
         self.assertIn('17,47 * * * *', workflow)
         self.assertNotIn("ci/mq_acquire_retry.py", jobs["rebase"])

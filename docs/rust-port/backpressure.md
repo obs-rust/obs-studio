@@ -62,7 +62,7 @@ Stacked drafts keep the first line `Stacked on #P: review only the commits after
 
 ### Automatic infrastructure re-arm
 
-`uv run --no-project --script ci/ai_rebase.py --requeue-ejected` runs before the rebase steps in the same workflow at :17 and :47 (also on master pushes and manual dispatch). It uses `GITHUB_TOKEN` with `contents: read` and `pull-requests: write`; Actions evidence is public read-only data. It needs neither `AI_REBASE_TOKEN` nor the model key, performs no checkout changes or pushes, and leaves merge strategy to the queue. Missing `AI_REBASE_TOKEN` disables only rebasing. Refs #4896.
+`uv run --no-project --script ci/ai_rebase.py --requeue-ejected` runs before the rebase steps in the same workflow at :17 and :47 (also on master pushes and manual dispatch). It uses `GITHUB_TOKEN` with `contents: read` and `pull-requests: write`; Actions evidence is public read-only data. It needs neither the ai-rebase App token nor the model key, performs no checkout changes or pushes, and leaves merge strategy to the queue. Missing `AI_REBASE_TOKEN` disables only rebasing. Refs #4896.
 
 The latest queue/head transition must be a removal within three hours, bound by preceding commit/force-push events to the unchanged PR head. The PR must be open, disarmed, out of draft, without a hold, `draft`, `pool-active` or `queue-failed` label or requested changes. The worker quiet period applies. Conflicts stay with the rebase path; manual removals are never retried. Immediately before mutation the bot refreshes the PR and queue transition.
 
@@ -74,9 +74,9 @@ One automatic attempt is allowed per PR per head SHA, across schedules and furth
 
 `.github/workflows/ai-rebase.yaml` runs the script on every master push, every 30 minutes, and on manual dispatch with explicit PR numbers.
 
-It needs two repository secrets:
+It needs:
 
-- `OPENROUTER_API_KEY`.
-- `AI_REBASE_TOKEN`: a GitHub App installation token or a fine-grained PAT, with **contents: write** and **pull-requests: write** on this repository. It cannot be `GITHUB_TOKEN`, for two reasons. A push made with `GITHUB_TOKEN` starts no workflows, so the rebased PR would never get CI. And the repository's maximum `GITHUB_TOKEN` grant is read-only.
+- the `OPENROUTER_API_KEY` secret;
+- the **obs-rust-ai-rebase** GitHub App, installed on this repository only (contents: write, pull-requests: write, actions: write, checks: read), with its id in the `AI_REBASE_APP_ID` variable and its private key in the `AI_REBASE_APP_PRIVATE_KEY` secret. Each job mints a short-lived installation token from it (`actions/create-github-app-token`), so there is no long-lived token to store or rotate. The token cannot be `GITHUB_TOKEN`, for two reasons. A push made with `GITHUB_TOKEN` starts no workflows, so the rebased PR would never get CI. And the repository's maximum `GITHUB_TOKEN` grant is read-only.
 
 Rebased commits keep their authors; the committer becomes the token's identity. Only same-repository PRs are rebased, never forks. A dry run on #4235 (2026-11-09) resolved 3 conflicted files in one step and kept all 455 added lines.
