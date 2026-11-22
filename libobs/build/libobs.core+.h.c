@@ -67,7 +67,7 @@
 #include "libobs/obs-set-cmdline-args.c.h"
 #include "libobs/obs-set-locale-fields.c.h"
 #include "libobs/obs-set-output-source-fields.c.h"
-#include "libobs/obs-set-video-levels.c.h"
+#include "libobs/obs-set-video-levels-fields.c.h"
 #include "libobs/obs-shutdown-detach.c.h"
 #include "libobs/obs-type-catalog-enum-fields.c.h"
 #include "libobs/obs-ui-task-handler-fields.c.h"
