@@ -17,6 +17,9 @@
 //! layout) is restored again at each window change until the window shows it
 //! unclamped or the user changes something ([`Output::restore_again`]).
 //! Saving: [`Model::saves_restored_blob`] and [`Model::record`].
+//!
+//! [`Session`] wraps the model for one window: it keeps the blob the window
+//! started with and decides when to take a snapshot (#5475).
 
 #![deny(unsafe_code)]
 
@@ -25,8 +28,10 @@ use std::collections::BTreeMap;
 #[allow(unsafe_code)]
 pub mod ffi;
 mod record;
+mod session;
 
 pub use record::{Sizes, decode, encode};
+pub use session::Session;
 
 /// A size within this many pixels of another is the same size: Qt rounds
 /// when it lays out docks, and a resize for 1 px starts retile loops.

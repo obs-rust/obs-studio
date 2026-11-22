@@ -84,6 +84,7 @@ protected:
 
 private:
 	void Queue(int cause);
+	void Post(bool due);
 	void Observe();
 	void Apply();
 
@@ -91,19 +92,8 @@ private:
 	DefaultDocks defaultDocks;
 	/* The default layout, from SetDefault(). */
 	QByteArray defaultLayout;
+	/* The decisions (rust/obs-dock-layout Session, #5475): the sizes, the
+	 * started blob, when to take a snapshot. */
 	obs_dock_layout *model = nullptr;
-	/* The blob of the last Start(): what a restore again restores. */
-	QByteArray restored;
-	/* Start() was called: before it there is no layout of the user's to
-	 * keep (OBSBasic sets its default layout up first). */
-	bool started = false;
 	bool hasSizes = false;
-	/* The strongest cause queued since the last snapshot (RESTORED over
-	 * SEPARATOR_DRAG over CHANGE), -1 when none is queued. */
-	int queued = -1;
-	bool observeQueued = false;
-	/* The left button is down on the window: a separator drag runs. Qt
-	 * resizes the docks while it moves; those are the user's sizes, so
-	 * no snapshot is taken until the release. */
-	bool dragging = false;
 };
