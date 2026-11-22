@@ -66,6 +66,7 @@
 #include "libobs/obs-shutdown-detach.c.h"
 #include "libobs/obs-type-catalog-enum-fields.c.h"
 #include "libobs/obs-ui-task-handler-fields.c.h"
+#include "libobs/obs-video-active.c.h"
 #include "libobs/obs-video-info-query-fields.c.h"
 #include "libobs/obs-video-level-queries-fields.c.h"
 #include "libobs/obs-video-stats-queries-fields.c.h"
