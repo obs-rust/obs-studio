@@ -20926,6 +20926,29 @@
         }
       ]
     },
+    "test_video_active": {
+      "sources": [
+        "test/cmocka/test_video_active.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_video_clock_race": {
       "sources": [
         "test/cmocka/test_video_clock_race.c"
@@ -30121,6 +30144,23 @@
       "target": "test_vertexbuffer_create",
       "command": [
         "${target}"
+      ]
+    },
+    "test_video_active": {
+      "target": "test_video_active",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_video_clock_race": {
