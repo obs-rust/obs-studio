@@ -42,9 +42,38 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 void DockLayout::SetDefault(const DefaultDocks &docks)
 {
 	defaultDocks = docks;
+	defaultLayout = window->saveState();
 }
 
-void DockLayout::Reset() {}
+void DockLayout::Reset()
+{
+	const DefaultDocks &d = defaultDocks;
+	window->restoreState(defaultLayout);
+	for (QDockWidget *dock : {d.scenes, d.sources, d.mixer, d.transitions, d.controls}) {
+		dock->setVisible(true);
+	}
+
+	/* The default sizes: the bottom docks get 22.5 % of the height and
+	 * share the width 45/14/16, the side docks get 30 % of the width, at
+	 * most 280 px. */
+	const int cx = window->width();
+	const int bottom = window->height() * 225 / 1000;
+	const QList<QDockWidget *> bottomDocks{d.mixer, d.transitions, d.controls};
+	window->resizeDocks(bottomDocks, {bottom, bottom, bottom}, Qt::Vertical);
+	window->resizeDocks(bottomDocks, {cx * 45 / 100, cx * 14 / 100, cx * 16 / 100}, Qt::Horizontal);
+	const int side = std::min(cx * 30 / 100, 280);
+	window->resizeDocks({d.scenes, d.sources}, {side, side}, Qt::Horizontal);
+	/* resizeDocks() only sets the sizes for the next layout pass. Start()
+	 * takes the layout as it is now, so lay it out first: otherwise the
+	 * model keeps the docks as they were before the sizes (the side docks
+	 * at their minimum, #5462). */
+	window->layout()->activate();
+
+	/* The reset layout is the user's now, with no known sizes: the layout
+	 * this session started with must not come back on a window change or
+	 * be saved at quit (obs-rust/obs-studio#5230). */
+	Start(nullptr, window->saveState());
+}
 
 bool DockLayout::Load(config_t *config, const char *section)
 {

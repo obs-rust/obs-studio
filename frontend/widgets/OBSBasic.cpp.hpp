@@ -193,15 +193,13 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	 * This specific arrangement can't be set up in Qt Designer */
 	addDockWidget(Qt::LeftDockWidgetArea, ui->scenesDock);
 	splitDockWidget(ui->scenesDock, ui->sourcesDock, Qt::Vertical);
-	int sideDockWidth = std::min(width() * 30 / 100, 320);
-	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
 	addDockWidget(Qt::BottomDockWidgetArea, controlsDock);
 
-	startingDockLayout = saveState();
-
 	/* Docks keep the sizes the user gave them when the window changes
-	 * (obs-rust/obs-studio#2225, #3740, #5230). */
+	 * (obs-rust/obs-studio#2225, #3740, #5230). Reset Docks restores this
+	 * default layout and sizes it (#5462). */
 	dockLayout = new DockLayout(this);
+	dockLayout->SetDefault({ui->scenesDock, ui->sourcesDock, ui->mixerDock, ui->transitionsDock, controlsDock});
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));

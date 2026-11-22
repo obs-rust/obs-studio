@@ -18,10 +18,11 @@ writes what the model selects (the restored layout while a clamped start has
 changed nothing) with its sizes. This pins the rule rather than the helper:
 
 - no frontend source but `DockLayout` writes `DockState` or `DockSizes`;
-- no frontend source but `DockLayout` restores a saved dock state (Reset
-  Docks restores `startingDockLayout`, the default layout, and tells the
-  model itself);
-- the start, `saveAll()` and the three auth panels use `Load()` and `Save()`.
+- no frontend source but `DockLayout` restores a dock layout of the main
+  window (Reset Docks is `DockLayout::Reset()`, which restores the default
+  layout from `SetDefault()` and sizes it, #5462);
+- the start, `saveAll()` and the three auth panels use `Load()` and `Save()`,
+  Reset Docks uses `SetDefault()` and `Reset()`.
 """
 
 import re
@@ -46,8 +47,8 @@ OAUTH_PANELS = (
 
 # A config write of a dock layout key.
 WRITE = re.compile(r"config_set_string\([^;]*\"Dock(State|Sizes)\"")
-# A restore of a saved dock state (Reset Docks restores startingDockLayout).
-RESTORE = re.compile(r"\brestoreState\((?!startingDockLayout\b)")
+# A restore of a dock layout.
+RESTORE = re.compile(r"\brestoreState\(")
 
 
 def frontend_sources():
@@ -91,6 +92,12 @@ class DockStateWritersTest(unittest.TestCase):
         self.assertIn('dockLayout->Load(App()->GetUserConfig(), "BasicWindow")', source)
         self.assertIn('dockLayout->Save(App()->GetUserConfig(), "BasicWindow")', source)
         self.assertIn("DockLayout *GetDockLayout() const", OBS_BASIC_HPP.read_text(encoding="utf-8"))
+
+    def test_reset_docks_goes_through_dock_layout(self):
+        """The default layout is kept and restored only by DockLayout (#5462)."""
+        self.assertIn("dockLayout->SetDefault(", OBS_BASIC.read_text(encoding="utf-8"))
+        self.assertIn("dockLayout->Reset();", OBS_BASIC_DOCKS.read_text(encoding="utf-8"))
+        self.assertNotIn("startingDockLayout", OBS_BASIC_HPP.read_text(encoding="utf-8"))
 
     def test_auth_panels_load_and_save_through_dock_layout(self):
         """Each auth panel's `<service>` layout goes through DockLayout."""
