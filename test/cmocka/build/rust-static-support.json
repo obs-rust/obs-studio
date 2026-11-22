@@ -49,6 +49,7 @@
     "test/cmocka/source-weak-control-link-support.c",
     "test/cmocka/source-weak-refs-link-support.c",
     "test/cmocka/texture-creators-fields-link-support.c",
+    "test/cmocka/video-active-link-support.c",
     "test/cmocka/video-info-query-link-support.c",
     "test/cmocka/video-scaler-ffmpeg-link-support.c",
     "test/cmocka/video-stats-queries-link-support.c"

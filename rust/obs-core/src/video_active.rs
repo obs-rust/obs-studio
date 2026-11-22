@@ -39,8 +39,13 @@ pub trait Mixes {
 }
 
 /// Whether any mix has a raw consumer or a GPU encoder counted above zero.
-#[allow(clippy::todo)]
 pub fn video_active<M: Mixes>(mixes: &mut M) -> bool {
-    let _ = mixes;
-    todo!("obs_video_active safe core (#5436)")
+    mixes.lock();
+    let num = mixes.count();
+    let result = (0..num).any(|index| {
+        let mix = mixes.at(index);
+        mixes.raw_active(&mix) > 0 || mixes.gpu_encoder_active(&mix) > 0
+    });
+    mixes.unlock();
+    result
 }
