@@ -1,37 +1,83 @@
 #include "frontend/build/frontend-dock-layout.pch.hpp"
 
-/* RED (obs-rust/obs-studio#5471): stubs. */
-
-QDockWidget::DockWidgetFeatures DockFeatures(bool, bool)
+QDockWidget::DockWidgetFeatures DockFeatures(bool locked, bool closable)
 {
-	return QDockWidget::NoDockWidgetFeatures;
+	if (locked) {
+		return QDockWidget::NoDockWidgetFeatures;
+	}
+
+	QDockWidget::DockWidgetFeatures features = QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable;
+	if (closable) {
+		features |= QDockWidget::DockWidgetClosable;
+	}
+	return features;
 }
 
-void ExtraDocks::Add(QDockWidget *, Kind, bool) {}
-
-bool ExtraDocks::Remove(QMainWindow *, const QString &)
+void ExtraDocks::Add(QDockWidget *dock, Kind kind, bool locked)
 {
+	dock->setFeatures(DockFeatures(locked));
+
+	Entry entry{dock->objectName(), kind, nullptr, dock};
+	if (kind == Kind::Plugin) {
+		entry.owned.reset(dock);
+	}
+	entries.push_back(std::move(entry));
+}
+
+bool ExtraDocks::Remove(QMainWindow *window, const QString &name)
+{
+	for (qsizetype i = 0; i < entries.size(); i++) {
+		if (entries[i].name != name) {
+			continue;
+		}
+
+		Entry entry = entries.takeAt(i);
+		if (entry.kind == Kind::Plugin) {
+			entry.owned.reset();
+		} else {
+			window->removeDockWidget(entry.dock);
+		}
+		return true;
+	}
 	return false;
 }
 
-bool ExtraDocks::Contains(const QString &) const
+bool ExtraDocks::Contains(const QString &name) const
 {
-	return false;
+	return std::any_of(entries.begin(), entries.end(), [&](const Entry &entry) { return entry.name == name; });
 }
 
 bool ExtraDocks::IsEmpty() const
 {
-	return true;
+	return entries.isEmpty();
 }
 
-void ExtraDocks::SetLocked(bool) {}
-
-QList<QDockWidget *> ExtraDocks::Docks(Kind) const
+void ExtraDocks::SetLocked(bool locked)
 {
-	return {};
+	for (const Entry &entry : std::as_const(entries)) {
+		if (entry.dock) {
+			entry.dock->setFeatures(DockFeatures(locked));
+		}
+	}
 }
 
-std::optional<QString> ExtraDocks::CustomName(const QDockWidget *) const
+QList<QDockWidget *> ExtraDocks::Docks(Kind kind) const
 {
+	QList<QDockWidget *> docks;
+	for (const Entry &entry : entries) {
+		if (entry.kind == kind && entry.dock) {
+			docks.push_back(entry.dock);
+		}
+	}
+	return docks;
+}
+
+std::optional<QString> ExtraDocks::CustomName(const QDockWidget *dock) const
+{
+	for (const Entry &entry : entries) {
+		if (entry.kind == Kind::Custom && entry.dock == dock) {
+			return entry.name;
+		}
+	}
 	return std::nullopt;
 }
