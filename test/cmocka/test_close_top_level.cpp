@@ -632,6 +632,38 @@ static void close_key_is_added_once(void **state)
 	}
 }
 
+/* #5457: what OBS adds to a dock window (the macOS attribute, the move-end
+ * filter, the close key) is one DockWindow object. An OBSDock is set up when
+ * it is made and again in AddDockWidget(), so a second SetUp() must give the
+ * same object: one filter and one close key (two shortcuts on one key are
+ * ambiguous, and Qt then activates neither). */
+static void dock_window_is_set_up_once(void **state)
+{
+	(void)state;
+	auto *main = new QMainWindow;
+	main->setCentralWidget(new QWidget);
+	auto *dock = new QDockWidget(QStringLiteral("Scenes"), main);
+	dock->setObjectName(QStringLiteral("scenesDock"));
+	dock->setWidget(new QWidget);
+	main->addDockWidget(Qt::LeftDockWidgetArea, dock);
+	DockWindow *first = DockWindow::SetUp(dock);
+	DockWindow *second = DockWindow::SetUp(dock);
+	const qsizetype windows =
+		dock->findChildren<QObject *>(QStringLiteral("dockWindow"), Qt::FindDirectChildrenOnly).size();
+	const qsizetype keys = dock->findChildren<QShortcut *>(Qt::FindDirectChildrenOnly).size();
+	QShortcut *key = first ? first->CloseKey() : nullptr;
+	const bool close_keys = key && key->keys() == QKeySequence::keyBindings(QKeySequence::Close);
+	const bool shown = dock->testAttribute(Qt::WA_MacAlwaysShowToolWindow);
+	delete main;
+	if (!first || first != second || windows != 1 || keys != 1 || !close_keys || !shown) {
+		fprintf(stderr,
+			"first %p, second %p, DockWindow children %d, shortcuts %d, close keys %d, "
+			"WA_MacAlwaysShowToolWindow %d (expected the same object, 1, 1, 1, 1)\n",
+			(void *)first, (void *)second, (int)windows, (int)keys, close_keys, shown);
+		fail();
+	}
+}
+
 #ifdef _WIN32
 /* With no platform plugin, a release Qt on Windows shows a modal message box
  * before it exits when the process has no console window, and under ctest on
@@ -690,6 +722,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
 						quit_teardown),
 		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
+		cmocka_unit_test(dock_window_is_set_up_once),
 		cmocka_unit_test_setup_teardown(moved_dock_keeps_the_main_window_layout, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(moved_dock_docks_into_the_main_window, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(close_of_a_floating_main_dock_puts_it_back, redock_setup,

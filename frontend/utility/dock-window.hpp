@@ -150,3 +150,15 @@ inline void SetUpDockWindow(QDockWidget *dock)
 	LayOutAfterFloatingMove(dock);
 	AddFloatingDockCloseKey(dock);
 }
+
+/* What OBS adds to the window of a dock (obs-rust/obs-studio#5457). */
+class DockWindow : public QObject {
+public:
+	static DockWindow *SetUp(QDockWidget *dock)
+	{
+		(void)dock;
+		return nullptr;
+	}
+
+	QShortcut *CloseKey() const { return nullptr; }
+};
