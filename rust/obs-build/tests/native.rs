@@ -287,8 +287,8 @@ mod canonical_caption_unmappable_is_registered;
 mod canonical_capture_helpers_are_registered;
 #[path = "native/registration/canonical_capture_planes_and_parser_lifecycle_are_registered.rs"]
 mod canonical_capture_planes_and_parser_lifecycle_are_registered;
-#[path = "native/registration/canonical_close_top_level_is_registered.rs"]
-mod canonical_close_top_level_is_registered;
+#[path = "native/registration/canonical_top_level_windows_is_registered.rs"]
+mod canonical_top_level_windows_is_registered;
 #[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
