@@ -29,7 +29,14 @@
  * drag, a drag that ends outside the window leaves it set, and
  * QMainWindowLayout::setGeometry() does nothing while it is set. The moved
  * dock cases move a floating dock with its title bar, then check that a
- * resize still lays out the docks and that the dock docks into the window. */
+ * resize still lays out the docks and that the dock docks into the window.
+ *
+ * A close of a floating main dock (not closable) did nothing but show the
+ * "You just closed a dockable window" notice, and no key closed a floating
+ * dock (obs-rust/obs-studio#5408). The redock cases check that
+ * CloseRedocksMainDock() puts such a dock back into the main window, that a
+ * quit still closes it, and that AddFloatingDockCloseKey() gives a floating
+ * dock the close key. */
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -37,7 +44,9 @@
 #include <QDockWidget>
 #include <QLibraryInfo>
 #include <QMainWindow>
+#include <QKeySequence>
 #include <QMouseEvent>
+#include <QShortcut>
 #include <QWidget>
 #include <QWindow>
 
@@ -462,6 +471,167 @@ static void moved_dock_docks_into_the_main_window(void **state)
 	}
 }
 
+/* OBSDock::closeEvent() without the frontend: `closing` is OBSBasic's
+ * isClosing(). */
+class RedockDock : public QDockWidget {
+public:
+	RedockDock(const QString &title, QMainWindow *main) : QDockWidget(title, main) {}
+	bool closing = false;
+	int closeEvents = 0;
+
+protected:
+	void closeEvent(QCloseEvent *event) override
+	{
+		closeEvents++;
+		if (CloseRedocksMainDock(this, event, closing)) {
+			return;
+		}
+		QDockWidget::closeEvent(event);
+	}
+};
+
+static QMainWindow *redock_main;
+static RedockDock *redock_dock;
+static QShortcut *redock_key;
+
+/* A main window with one dock that is set up as OBS sets up its docks, then
+ * floated. */
+static void float_one_dock(bool closable)
+{
+	redock_main = new QMainWindow;
+	redock_main->setCentralWidget(new QWidget);
+	redock_main->resize(800, 600);
+	redock_dock = new RedockDock(QStringLiteral("Scenes"), redock_main);
+	redock_dock->setObjectName(QStringLiteral("scenesDock"));
+	redock_dock->setWidget(new QWidget);
+	redock_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
+				 (closable ? QDockWidget::DockWidgetClosable : QDockWidget::NoDockWidgetFeatures));
+	redock_key = AddFloatingDockCloseKey(redock_dock);
+	redock_main->addDockWidget(Qt::LeftDockWidgetArea, redock_dock);
+	redock_main->show();
+	QApplication::processEvents();
+	redock_dock->setFloating(true);
+	redock_dock->show();
+	QApplication::processEvents();
+}
+
+static int redock_setup(void **state)
+{
+	(void)state;
+	float_one_dock(false);
+	return 0;
+}
+
+static int redock_closable_setup(void **state)
+{
+	(void)state;
+	float_one_dock(true);
+	return 0;
+}
+
+static int redock_teardown(void **state)
+{
+	(void)state;
+	delete redock_main;
+	redock_main = nullptr;
+	redock_dock = nullptr;
+	redock_key = nullptr;
+	QApplication::processEvents();
+	return 0;
+}
+
+static void report_dock(const char *what, bool floating, bool visible)
+{
+	fprintf(stderr, "%s: floating %d (expected %d), visible %d (expected %d), close events %d\n", what,
+		redock_dock->isFloating(), floating, redock_dock->isVisible(), visible, redock_dock->closeEvents);
+}
+
+static void close_of_a_floating_main_dock_puts_it_back(void **state)
+{
+	(void)state;
+	redock_dock->close();
+	QApplication::processEvents();
+	if (redock_dock->isFloating() || !redock_dock->isVisible() || redock_dock->closeEvents != 1) {
+		report_dock("close of a floating main dock", false, true);
+		fail();
+	}
+}
+
+static void quit_closes_a_floating_main_dock(void **state)
+{
+	(void)state;
+	/* Since #5406 a quit closes the main window first. */
+	redock_main->hide();
+	QApplication::processEvents();
+	redock_dock->close();
+	QApplication::processEvents();
+	if (!redock_dock->isFloating() || redock_dock->isVisible()) {
+		report_dock("close during a quit", true, false);
+		fail();
+	}
+}
+
+static void close_while_obs_closes_keeps_the_dock_floating(void **state)
+{
+	(void)state;
+	redock_dock->closing = true;
+	redock_dock->close();
+	QApplication::processEvents();
+	if (!redock_dock->isFloating()) {
+		report_dock("close while OBS closes", true, redock_dock->isVisible());
+		fail();
+	}
+}
+
+static void close_of_a_closable_floating_dock_hides_it(void **state)
+{
+	(void)state;
+	redock_dock->close();
+	QApplication::processEvents();
+	if (redock_dock->isVisible()) {
+		report_dock("close of a closable floating dock", true, false);
+		fail();
+	}
+}
+
+static void close_key_puts_a_floating_main_dock_back(void **state)
+{
+	(void)state;
+	if (!redock_key) {
+		fprintf(stderr, "AddFloatingDockCloseKey() gave no shortcut\n");
+		fail();
+	}
+	const bool keys = redock_key->keys() == QKeySequence::keyBindings(QKeySequence::Close);
+	const bool own = redock_key->parent() == redock_dock && redock_key->context() == Qt::WindowShortcut;
+	const bool enabled_floating = redock_key->isEnabled();
+	emit redock_key->activated();
+	QApplication::processEvents();
+	const bool enabled_docked = redock_key->isEnabled();
+	if (!keys || !own || !enabled_floating || enabled_docked || redock_dock->isFloating() ||
+	    !redock_dock->isVisible()) {
+		fprintf(stderr,
+			"close keys %d, dock window shortcut %d, enabled while floating %d, enabled while docked %d "
+			"(expected 1 1 1 0)\n",
+			keys, own, enabled_floating, enabled_docked);
+		report_dock("close key on a floating main dock", false, true);
+		fail();
+	}
+}
+
+static void close_key_is_added_once(void **state)
+{
+	(void)state;
+	/* An OBSDock is set up when it is made and again in AddDockWidget(). Two
+	 * shortcuts on one key are ambiguous, and Qt activates neither. */
+	QShortcut *again = AddFloatingDockCloseKey(redock_dock);
+	const qsizetype keys = redock_dock->findChildren<QShortcut *>(Qt::FindDirectChildrenOnly).size();
+	if (!redock_key || again != redock_key || keys != 1) {
+		fprintf(stderr, "first key %p, second call %p, shortcuts on the dock %d (expected the same one, 1)\n",
+			(void *)redock_key, (void *)again, (int)keys);
+		fail();
+	}
+}
+
 #ifdef _WIN32
 /* With no platform plugin, a release Qt on Windows shows a modal message box
  * before it exits when the process has no console window, and under ctest on
@@ -522,6 +692,16 @@ int main(int argc, char **argv)
 		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
 		cmocka_unit_test_setup_teardown(moved_dock_keeps_the_main_window_layout, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(moved_dock_docks_into_the_main_window, moved_setup, moved_teardown),
+		cmocka_unit_test_setup_teardown(close_of_a_floating_main_dock_puts_it_back, redock_setup,
+						redock_teardown),
+		cmocka_unit_test_setup_teardown(quit_closes_a_floating_main_dock, redock_setup, redock_teardown),
+		cmocka_unit_test_setup_teardown(close_while_obs_closes_keeps_the_dock_floating, redock_setup,
+						redock_teardown),
+		cmocka_unit_test_setup_teardown(close_of_a_closable_floating_dock_hides_it, redock_closable_setup,
+						redock_teardown),
+		cmocka_unit_test_setup_teardown(close_key_puts_a_floating_main_dock_back, redock_setup,
+						redock_teardown),
+		cmocka_unit_test_setup_teardown(close_key_is_added_once, redock_setup, redock_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

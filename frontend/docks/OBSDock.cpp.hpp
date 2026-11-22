@@ -2,6 +2,12 @@
 
 void OBSDock::closeEvent(QCloseEvent *event)
 {
+	/* A floating main dock goes back into the main window, without the notice
+	 * below (obs-rust/obs-studio#5408). */
+	if (CloseRedocksMainDock(this, event, OBSBasic::Get()->isClosing())) {
+		return;
+	}
+
 	auto msgBox = []() {
 		QMessageBox msgbox(App()->GetMainWindow());
 		msgbox.setWindowTitle(QTStr("DockCloseWarning.Title"));
