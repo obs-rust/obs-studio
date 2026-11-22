@@ -89,8 +89,16 @@ struct watch {
 	size_t ticks; /* every output frame, recorded or not */
 	size_t count;
 	int seen[MAX_SEEN]; /* field index, or -1 for an unrecognised frame */
-	int max_field;      /* the highest field recorded, recording or not */
-	size_t black_run;   /* unrecognised frames in a row */
+	/* The output frame repeats the frame before it: a tick libobs did not
+	 * render (#5374). When the graphics thread oversleeps past several
+	 * ticks, video_sleep counts the ticks it missed as lagged frames and
+	 * video-io delivers the last rendered frame once per missed tick, from
+	 * the same cache entry (video_output_cur_frame); every rendered frame
+	 * gets an entry of its own. */
+	bool repeat[MAX_SEEN];
+	const uint8_t *last_data; /* the cache entry of the last output frame */
+	int max_field;            /* the highest field recorded, recording or not */
+	size_t black_run;         /* unrecognised frames in a row */
 };
 
 static int snap(int v)
@@ -133,6 +141,8 @@ static void raw_video(void *param, struct video_data *frame)
 	int field = classify(frame);
 
 	pthread_mutex_lock(&w->mutex);
+	const bool repeat = frame->data[0] == w->last_data;
+	w->last_data = frame->data[0];
 	w->ticks++;
 	if (field < 0) {
 		w->black_run++;
@@ -141,8 +151,10 @@ static void raw_video(void *param, struct video_data *frame)
 		if (field > w->max_field)
 			w->max_field = field;
 	}
-	if (w->recording && w->count < MAX_SEEN)
+	if (w->recording && w->count < MAX_SEEN) {
+		w->repeat[w->count] = repeat;
 		w->seen[w->count++] = field;
+	}
 	pthread_mutex_unlock(&w->mutex);
 }
 
@@ -348,6 +360,112 @@ static obs_source_t *create_interlaced(enum obs_deinterlace_mode mode, bool top_
 	return source;
 }
 
+/* How the fields of a case must be paced. */
+struct cadence {
+	int startup;         /* the first fields, not checked for skips */
+	int unheld;          /* the first fields, not checked for holds */
+	size_t allowed_gap;  /* fields a slower canvas drops between two shown */
+	size_t allowed_held; /* output frames a field may be shown for (SIZE_MAX: any) */
+};
+
+/* What the output showed, counted against a cadence. */
+struct field_count {
+	int shown[MAX_SEEN]; /* the fields in the order they were shown */
+	size_t num;          /* fields shown */
+	size_t unknown;      /* unrecognised output frames */
+	size_t backwards;    /* steps back in time */
+	size_t skipped;      /* fields never shown, in total */
+	size_t max_gap;      /* the longest skip */
+	/* How many separate skips went beyond the cadence's allowance: a slower
+	 * canvas drops fields as a matter of course (50i into 30 fps drops two
+	 * in every five), so the count that matters is of the skips that exceed
+	 * the allowance, not of the fields skipped in total. */
+	size_t over_gaps;
+	size_t max_held;  /* the most output frames one field was shown for */
+	size_t over_held; /* fields held longer than the cadence allows */
+	size_t stalled;   /* output frames that repeat a tick libobs did not render */
+	size_t excused;   /* fields skipped for ticks libobs did not render */
+};
+
+/* Collapse repeats: the fields in the order they were shown. Count the fields
+ * skipped between two shown ones, except in the first `startup` fields: after
+ * the warm-up, its last frame and the first measured one are stamped back to
+ * back, so the first has no frame duration to time its fields by (and Yadif
+ * needs a previous frame). Also count how many output frames each field is
+ * held for (the last one is held until the case ends), except the first
+ * `unheld` fields. A pure function of the recorded frames, so its rules are
+ * tested on fixed sequences.
+ *
+ * A stall is not a cadence bug (#5374). When the graphics thread misses N
+ * ticks, video-io repeats the last rendered frame for them, and the next
+ * render shows the field that is due by then, as it must to stay in sync with
+ * audio: up to N fields were never due at a rendered tick. So a repeated
+ * frame is not a hold, and a skip is excused by up to the number of ticks not
+ * rendered since the field before it was shown. Nothing else changes: with
+ * no repeated frames the rules are the ones above. */
+static void count_fields(const int *seen, const bool *repeat, size_t count, const struct cadence *c,
+			 struct field_count *f)
+{
+	memset(f, 0, sizeof(*f));
+	size_t held = 0, stall = 0;
+	for (size_t i = 0; i < count; i++) {
+		if (repeat[i]) {
+			f->stalled++;
+			stall++;
+			continue;
+		}
+		if (seen[i] < 0) {
+			f->unknown++;
+			continue;
+		}
+		if (f->num && f->shown[f->num - 1] == seen[i]) {
+			held++;
+			continue;
+		}
+		if (f->num && f->shown[f->num - 1] >= c->unheld) {
+			if (held > c->allowed_held)
+				f->over_held++;
+			if (held > f->max_held)
+				f->max_held = held;
+		}
+		held = 1;
+		if (f->num && seen[i] < f->shown[f->num - 1])
+			f->backwards++;
+		const int last = f->num ? f->shown[f->num - 1] : -1;
+		if ((f->num || !c->startup) && seen[i] > last + 1 && seen[i] > c->startup) {
+			int from = last < c->startup - 1 ? c->startup - 1 : last;
+			size_t gap = (size_t)(seen[i] - from - 1);
+			f->skipped += gap;
+			const size_t excused = gap < stall ? gap : stall;
+			f->excused += excused;
+			gap -= excused;
+			if (gap > c->allowed_gap)
+				f->over_gaps++;
+			if (gap > f->max_gap)
+				f->max_gap = gap;
+		}
+		f->shown[f->num++] = seen[i];
+		stall = 0;
+	}
+}
+
+/* The same late tick can cost a field: the canvas misses the tick that would
+ * have shown it, so one skip may go one field past the cadence in a whole
+ * run, and never two in a row. A second such skip, or a longer one, is a
+ * cadence bug (#456). Fields the slower canvas drops by design
+ * (gap == allowed_gap) do not count. */
+static bool skips_ok(const struct field_count *f, const struct cadence *c)
+{
+	return f->max_gap <= c->allowed_gap + 1 && f->over_gaps <= 1;
+}
+
+/* One field may be held a frame longer than the cadence allows: a single late
+ * tick under load (#456). A second one, or a longer hold, is a cadence bug. */
+static bool holds_ok(const struct field_count *f, const struct cadence *c)
+{
+	return c->allowed_held == SIZE_MAX || (f->max_held <= c->allowed_held + 1 && f->over_held <= 1);
+}
+
 static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bool unbuffered, const struct rates *r,
 			      enum start start)
 {
@@ -389,6 +507,8 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 			os_sleep_ms(PAUSE_MS);
 	}
 
+	const uint32_t lagged = obs_get_lagged_frames();
+	const uint32_t dropped = video_output_get_skipped_frames(obs_get_video());
 	pthread_mutex_lock(&w.mutex);
 	w.recording = true;
 	pthread_mutex_unlock(&w.mutex);
@@ -401,6 +521,8 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	pthread_mutex_lock(&w.mutex);
 	w.recording = false;
 	pthread_mutex_unlock(&w.mutex);
+	const uint32_t lagged_now = obs_get_lagged_frames() - lagged;
+	const uint32_t dropped_now = video_output_get_skipped_frames(obs_get_video()) - dropped;
 
 	/* Let the output drain to black so the next case starts clean. */
 	obs_set_output_source(0, NULL);
@@ -416,109 +538,54 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	 * fps: 5 fields once, 1 twice, like 50p); a slower one must drop some,
 	 * but never two in a row. An unbuffered source shows a frame as soon
 	 * as it arrives, so one that arrives just after a tick repeats the
-	 * field before it: only buffered sources are held to the cadence. */
-	const size_t allowed_gap = r->canvas_fps >= field_rate ? 0 : 1;
-	const size_t allowed_held = unbuffered ? SIZE_MAX : (r->canvas_fps + field_rate - 1) / field_rate;
-	const size_t expected = r->canvas_fps >= field_rate ? 2 * FRAMES : 2 * FRAMES * r->canvas_fps / field_rate;
-
-	/* Collapse repeats: the fields in the order they were shown. Count the
-	 * fields skipped between two shown ones, except in the first two
-	 * frames (fields 0-3) after the warm-up: its last frame and the first
-	 * measured one are stamped back to back, so the first has no frame
-	 * duration to time its fields by (and Yadif needs a previous frame).
+	 * field before it: only buffered sources are held to the cadence.
 	 * After a pause or for a new source, count every field from field 0,
 	 * the first one shown included (#1965); only a buffered new source's
 	 * first frame may be held longer than the cadence, as the buffered
-	 * clock starts from it. Also count how many output frames each field
-	 * is held for (the last one is held until the case ends). */
+	 * clock starts from it. */
 	const int startup = start == START_WARM ? STARTUP_FIELDS : 0;
-	const int unheld = start == START_NEW && !unbuffered ? 2 : startup;
-	int shown[MAX_SEEN];
-	size_t num = 0, unknown = 0, backwards = 0, skipped = 0, max_gap = 0, held = 0, max_held = 0;
-	/* How many separate skips went beyond the cadence's allowance: a slower
-	 * canvas drops fields as a matter of course (50i into 30 fps drops two
-	 * in every five), so the count that matters is of the skips that exceed
-	 * the allowance, not of the fields skipped in total. */
-	size_t over_gaps = 0;
-	size_t holds[MAX_SEEN];
-	size_t num_holds = 0;
-	for (size_t i = 0; i < w.count; i++) {
-		if (w.seen[i] < 0) {
-			unknown++;
-			continue;
-		}
-		if (num && shown[num - 1] == w.seen[i]) {
-			held++;
-			continue;
-		}
-		if (num && shown[num - 1] >= unheld) {
-			holds[num_holds++] = held;
-			if (held > max_held)
-				max_held = held;
-		}
-		held = 1;
-		if (num && w.seen[i] < shown[num - 1])
-			backwards++;
-		const int last = num ? shown[num - 1] : -1;
-		if ((num || !startup) && w.seen[i] > last + 1 && w.seen[i] > startup) {
-			int from = last < startup - 1 ? startup - 1 : last;
-			size_t gap = (size_t)(w.seen[i] - from - 1);
-			skipped += gap;
-			if (gap > allowed_gap)
-				over_gaps++;
-			if (gap > max_gap)
-				max_gap = gap;
-		}
-		shown[num++] = w.seen[i];
-	}
+	const struct cadence cadence = {
+		.startup = startup,
+		.unheld = start == START_NEW && !unbuffered ? 2 : startup,
+		.allowed_gap = r->canvas_fps >= field_rate ? 0 : 1,
+		.allowed_held = unbuffered ? SIZE_MAX : (r->canvas_fps + field_rate - 1) / field_rate,
+	};
+	const size_t expected = r->canvas_fps >= field_rate ? 2 * FRAMES : 2 * FRAMES * r->canvas_fps / field_rate;
+
+	static struct field_count f;
+	count_fields(w.seen, w.repeat, w.count, &cadence, &f);
 
 	fprintf(stderr,
 		"%s, %ui into %u fps: %zu output frames, %zu unrecognised, %zu fields shown, %zu skipped "
-		"(at most %zu in a row), held for up to %zu frames, %zu steps back in time:",
-		what, field_rate, r->canvas_fps, w.count, unknown, num, skipped, max_gap, max_held, backwards);
-	for (size_t i = 0; i < num; i++)
-		fprintf(stderr, " %d", shown[i]);
+		"(at most %zu in a row), held for up to %zu frames, %zu steps back in time; %zu repeated frames "
+		"(%u lagged, %u dropped by video-io) excuse %zu skipped fields:",
+		what, field_rate, r->canvas_fps, w.count, f.unknown, f.num, f.skipped, f.max_gap, f.max_held,
+		f.backwards, f.stalled, lagged_now, dropped_now, f.excused);
+	for (size_t i = 0; i < f.num; i++)
+		fprintf(stderr, " %d", f.shown[i]);
 	fprintf(stderr, "\n");
 
-	/* A canvas at least as fast as the field rate can show every field,
-	 * each for at most canvas / field rate frames, rounded up (50i into 60
-	 * fps: 5 fields once, 1 twice, like 50p); a slower one must drop some,
-	 * but never two in a row. An unbuffered source shows a frame as soon
-	 * as it arrives, so one that arrives just after a tick repeats the
-	 * field before it: only buffered sources are held to the cadence. */
-
-	if (num < expected * 3 / 4) {
-		fprintf(stderr, "%s: only %zu of %d fields were shown (expected about %zu)\n", what, num, 2 * FRAMES,
+	if (f.num < expected * 3 / 4) {
+		fprintf(stderr, "%s: only %zu of %d fields were shown (expected about %zu)\n", what, f.num, 2 * FRAMES,
 			expected);
 		fail();
 	}
-	if (backwards) {
-		fprintf(stderr, "%s: the output went back in time %zu times\n", what, backwards);
+	if (f.backwards) {
+		fprintf(stderr, "%s: the output went back in time %zu times\n", what, f.backwards);
 		fail();
 	}
-	/* One field may be held a frame longer than the cadence allows: a single
-	 * late tick under load (#456). A second one, or a longer hold, is a
-	 * cadence bug. */
-	size_t over = 0;
-	for (size_t i = 0; i < num_holds; i++)
-		if (holds[i] > allowed_held)
-			over++;
-	/* The same late tick can also cost a field: the canvas misses the tick
-	 * that would have shown it, so one skip may go one field past the
-	 * cadence in a whole run, and never two in a row. A second such skip,
-	 * or a longer one, is a cadence bug (#456). Fields the slower canvas
-	 * drops by design (gap == allowed_gap) do not count. */
-	if (max_gap > allowed_gap + 1 || over_gaps > 1) {
+	if (!skips_ok(&f, &cadence)) {
 		fprintf(stderr,
 			"%s, %ui into %u fps: %zu fields skipped, %zu skips past the cadence (at most %zu in a row), "
 			"allowed one skip of %zu\n",
-			what, field_rate, r->canvas_fps, skipped, over_gaps, max_gap, allowed_gap + 1);
+			what, field_rate, r->canvas_fps, f.skipped, f.over_gaps, f.max_gap, cadence.allowed_gap + 1);
 		fail();
 	}
-	if (allowed_held != SIZE_MAX && (max_held > allowed_held + 1 || over > 1)) {
+	if (!holds_ok(&f, &cadence)) {
 		fprintf(stderr,
 			"%s, %ui into %u fps: a field was held for %zu frames (allowed %zu, once %zu); %zu over\n",
-			what, field_rate, r->canvas_fps, max_held, allowed_held, allowed_held + 1, over);
+			what, field_rate, r->canvas_fps, f.max_held, cadence.allowed_held, cadence.allowed_held + 1,
+			f.over_held);
 		fail();
 	}
 }
@@ -749,6 +816,112 @@ static void run_case(void **state)
 		FIELD_CASE(discard_2x_top_first_##rate_name, OBS_DEINTERLACE_MODE_RETRO, true, source_fps, canvas_fps),        \
 		FIELD_CASE(discard_2x_bottom_first_##rate_name, OBS_DEINTERLACE_MODE_RETRO, false, source_fps, canvas_fps)
 
+/* The accounting on fixed sequences (#5374): 50i into 50 fps after a pause,
+ * where every field is due at its own tick. A repeated frame (r) is a tick
+ * libobs did not render: video-io repeated the frame before it. A stall of N
+ * ticks costs up to N fields, and only those; anything past it, or a skip or
+ * hold with no stall, is still a cadence bug. These need no video, so they
+ * run without a display. */
+static const struct cadence matched_rate = {.startup = 0, .unheld = 0, .allowed_gap = 0, .allowed_held = 1};
+
+static void count_sequence(const int *seen, const bool *repeat, size_t count, struct field_count *f)
+{
+	count_fields(seen, repeat, count, &matched_rate, f);
+}
+
+/* A 3-tick stall: field 2 is repeated for the 3 ticks not rendered, the
+ * deinterlacer catches up to wall time and fields 3-5 were never due at a
+ * rendered tick (the failing run of #5374). */
+static void stall_excuses_its_skip(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 2, 2, 2, 2, 6, 7, 8};
+	static const bool repeat[] = {0, 0, 0, 1, 1, 1, 0, 0, 0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 9, &f);
+	assert_int_equal(f.stalled, 3);
+	assert_int_equal(f.skipped, 3);
+	assert_int_equal(f.excused, 3);
+	assert_true(skips_ok(&f, &matched_rate));
+	assert_true(holds_ok(&f, &matched_rate));
+}
+
+/* The same output with every tick rendered: a cadence bug. */
+static void skip_without_stall_fails(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 2, 2, 2, 2, 6, 7, 8};
+	static const bool repeat[9] = {0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 9, &f);
+	assert_false(skips_ok(&f, &matched_rate));
+	assert_false(holds_ok(&f, &matched_rate));
+}
+
+/* A 1-tick stall excuses one field, not three. */
+static void skip_past_stall_fails(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 2, 2, 6, 7, 8};
+	static const bool repeat[] = {0, 0, 0, 1, 0, 0, 0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 7, &f);
+	assert_false(skips_ok(&f, &matched_rate));
+}
+
+/* A stall excuses the skip that follows it, not one after a later field. */
+static void stall_in_another_window_fails(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 1, 2, 6, 7};
+	static const bool repeat[] = {0, 0, 1, 0, 0, 0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 6, &f);
+	assert_false(skips_ok(&f, &matched_rate));
+}
+
+/* Frames repeated for ticks not rendered are not holds. */
+static void stall_repeats_are_not_holds(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 2, 2, 2, 3, 4};
+	static const bool repeat[] = {0, 0, 0, 1, 1, 0, 0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 7, &f);
+	assert_int_equal(f.max_held, 1);
+	assert_true(holds_ok(&f, &matched_rate));
+	assert_true(skips_ok(&f, &matched_rate));
+}
+
+/* A field rendered at three ticks in a row is held past the cadence. */
+static void hold_without_stall_fails(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int seen[] = {0, 1, 1, 1, 2, 3};
+	static const bool repeat[6] = {0};
+	static struct field_count f;
+	count_sequence(seen, repeat, 6, &f);
+	assert_false(holds_ok(&f, &matched_rate));
+}
+
+/* One late tick with no stall reported still costs at most one field, once
+ * (#2904); a second one fails. */
+static void one_late_tick_is_allowed_once(void **state)
+{
+	UNUSED_PARAMETER(state);
+	static const int once[] = {0, 1, 2, 4, 5, 6};
+	static const int twice[] = {0, 1, 2, 4, 5, 7};
+	static const bool repeat[6] = {0};
+	static struct field_count f;
+	count_sequence(once, repeat, 6, &f);
+	assert_true(skips_ok(&f, &matched_rate));
+	count_sequence(twice, repeat, 6, &f);
+	assert_false(skips_ok(&f, &matched_rate));
+}
+
+/* Named for the 50i into 50 entry, so CMOCKA_TEST_FILTER runs them there. */
+#define ACCOUNTING_CASE(name) {"accounting_" #name "_50i_into_50", name, NULL, NULL, NULL}
+
 static int setup(void **state)
 {
 	UNUSED_PARAMETER(state);
@@ -809,6 +982,14 @@ int main(void)
 		BURST_CASES(50i_into_50, 25, 50),
 		BURST_CASES(50i_into_60, 25, 60),
 		BURST_CASES(60i_into_50, 30, 50),
+		/* the accounting; the names end in a registered rate, so they run */
+		ACCOUNTING_CASE(stall_excuses_its_skip),
+		ACCOUNTING_CASE(skip_without_stall_fails),
+		ACCOUNTING_CASE(skip_past_stall_fails),
+		ACCOUNTING_CASE(stall_in_another_window_fails),
+		ACCOUNTING_CASE(stall_repeats_are_not_holds),
+		ACCOUNTING_CASE(hold_without_stall_fails),
+		ACCOUNTING_CASE(one_late_tick_is_allowed_once),
 	};
 
 	return cmocka_run_group_tests(tests, setup, teardown);
