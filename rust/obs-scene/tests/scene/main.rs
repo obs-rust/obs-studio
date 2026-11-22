@@ -21,6 +21,8 @@ mod from_source;
 mod from_source_parity;
 mod group_enum;
 mod group_enum_parity;
+mod item_addref;
+mod item_addref_parity;
 mod item_audio_actions;
 mod item_audio_actions_parity;
 mod item_defer_update;
