@@ -477,5 +477,33 @@ class GhJsonTests(unittest.TestCase):
         self.assertIn("warning: something", message)
 
 
+class GhColorTests(unittest.TestCase):
+    """setup-soldr exports CLICOLOR_FORCE=1 and FORCE_COLOR=1 to the job, and gh
+    then colors its --json output even into a pipe, so json.loads fails (ai-rebase
+    run 45002524272). gh JSON is always read with color off."""
+
+    def test_gh_json_runs_gh_with_color_off(self):
+        import os
+        import subprocess as sp
+        from unittest.mock import patch
+        mod = load("backpressure")
+        seen = []
+
+        def fake(*args, **kwargs):
+            seen.append(kwargs.get("env"))
+            return sp.CompletedProcess(args[0] if args else [], 0, stdout='[{"number": 1}]', stderr="")
+
+        forced = {"CLICOLOR_FORCE": "1", "FORCE_COLOR": "1", "GH_FORCE_TTY": "1", "PATH": os.environ.get("PATH", "")}
+        with patch.dict("os.environ", forced, clear=True), patch.object(mod.subprocess, "run", side_effect=fake):
+            self.assertEqual(mod.gh_json("pr", "list", "--json", "number"), [{"number": 1}])
+        self.assertTrue(seen)
+        for env in seen:
+            self.assertIsNotNone(env)
+            self.assertEqual(env["CLICOLOR_FORCE"], "0")
+            self.assertEqual(env["NO_COLOR"], "1")
+            self.assertNotIn("GH_FORCE_TTY", env)
+            self.assertNotIn("FORCE_COLOR", env)
+
+
 if __name__ == "__main__":
     unittest.main()
