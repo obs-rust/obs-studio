@@ -724,6 +724,9 @@ jobs:
           # Default off; opt in using the repository Actions variable.
           OBS_MACOS_STARTUP_LLDB: ${{ vars.OBS_MACOS_STARTUP_LLDB || '0' }}
           OBS_MACOS_STARTUP_EVIDENCE: ${{ github.workspace }}/macos-startup-evidence
+          # #2424: stapler + Gatekeeper on the downloaded DMG, where the
+          # release credentials exist (a fork's DMG is unsigned).
+          OBS_MACOS_REQUIRE_NOTARIZATION: ${{ github.repository == 'obs-rust/obs-studio' && '1' || '0' }}
         run: uv run --no-project ci/macos_dmg_startup.py
       - name: Collect macOS crash reports
         if: always()

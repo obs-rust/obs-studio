@@ -13,6 +13,19 @@ def run(*args):
     subprocess.run([str(arg) for arg in args], check=True)
 
 
+def verify_notarization(dmg, app):
+    """Gatekeeper's own verdict on what a user downloads (#2424).
+
+    Required where the release credentials exist (OBS_MACOS_REQUIRE_NOTARIZATION=1);
+    a fork's unsigned DMG skips it.
+    """
+    if os.environ.get("OBS_MACOS_REQUIRE_NOTARIZATION") != "1":
+        return
+    run("xcrun", "stapler", "validate", dmg)
+    run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "-vv", dmg)
+    run("spctl", "--assess", "--type", "execute", "-vv", app)
+
+
 def main():
     target, version = os.environ["TARGET"], os.environ["VERSION"]
     if platform.machine() != target:
@@ -29,6 +42,7 @@ def main():
         run("lipo", app / "Contents/MacOS/OBS-Studio-Rust", "-verify_arch", target)
         run("codesign", "--verify", "--deep", "--strict", app)
         run("codesign", "-dvv", app)
+        verify_notarization(dmg, app)
         run("uv", "run", "--no-project", "ci/app_identity_check.py", "bundle", app)
         with (app / "Contents/Info.plist").open("rb") as source:
             plist = plistlib.load(source)
