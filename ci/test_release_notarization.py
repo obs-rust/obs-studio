@@ -77,6 +77,41 @@ class ReleaseNotarizationTest(unittest.TestCase):
         self.assertIn("codesign --verify --deep --strict", self.workflow)
         self.assertIn("needs.macos_smoke.result == 'success'", self.workflow)
 
+    def test_smoke_checks_gatekeeper_on_the_downloaded_dmg(self):
+        """#2424: the DMG a user downloads is stapled and accepted by Gatekeeper.
+
+        The check runs on the macOS runner that already only installs and runs
+        the Linux-built DMG; it is required where the release credentials exist.
+        """
+        import importlib.util
+        from unittest.mock import patch
+
+        smoke = step(self.workflow, "run: uv run --no-project ci/macos_dmg_startup.py")
+        self.assertIn(
+            "OBS_MACOS_REQUIRE_NOTARIZATION: ${{ github.repository == 'obs-rust/obs-studio' && '1' || '0' }}",
+            smoke,
+        )
+        spec = importlib.util.spec_from_file_location("macos_dmg_startup", ROOT / "ci/macos_dmg_startup.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        dmg, app = Path("pkg/OBS.dmg"), Path("tmp/OBS-Studio-Rust.app")
+        for flag, expected in (("1", True), ("0", False), (None, False)):
+            calls = []
+            env = {} if flag is None else {"OBS_MACOS_REQUIRE_NOTARIZATION": flag}
+            with self.subTest(flag=flag), patch.dict("os.environ", env, clear=True), \
+                    patch.object(module, "run", side_effect=lambda *a: calls.append([str(x) for x in a])):
+                module.verify_notarization(dmg, app)
+                want = [
+                    ["xcrun", "stapler", "validate", str(dmg)],
+                    ["spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "-vv", str(dmg)],
+                    ["spctl", "--assess", "--type", "execute", "-vv", str(app)],
+                ] if expected else []
+                self.assertEqual(calls, want)
+        runner = (ROOT / "ci/macos_dmg_startup.py").read_text()
+        # Checked after the copy and the codesign checks, before the app runs.
+        self.assertLess(runner.index('run("codesign", "-dvv", app)'), runner.index("\n        verify_notarization(dmg, app)"))
+        self.assertLess(runner.index("\n        verify_notarization(dmg, app)"), runner.index('"test/packaged-startup.py", "--locked"'))
+
     def test_beta_bundle_versions_remain_numeric_and_keep_the_full_identity(self):
         with tempfile.TemporaryDirectory() as root:
             driver = Path(root) / "probe.cmake"
