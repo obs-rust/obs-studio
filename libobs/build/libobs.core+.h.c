@@ -20,6 +20,7 @@
 #include "libobs/obs-get-audio-fields.c.h"
 #include "libobs/obs-get-latest-input-type-id.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
+#include "libobs/obs-get-main-texture.c.h"
 #include "libobs/obs-get-output-source-fields.c.h"
 #include "libobs/obs-get-video-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
