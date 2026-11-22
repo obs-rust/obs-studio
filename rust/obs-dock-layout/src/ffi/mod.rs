@@ -5,7 +5,7 @@
 
 use std::ffi::{CStr, CString, c_char, c_int};
 
-use crate::{Area, Axis, Cause, Dock, Model, Output, Rect, Snapshot};
+use crate::{Area, Axis, Cause, Dock, Output, Rect, Session, Snapshot};
 
 /// Dock areas, the values of `Qt::DockWidgetArea`; anything else is none.
 pub const OBS_DOCK_LAYOUT_LEFT: c_int = 0x1;
@@ -57,12 +57,55 @@ pub struct obs_dock_layout_window {
     pub central_min_height: c_int,
 }
 
-/// A model and the output of its last snapshot.
+/// A session and the output of its last snapshot.
 #[allow(non_camel_case_types)]
 pub struct obs_dock_layout {
-    model: Model,
+    session: Session,
     output: Output,
     names: Vec<Vec<CString>>,
+}
+
+/// `value` as a [`Cause`]; anything unknown is [`Cause::Change`].
+fn cause(value: c_int) -> Cause {
+    match value {
+        OBS_DOCK_LAYOUT_SEPARATOR_DRAG => Cause::SeparatorDrag,
+        OBS_DOCK_LAYOUT_RESTORED => Cause::Restored,
+        _ => Cause::Change,
+    }
+}
+
+/// `cause` as its `OBS_DOCK_LAYOUT_*` value.
+fn cause_value(cause: Cause) -> c_int {
+    match cause {
+        Cause::Change => OBS_DOCK_LAYOUT_CHANGE,
+        Cause::SeparatorDrag => OBS_DOCK_LAYOUT_SEPARATOR_DRAG,
+        Cause::Restored => OBS_DOCK_LAYOUT_RESTORED,
+    }
+}
+
+/// Bytes from C; null or 0 is empty.
+///
+/// # Safety
+/// `data` is null or points to `size` bytes.
+unsafe fn bytes<'a>(data: *const c_char, size: usize) -> &'a [u8] {
+    if data.is_null() || size == 0 {
+        return &[];
+    }
+    // SAFETY: `data` points to `size` bytes, as the caller promises.
+    unsafe { std::slice::from_raw_parts(data.cast::<u8>(), size) }
+}
+
+/// `blob` for C: its bytes and size, null and 0 for none.
+///
+/// # Safety
+/// `size` is null or writable.
+unsafe fn blob_out(blob: Option<&[u8]>, size: *mut usize) -> *const c_char {
+    let blob = blob.filter(|b| !b.is_empty());
+    if !size.is_null() {
+        // SAFETY: writable, as the caller promises.
+        unsafe { *size = blob.map_or(0, <[u8]>::len) };
+    }
+    blob.map_or(std::ptr::null(), |b| b.as_ptr().cast())
 }
 
 /// A C string as `String`; null is empty, invalid UTF-8 is replaced.
@@ -124,7 +167,7 @@ unsafe fn dock(raw: &obs_dock_layout_dock) -> Dock {
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_dock_layout_create() -> *mut obs_dock_layout {
     Box::into_raw(Box::new(obs_dock_layout {
-        model: Model::new(),
+        session: Session::new(),
         output: Output::default(),
         names: Vec::new(),
     }))
@@ -140,16 +183,19 @@ pub unsafe extern "C" fn obs_dock_layout_destroy(layout: *mut obs_dock_layout) {
     }
 }
 
-/// [`Model::start`]. `record` may be null (no record).
+/// [`Session::start`]. `record` may be null (no record); `blob` points to
+/// `blob_size` bytes (null when 0).
 ///
 /// # Safety
 /// `layout` is from [`obs_dock_layout_create`]; the strings are null or
-/// NUL-terminated.
+/// NUL-terminated; `blob` is null or points to `blob_size` bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_dock_layout_start(
     layout: *mut obs_dock_layout,
     record: *const c_char,
     blob_hash: *const c_char,
+    blob: *const c_char,
+    blob_size: usize,
 ) -> bool {
     // SAFETY: as the caller promises.
     let Some(layout) = (unsafe { layout.as_mut() }) else {
@@ -159,9 +205,11 @@ pub unsafe extern "C" fn obs_dock_layout_start(
     let record = (!record.is_null()).then(|| unsafe { text(record) });
     // SAFETY: null or a C string.
     let hash = unsafe { text(blob_hash) };
+    // SAFETY: null or `blob_size` bytes.
+    let blob = unsafe { bytes(blob, blob_size) };
     layout.output = Output::default();
     layout.names.clear();
-    layout.model.start(record.as_deref(), &hash)
+    layout.session.start(record.as_deref(), blob, &hash)
 }
 
 /// [`Model::observe`]. Returns [`Output::restore_again`]; the resizes are
@@ -205,12 +253,7 @@ pub unsafe extern "C" fn obs_dock_layout_observe(
         // SAFETY: each dock's strings are null or C strings.
         docks: raw.iter().map(|d| unsafe { dock(d) }).collect(),
     };
-    let cause = match cause {
-        OBS_DOCK_LAYOUT_SEPARATOR_DRAG => Cause::SeparatorDrag,
-        OBS_DOCK_LAYOUT_RESTORED => Cause::Restored,
-        _ => Cause::Change,
-    };
-    layout.output = layout.model.observe(&snap, cause);
+    layout.output = layout.session.observe(&snap, self::cause(cause));
     layout.names = layout
         .output
         .resizes
@@ -314,7 +357,89 @@ pub unsafe extern "C" fn obs_dock_layout_saves_restored_blob(
     layout: *const obs_dock_layout,
 ) -> bool {
     // SAFETY: as the caller promises.
-    unsafe { layout.as_ref() }.is_some_and(|l| l.model.saves_restored_blob())
+    unsafe { layout.as_ref() }.is_some_and(|l| l.session.model().saves_restored_blob())
+}
+
+/// [`Session::blob_to_save`]: the blob and its size in `*size`, null and 0
+/// for none (save the live layout). Valid until the next start.
+///
+/// # Safety
+/// `layout` is null or from [`obs_dock_layout_create`]; `size` is null or
+/// writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_blob_to_save(
+    layout: *const obs_dock_layout,
+    size: *mut usize,
+) -> *const c_char {
+    // SAFETY: as the caller promises.
+    let blob = unsafe { layout.as_ref() }.and_then(|l| l.session.blob_to_save());
+    // SAFETY: as the caller promises.
+    unsafe { blob_out(blob, size) }
+}
+
+/// [`Session::restored_blob`]: the blob and its size in `*size`, null and 0
+/// when it is empty. Valid until the next start.
+///
+/// # Safety
+/// As [`obs_dock_layout_blob_to_save`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_restored_blob(
+    layout: *const obs_dock_layout,
+    size: *mut usize,
+) -> *const c_char {
+    // SAFETY: as the caller promises.
+    let blob = unsafe { layout.as_ref() }.map(|l| l.session.restored_blob());
+    // SAFETY: as the caller promises.
+    unsafe { blob_out(blob, size) }
+}
+
+/// [`Session::queue`]: true when the caller must post a turn that calls
+/// [`obs_dock_layout_turn`]. It does not change the last snapshot's output.
+///
+/// # Safety
+/// `layout` is null or from [`obs_dock_layout_create`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_queue(layout: *mut obs_dock_layout, cause: c_int) -> bool {
+    // SAFETY: as the caller promises.
+    unsafe { layout.as_mut() }.is_some_and(|l| l.session.queue(self::cause(cause)))
+}
+
+/// [`Session::press`].
+///
+/// # Safety
+/// `layout` is null or from [`obs_dock_layout_create`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_press(layout: *mut obs_dock_layout) {
+    // SAFETY: as the caller promises.
+    if let Some(layout) = unsafe { layout.as_mut() } {
+        layout.session.press();
+    }
+}
+
+/// [`Session::release`]: true when the caller must post a turn.
+///
+/// # Safety
+/// `layout` is null or from [`obs_dock_layout_create`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_release(layout: *mut obs_dock_layout) -> bool {
+    // SAFETY: as the caller promises.
+    unsafe { layout.as_mut() }.is_some_and(|l| l.session.release())
+}
+
+/// [`Session::turn`]: the `OBS_DOCK_LAYOUT_*` cause to take a snapshot for
+/// now, -1 for none.
+///
+/// # Safety
+/// `layout` is null or from [`obs_dock_layout_create`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_dock_layout_turn(
+    layout: *mut obs_dock_layout,
+    visible: bool,
+) -> c_int {
+    // SAFETY: as the caller promises.
+    unsafe { layout.as_mut() }
+        .and_then(|l| l.session.turn(visible))
+        .map_or(-1, cause_value)
 }
 
 /// [`Model::record`]. Free it with [`obs_dock_layout_free`]; null for a
@@ -334,7 +459,7 @@ pub unsafe extern "C" fn obs_dock_layout_record(
     };
     // SAFETY: null or a C string.
     let hash = unsafe { text(blob_hash) };
-    let record = layout.model.record(&hash).replace('\0', "");
+    let record = layout.session.record(&hash).replace('\0', "");
     CString::new(record).unwrap_or_default().into_raw()
 }
 

@@ -4,6 +4,7 @@
 mod drag;
 mod ffi;
 mod fixture;
+mod pacing;
 mod pending;
 mod placement;
 mod profiles;

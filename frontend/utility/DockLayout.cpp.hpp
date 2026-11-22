@@ -28,7 +28,8 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 #ifdef OBS_FRONTEND_RUST
 	restored = blob;
 	started = true;
-	const bool known = obs_dock_layout_start(model, record && *record ? record : nullptr, Hash(blob).constData());
+	const bool known = obs_dock_layout_start(model, record && *record ? record : nullptr, Hash(blob).constData(),
+						 blob.constData(), static_cast<size_t>(blob.size()));
 	hasSizes = known;
 	blog(LOG_INFO, "Dock layout: restored %lld bytes, %s", static_cast<long long>(blob.size()),
 	     known ? "with its sizes" : "no sizes for it yet");

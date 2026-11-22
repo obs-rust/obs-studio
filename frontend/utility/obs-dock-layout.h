@@ -64,9 +64,26 @@ struct obs_dock_layout *obs_dock_layout_create(void);
 void obs_dock_layout_destroy(struct obs_dock_layout *layout);
 
 /* A restored layout starts: `record` is the saved BasicWindow/DockSizes
- * (NULL: none), `blob_hash` the hash of the DockState blob that was
- * restored. Whether the record belongs to that blob. */
-bool obs_dock_layout_start(struct obs_dock_layout *layout, const char *record, const char *blob_hash);
+ * (NULL: none), `blob` the DockState blob that was restored (`blob_size`
+ * bytes, kept by the model) and `blob_hash` its hash. Whether the record
+ * belongs to that blob. */
+bool obs_dock_layout_start(struct obs_dock_layout *layout, const char *record, const char *blob_hash, const char *blob,
+			   size_t blob_size);
+
+/* Something changed for `cause` (OBS_DOCK_LAYOUT_*). True when the caller
+ * must post a turn of the event loop that calls obs_dock_layout_turn. The
+ * strongest cause since the last snapshot is kept. */
+bool obs_dock_layout_queue(struct obs_dock_layout *layout, int cause);
+
+/* The left button went down on, or came up from, the window: a separator
+ * drag. No snapshot is taken in between; the release queues
+ * OBS_DOCK_LAYOUT_SEPARATOR_DRAG and returns as obs_dock_layout_queue. */
+void obs_dock_layout_press(struct obs_dock_layout *layout);
+bool obs_dock_layout_release(struct obs_dock_layout *layout);
+
+/* The posted turn: the cause (OBS_DOCK_LAYOUT_*) to take a snapshot for
+ * now with obs_dock_layout_observe, -1 for none. */
+int obs_dock_layout_turn(struct obs_dock_layout *layout, bool visible);
 
 /* The window after a change, with its `count` docks and the cause
  * (OBS_DOCK_LAYOUT_*). Returns whether to restore the started blob again
@@ -76,7 +93,8 @@ bool obs_dock_layout_observe(struct obs_dock_layout *layout, const struct obs_do
 			     const struct obs_dock_layout_dock *docks, size_t count, int cause);
 
 /* Resize i: its axis (0 when there is none), its docks by object name (valid
- * until the next call that changes `layout`) and their sizes. */
+ * until the next obs_dock_layout_start or obs_dock_layout_observe) and their
+ * sizes. */
 size_t obs_dock_layout_resize_count(const struct obs_dock_layout *layout);
 int obs_dock_layout_resize_axis(const struct obs_dock_layout *layout, size_t i);
 size_t obs_dock_layout_resize_docks(const struct obs_dock_layout *layout, size_t i);
@@ -86,6 +104,14 @@ int obs_dock_layout_resize_size(const struct obs_dock_layout *layout, size_t i, 
 /* Whether a save now writes the started blob, not the live layout: no sizes
  * are known yet and the user changed nothing. */
 bool obs_dock_layout_saves_restored_blob(const struct obs_dock_layout *layout);
+
+/* The blob a save writes instead of the live layout, its size in `*size`;
+ * NULL and 0: save the live layout. Valid until the next start. */
+const char *obs_dock_layout_blob_to_save(const struct obs_dock_layout *layout, size_t *size);
+
+/* The blob of the last start, to restore when obs_dock_layout_observe says
+ * so; NULL and 0 when it is empty. Valid until the next start. */
+const char *obs_dock_layout_restored_blob(const struct obs_dock_layout *layout, size_t *size);
 
 /* The BasicWindow/DockSizes record for the blob with hash `blob_hash`. Free
  * it with obs_dock_layout_free. */
