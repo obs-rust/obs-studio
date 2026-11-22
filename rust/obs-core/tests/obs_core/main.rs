@@ -84,6 +84,7 @@ mod get_main_texture_parity;
 mod get_output_source;
 mod get_output_source_parity;
 mod get_video;
+mod get_video_frame_counts;
 mod get_video_parity;
 mod global_getters;
 mod global_getters_parity;
