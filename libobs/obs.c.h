@@ -1703,18 +1703,6 @@ void obs_set_video_levels(float sdr_white_level, float hdr_nominal_peak_level)
 		     (double)hdr_nominal_peak_level, (double)video->hdr_nominal_peak_level);
 }
 
-void obs_enter_graphics(void)
-{
-	if (obs->video.graphics)
-		gs_enter_context(obs->video.graphics);
-}
-
-void obs_leave_graphics(void)
-{
-	if (obs->video.graphics)
-		gs_leave_context();
-}
-
 void obs_enum_sources(bool (*enum_proc)(void *, obs_source_t *), void *param)
 {
 	obs_source_t *source;
