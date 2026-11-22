@@ -18,11 +18,11 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-#[allow(unused_imports)]
 use crate::core_setup_rules::{level_ok, levels_core};
 
 /// The core's video levels, its graphics field and the three warnings.
@@ -53,6 +53,25 @@ pub fn set_video_levels<L: Levels>(
     sdr_white_level: f32,
     hdr_nominal_peak_level: f32,
 ) {
-    let _ = (host, sdr_white_level, hdr_nominal_peak_level);
-    todo!()
+    if !levels_core(host.core()) {
+        host.warn_no_core();
+        return;
+    }
+    if !host.graphics() {
+        return;
+    }
+
+    if level_ok(sdr_white_level) {
+        host.set_sdr_white_level(sdr_white_level);
+    } else {
+        let kept = host.sdr_white_level();
+        host.warn_sdr_white_level(sdr_white_level, kept);
+    }
+
+    if level_ok(hdr_nominal_peak_level) {
+        host.set_hdr_nominal_peak_level(hdr_nominal_peak_level);
+    } else {
+        let kept = host.hdr_nominal_peak_level();
+        host.warn_hdr_nominal_peak_level(hdr_nominal_peak_level, kept);
+    }
 }
