@@ -14,6 +14,7 @@
 
 #include <util/base.h>
 #include <util/c99defs.h>
+#include <util/config-file.h>
 
 #include <QChildEvent>
 #include <QCryptographicHash>

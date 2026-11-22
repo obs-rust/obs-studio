@@ -538,6 +538,111 @@ static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
 	}
 }
 
+/* #5455: a config file as OBSBasic and the service logins use it, through
+ * DockLayout::Save() and DockLayout::Load(). reopen() saves it safely and
+ * opens it again, as the next process does. */
+struct ConfigFile {
+	QTemporaryDir dir{QStringLiteral("dock-config-XXXXXX")};
+	QByteArray path;
+	config_t *config = nullptr;
+
+	ConfigFile()
+	{
+		assert_true(dir.isValid());
+		path = (dir.path() + QStringLiteral("/user.ini")).toUtf8();
+		assert_int_equal(config_open(&config, path.constData(), CONFIG_OPEN_ALWAYS), CONFIG_SUCCESS);
+	}
+
+	~ConfigFile() { config_close(config); }
+
+	void reopen()
+	{
+		assert_int_equal(config_save_safe(config, "tmp", nullptr), CONFIG_SUCCESS);
+		config_close(config);
+		config = nullptr;
+		assert_int_equal(config_open(&config, path.constData(), CONFIG_OPEN_EXISTING), CONFIG_SUCCESS);
+	}
+};
+
+/* #5455: a service layout (Twitch, YouTube, Restream) saved the layout but
+ * not its dock sizes, so each login started it with no sizes and the sizes
+ * the user gave its docks were lost. Save() and Load() keep them for any
+ * section. */
+static void service_layout_keeps_its_sizes(void **)
+{
+	ConfigFile file;
+	QList<QSize> expected;
+	{
+		Window first;
+		first.show();
+		first.narrow_controls();
+		expected = first.sizes();
+		first.layout.Save(file.config, "Twitch");
+	}
+	file.reopen();
+	const bool has_state = config_get_string(file.config, "Twitch", "DockState") != nullptr;
+	const bool has_sizes = config_get_string(file.config, "Twitch", "DockSizes") != nullptr;
+	bool loaded = false;
+	bool known = false;
+	QList<QSize> actual;
+	{
+		Window next;
+		loaded = next.layout.Load(file.config, "Twitch");
+		known = next.layout.HasSizes();
+		next.show();
+		actual = next.sizes();
+	}
+	print_message("service section: DockState %d DockSizes %d; loaded %d with its sizes %d (expected 1 1 1 1)\n",
+		      has_state, has_sizes, loaded, known);
+	assert_true(has_state);
+	assert_true(has_sizes);
+	assert_true(loaded);
+	assert_true(known);
+	assert_sizes(expected, actual);
+}
+
+/* #5455: the start and quit (BasicWindow) through the same Load() and
+ * Save(): a section without a layout loads nothing and leaves the window as
+ * it was, so OBSBasic falls back to Reset Docks. */
+static void main_layout_loads_and_saves_through_one_path(void **)
+{
+	ConfigFile file;
+	bool empty_loaded = true;
+	bool unchanged = false;
+	{
+		Window none;
+		const QByteArray before = none.window.saveState();
+		empty_loaded = none.layout.Load(file.config, "BasicWindow");
+		unchanged = none.window.saveState() == before;
+	}
+	QList<QSize> expected;
+	{
+		Window first;
+		first.show();
+		first.narrow_controls();
+		expected = first.sizes();
+		first.layout.Save(file.config, "BasicWindow");
+	}
+	file.reopen();
+	bool loaded = false;
+	bool known = false;
+	QList<QSize> actual;
+	{
+		Window next;
+		loaded = next.layout.Load(file.config, "BasicWindow");
+		known = next.layout.HasSizes();
+		next.show();
+		actual = next.sizes();
+	}
+	print_message("empty section loaded %d (expected 0); BasicWindow loaded %d with its sizes %d (expected 1 1)\n",
+		      empty_loaded, loaded, known);
+	assert_false(empty_loaded);
+	assert_true(unchanged);
+	assert_true(loaded);
+	assert_true(known);
+	assert_sizes(expected, actual);
+}
+
 /* Two window-manager profiles (#5230, W2). Every case below runs once under a
  * floating window manager and once under a tiling one, and both runs must
  * give the same layout after a restart. The code under test never knows
@@ -1199,6 +1304,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test(moved_and_floated_docks_stay_after_a_window_resize),
 		cmocka_unit_test(floated_dock_stays_when_the_window_resizes_at_the_same_time),
 		cmocka_unit_test(reset_docks_stays_when_the_window_resizes_at_the_same_time),
+		cmocka_unit_test(service_layout_keeps_its_sizes),
+		cmocka_unit_test(main_layout_loads_and_saves_through_one_path),
 		cmocka_unit_test(e1_unchanged_layout_both),
 		cmocka_unit_test(e2_narrow_then_wide_both),
 		cmocka_unit_test(e3_quit_narrow_both),

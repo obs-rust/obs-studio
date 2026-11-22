@@ -29,6 +29,7 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 	restored = blob;
 	started = true;
 	const bool known = obs_dock_layout_start(model, record && *record ? record : nullptr, Hash(blob).constData());
+	hasSizes = known;
 	blog(LOG_INFO, "Dock layout: restored %lld bytes, %s", static_cast<long long>(blob.size()),
 	     known ? "with its sizes" : "no sizes for it yet");
 	Queue(OBS_DOCK_LAYOUT_RESTORED);
@@ -36,6 +37,19 @@ void DockLayout::Start(const char *record, const QByteArray &blob)
 	UNUSED_PARAMETER(record);
 	UNUSED_PARAMETER(blob);
 #endif
+}
+
+bool DockLayout::Load(config_t *config, const char *section)
+{
+	UNUSED_PARAMETER(config);
+	UNUSED_PARAMETER(section);
+	return false;
+}
+
+void DockLayout::Save(config_t *config, const char *section) const
+{
+	UNUSED_PARAMETER(config);
+	UNUSED_PARAMETER(section);
 }
 
 QByteArray DockLayout::StateToSave() const
