@@ -14153,6 +14153,15 @@
         "frontend/utility/replay-buffer-estimate.hpp"
       ]
     },
+    "test_reset_audio": {
+      "sources": [
+        "test/cmocka/test_reset_audio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_reset_video_core_mutexes": {
       "sources": [
         "test/cmocka/test_reset_video_core_mutexes.c"
@@ -27969,6 +27978,22 @@
       "qt_runtime": "Qt6::Core",
       "suite": "qt",
       "target": "test_replay_buffer_estimate"
+    },
+    "test_reset_audio": {
+      "target": "test_reset_audio",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_reset_video_core_mutexes": {
       "target": "test_reset_video_core_mutexes",
