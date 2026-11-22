@@ -384,6 +384,7 @@ struct field_count {
 	size_t max_held;  /* the most output frames one field was shown for */
 	size_t over_held; /* fields held longer than the cadence allows */
 	size_t stalled;   /* output frames that repeat a tick libobs did not render */
+	size_t excused;   /* fields skipped for ticks libobs did not render */
 };
 
 /* Collapse repeats: the fields in the order they were shown. Count the fields
@@ -393,15 +394,26 @@ struct field_count {
  * needs a previous frame). Also count how many output frames each field is
  * held for (the last one is held until the case ends), except the first
  * `unheld` fields. A pure function of the recorded frames, so its rules are
- * tested on fixed sequences. */
+ * tested on fixed sequences.
+ *
+ * A stall is not a cadence bug (#5374). When the graphics thread misses N
+ * ticks, video-io repeats the last rendered frame for them, and the next
+ * render shows the field that is due by then, as it must to stay in sync with
+ * audio: up to N fields were never due at a rendered tick. So a repeated
+ * frame is not a hold, and a skip is excused by up to the number of ticks not
+ * rendered since the field before it was shown. Nothing else changes: with
+ * no repeated frames the rules are the ones above. */
 static void count_fields(const int *seen, const bool *repeat, size_t count, const struct cadence *c,
 			 struct field_count *f)
 {
 	memset(f, 0, sizeof(*f));
-	size_t held = 0;
+	size_t held = 0, stall = 0;
 	for (size_t i = 0; i < count; i++) {
-		if (repeat[i])
+		if (repeat[i]) {
 			f->stalled++;
+			stall++;
+			continue;
+		}
 		if (seen[i] < 0) {
 			f->unknown++;
 			continue;
@@ -424,12 +436,16 @@ static void count_fields(const int *seen, const bool *repeat, size_t count, cons
 			int from = last < c->startup - 1 ? c->startup - 1 : last;
 			size_t gap = (size_t)(seen[i] - from - 1);
 			f->skipped += gap;
+			const size_t excused = gap < stall ? gap : stall;
+			f->excused += excused;
+			gap -= excused;
 			if (gap > c->allowed_gap)
 				f->over_gaps++;
 			if (gap > f->max_gap)
 				f->max_gap = gap;
 		}
 		f->shown[f->num++] = seen[i];
+		stall = 0;
 	}
 }
 
@@ -542,9 +558,9 @@ static void check_field_order(enum obs_deinterlace_mode mode, bool top_first, bo
 	fprintf(stderr,
 		"%s, %ui into %u fps: %zu output frames, %zu unrecognised, %zu fields shown, %zu skipped "
 		"(at most %zu in a row), held for up to %zu frames, %zu steps back in time; %zu repeated frames "
-		"(%u lagged, %u dropped by video-io):",
+		"(%u lagged, %u dropped by video-io) excuse %zu skipped fields:",
 		what, field_rate, r->canvas_fps, w.count, f.unknown, f.num, f.skipped, f.max_gap, f.max_held,
-		f.backwards, f.stalled, lagged_now, dropped_now);
+		f.backwards, f.stalled, lagged_now, dropped_now, f.excused);
 	for (size_t i = 0; i < f.num; i++)
 		fprintf(stderr, " %d", f.shown[i]);
 	fprintf(stderr, "\n");
@@ -825,6 +841,7 @@ static void stall_excuses_its_skip(void **state)
 	count_sequence(seen, repeat, 9, &f);
 	assert_int_equal(f.stalled, 3);
 	assert_int_equal(f.skipped, 3);
+	assert_int_equal(f.excused, 3);
 	assert_true(skips_ok(&f, &matched_rate));
 	assert_true(holds_ok(&f, &matched_rate));
 }
