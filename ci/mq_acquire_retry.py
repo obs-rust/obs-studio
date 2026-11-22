@@ -27,8 +27,17 @@ CAPACITY = ": runner capacity condition: job did not acquire a runner; validatio
 RESULT_STEPS = {"Check Run Jobs ✅", "Check Job Results ✅"}
 
 
+def plain_env() -> dict[str, str]:
+    """The environment with color forcing removed. setup-soldr exports
+    CLICOLOR_FORCE=1 and FORCE_COLOR=1, and gh then colors --json output even
+    into a pipe; CLICOLOR_FORCE=0 is what turns it back off."""
+    env = {k: v for k, v in os.environ.items() if k not in ("FORCE_COLOR", "GH_FORCE_TTY")}
+    env.update(CLICOLOR_FORCE="0", NO_COLOR="1")
+    return env
+
+
 def command(argv: list[str]):
-    result = subprocess.run(argv, check=True, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(argv, check=True, capture_output=True, text=True, timeout=60, env=plain_env())
     return json.loads(result.stdout or "null")
 
 

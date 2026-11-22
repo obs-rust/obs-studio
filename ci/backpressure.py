@@ -47,6 +47,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -58,10 +59,19 @@ STARVED_MIN = 20
 EXIT_CLOSED = 75
 
 
+def plain_env() -> dict[str, str]:
+    """The environment with color forcing removed. setup-soldr exports
+    CLICOLOR_FORCE=1 and FORCE_COLOR=1, and gh then colors --json output even
+    into a pipe; CLICOLOR_FORCE=0 is what turns it back off."""
+    env = {k: v for k, v in os.environ.items() if k not in ("FORCE_COLOR", "GH_FORCE_TTY")}
+    env.update(CLICOLOR_FORCE="0", NO_COLOR="1")
+    return env
+
+
 def gh_json(*args: str):
     command = (["uv", "run", "--no-project", "--script", str(Path(__file__).with_name("gh_graphql.py")),
                 *args[1:]] if args[0] == "graphql" else ["gh", *args])
-    done = subprocess.run(command, check=True, capture_output=True, text=True)
+    done = subprocess.run(command, check=True, capture_output=True, text=True, env=plain_env())
     try:
         return json.loads(done.stdout or "null")
     except json.JSONDecodeError as e:
