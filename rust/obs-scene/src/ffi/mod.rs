@@ -5,6 +5,7 @@ pub mod from_source;
 pub mod group_enum;
 pub mod group_queries;
 pub mod group_resize_defer;
+pub mod item_addref;
 pub mod item_audio_actions;
 pub mod item_defer_update;
 pub mod item_id;
