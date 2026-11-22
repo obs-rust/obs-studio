@@ -143,6 +143,11 @@ jobs:
       - name: Install clud
         if: env.HAS_TOKEN == 'true'
         run: uv tool install clud
+      # `clud --openrouter` drives the Claude Code CLI (pointed at OpenRouter,
+      # so no Anthropic key); clud does not bundle it.
+      - name: Install Claude Code
+        if: env.HAS_TOKEN == 'true'
+        run: npm install --global @anthropic-ai/claude-code@2.1.330
       - name: Rebase
         if: env.HAS_TOKEN == 'true'
         env:
