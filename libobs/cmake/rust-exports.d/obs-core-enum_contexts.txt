@@ -1,0 +1,3 @@
+obs_enum_encoders
+obs_enum_outputs
+obs_enum_services

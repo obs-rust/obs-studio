@@ -51,6 +51,28 @@ pub trait Contexts {
 
 /// Walks a referenced snapshot of the kind's list, as `obs_enum()` did.
 pub fn enum_contexts<C: Contexts>(contexts: &mut C) {
-    let _ = contexts;
-    todo!("obs_enum snapshot walk")
+    let mut snapshot = Vec::new();
+
+    contexts.lock();
+    let mut context = contexts.first();
+    while let Some(entry) = context {
+        if let Some(reference) = contexts.get_ref(entry) {
+            snapshot.push(reference);
+        }
+        context = contexts.next(entry);
+    }
+    contexts.unlock();
+
+    for &entry in &snapshot {
+        contexts.lock();
+        let keep_going = contexts.visit(entry);
+        contexts.unlock();
+        if !keep_going {
+            break;
+        }
+    }
+
+    for entry in snapshot {
+        contexts.release(entry);
+    }
 }
