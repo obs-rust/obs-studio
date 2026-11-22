@@ -24,11 +24,11 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-#[allow(unused_imports)]
 use crate::core_setup_rules::{cmdline_len, cmdline_set, cmdline_table};
 
 /// The stored command line (`struct obs_cmdline_args`), the caller's
@@ -51,6 +51,26 @@ pub trait CommandLine {
 
 /// `obs_set_cmdline_args(argc, argv)` with pointers of `ptr_size` bytes.
 pub fn set_cmdline_args<C: CommandLine>(host: &mut C, argc: i32, ptr_size: usize) {
-    let _ = (host, argc, ptr_size);
-    todo!()
+    if cmdline_set(host.stored_argc()) {
+        return;
+    }
+    host.store_argc(argc);
+    let Ok(count) = usize::try_from(argc) else {
+        return;
+    };
+
+    let mut len = 0;
+    for index in 0..count {
+        len = cmdline_len(len, host.arg_len(index));
+    }
+    let table = cmdline_table(argc, ptr_size);
+    host.allocate(table.wrapping_add(len));
+
+    let mut offset = table;
+    for index in 0..count {
+        let len = cmdline_len(0, host.arg_len(index));
+        host.copy_arg(index, offset, len);
+        offset = offset.wrapping_add(len);
+    }
+    host.terminate(count);
 }

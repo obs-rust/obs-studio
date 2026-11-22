@@ -251,8 +251,10 @@ fn negative_count_stores_the_count_only() {
 
 #[test]
 fn pointer_size_sizes_the_table() {
-    let mut host = Host::default();
-    host.input = vec![b"x".to_vec()];
+    let mut host = Host {
+        input: vec![b"x".to_vec()],
+        ..Host::default()
+    };
     set_cmdline_args(&mut host, 1, 4);
     assert_eq!(
         host.events,

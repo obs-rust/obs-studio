@@ -4,7 +4,7 @@ use obs_core::ffi::core_cmdline_getter::{CommandLineArgs, obs_get_cmdline_args};
 use proptest::prelude::*;
 use std::sync::Mutex;
 
-static LOCK: Mutex<()> = Mutex::new(());
+pub(crate) static LOCK: Mutex<()> = Mutex::new(());
 
 unsafe extern "C" {
     fn oracle_core_cmdline_set(argc: c_int, argv: *mut *mut c_char);
