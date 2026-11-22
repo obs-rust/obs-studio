@@ -44,6 +44,8 @@ fn canonical_dock_proportions_is_registered() {
             "frontend/build/frontend-dock-layout.pch.hpp",
             "frontend/utility/DockLayout.cpp.hpp",
             "frontend/utility/DockLayout.hpp",
+            "frontend/utility/ExtraDocks.cpp.hpp",
+            "frontend/utility/ExtraDocks.hpp",
             "frontend/utility/obs-dock-layout.h"
         ]
     );
