@@ -726,17 +726,17 @@ the paths that select them, so a change only triggers the tests it can affect.
    diagnostics for every unsuccessful job. Missing/unknown/incomplete evidence,
    independent gate failures and real test failures never authorize recovery.
    `github.token` (`actions: write`, `checks: read`, `contents: read`) suffices
-   for PR and still-live group reruns. Re-arming ejected groups requires
-   **AI_REBASE_TOKEN**, an App token or
-   fine-grained PAT with contents/checks read, Actions write and pull requests
-   write: enqueues with GITHUB_TOKEN do not trigger merge-group workflows.
-   Without that secret PR and still-live group reruns still work; ejected-group
-   re-arming emits a warning and leaves the PR alone. Restore this existing secret to enable unattended
-   queue recovery; the 2026-11-18 maintenance log showed it absent.
+   for PR and still-live group reruns. Re-arming ejected groups requires the
+   token minted each run from the **obs-rust-ai-rebase** GitHub App
+   (`vars.AI_REBASE_APP_ID`, `secrets.AI_REBASE_APP_PRIVATE_KEY`): enqueues
+   with GITHUB_TOKEN do not trigger merge-group workflows. Without the App, PR
+   and still-live group reruns still work; ejected-group re-arming emits a
+   warning and leaves the PR alone. (Until 2026-11-22 this was a stored
+   `AI_REBASE_TOKEN` secret, which was saved blank, so nothing was re-armed.)
 
    The older `ci/ai_rebase.py --requeue-ejected` remains a scheduled/push/dispatch
    backstop for broader proven infrastructure failures, now also guarded by
-   AI_REBASE_TOKEN. It inspects recent latest removals (three hours), binds the
+   the ai-rebase App. It inspects recent latest removals (three hours), binds the
    PR head via its timeline, classifies all associated workflow failures, and
    spends one per-head comment marker before re-arming. It skips armed, active,
    held or conflicting PRs. Runnerless cancellations are reserved exclusively

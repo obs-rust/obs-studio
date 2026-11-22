@@ -9,12 +9,13 @@ name: AI rebase
 #
 # Secrets:
 #   OPENROUTER_API_KEY  OpenRouter key (DeepSeek Flash by default).
-#   AI_REBASE_TOKEN     token that pushes the rebased branch (contents: write,
-#                       pull-requests: write, actions: write, checks: read). It must not be GITHUB_TOKEN: a
-#                       push/enqueue made with GITHUB_TOKEN starts no workflows, so the
-#                       rebased PR would never get CI. A GitHub App
-#                       installation token or a fine-grained PAT scoped to
-#                       this repo both work.
+# Push token: minted each run from the obs-rust-ai-rebase GitHub App
+# (contents: write, pull-requests: write, actions: write, checks: read),
+# installed on this repository only.
+#   vars.AI_REBASE_APP_ID               the App's id
+#   secrets.AI_REBASE_APP_PRIVATE_KEY   its private key
+# It must not be GITHUB_TOKEN: a push/enqueue made with GITHUB_TOKEN starts
+# no workflows, so the rebased PR would never get CI.
 on:
   push:
     branches: [master]
@@ -53,8 +54,19 @@ jobs:
       group: ai-rebase-capacity
       cancel-in-progress: false
     env:
-      HAS_TOKEN: ${{ secrets.AI_REBASE_TOKEN != '' }}
+      HAS_TOKEN: ${{ vars.AI_REBASE_APP_ID != '' }}
     steps:
+      # The push token is minted per run from the obs-rust-ai-rebase GitHub
+      # App, so no long-lived token is stored (#4461).
+      - name: Mint the ai-rebase App token
+        id: app
+        if: env.HAS_TOKEN == 'true'
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ vars.AI_REBASE_APP_ID }}
+          private-key: ${{ secrets.AI_REBASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
       # workflow_run is privileged. Never checkout the triggering head or read
       # its artifacts; inspect only API evidence using default-branch code.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -66,7 +78,7 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Recover proven hosted capacity failures
         env:
-          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
         run: |
@@ -79,7 +91,7 @@ jobs:
       - name: Re-arm infrastructure-ejected PRs
         if: github.event_name != 'workflow_run' && env.HAS_TOKEN == 'true'
         env:
-          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
         run: |
           # Broader existing infrastructure recovery is a backstop only.
@@ -93,18 +105,29 @@ jobs:
     if: github.event_name != 'workflow_run' && (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # GitHub does not allow `secrets` in a job `if:`, so whether the token is
-    # set comes through env. Only push/resolution steps need it (#4461).
+    # GitHub does not allow `secrets` in a job `if:`, so whether the App is
+    # configured comes through env. Only push/resolution steps need it (#4461).
     env:
-      HAS_TOKEN: ${{ secrets.AI_REBASE_TOKEN != '' }}
+      HAS_TOKEN: ${{ vars.AI_REBASE_APP_ID != '' }}
     steps:
-      - name: Skip without AI_REBASE_TOKEN
+      - name: Skip without the ai-rebase App
         if: env.HAS_TOKEN != 'true'
-        run: echo "::notice::AI_REBASE_TOKEN is not set, so this run rebases nothing."
+        run: echo "::notice::vars.AI_REBASE_APP_ID is not set, so this run rebases nothing."
+      # The push token is minted per run from the obs-rust-ai-rebase GitHub
+      # App, so no long-lived token is stored (#4461).
+      - name: Mint the ai-rebase App token
+        id: app
+        if: env.HAS_TOKEN == 'true'
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ vars.AI_REBASE_APP_ID }}
+          private-key: ${{ secrets.AI_REBASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
-          token: ${{ secrets.AI_REBASE_TOKEN || github.token }}
+          token: ${{ steps.app.outputs.token || github.token }}
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
@@ -123,7 +146,7 @@ jobs:
       - name: Rebase
         if: env.HAS_TOKEN == 'true'
         env:
-          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           PRS: ${{ inputs.prs }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
