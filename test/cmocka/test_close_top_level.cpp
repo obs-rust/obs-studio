@@ -21,7 +21,7 @@
  * On macOS a floating dock disappeared whenever another app was in front
  * (obs-rust/obs-studio#5409): Qt hides a tool window while the application is
  * inactive unless it has Qt::WA_MacAlwaysShowToolWindow.
- * floating_dock_stays_shown_while_inactive checks that KeepFloatingDockShown()
+ * floating_dock_stays_shown_while_inactive checks that DockWindow::SetUp()
  * (frontend/utility/dock-window.hpp) sets it on a dock that then floats.
  *
  * After a floating dock was moved, the main window no longer laid out its
@@ -35,8 +35,9 @@
  * "You just closed a dockable window" notice, and no key closed a floating
  * dock (obs-rust/obs-studio#5408). The redock cases check that
  * CloseRedocksMainDock() puts such a dock back into the main window, that a
- * quit still closes it, and that AddFloatingDockCloseKey() gives a floating
- * dock the close key. */
+ * quit still closes it, and that DockWindow gives a floating dock the close
+ * key. dock_window_is_set_up_once checks that a dock gets one DockWindow
+ * (obs-rust/obs-studio#5457). */
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -338,7 +339,7 @@ static void floating_dock_stays_shown_while_inactive(void **state)
 	auto *dock = new QDockWidget(QStringLiteral("Scenes"), main);
 	dock->setObjectName(QStringLiteral("scenesDock"));
 	dock->setWidget(new QWidget);
-	KeepFloatingDockShown(dock);
+	DockWindow::SetUp(dock);
 	main->addDockWidget(Qt::LeftDockWidgetArea, dock);
 	main->show();
 	QApplication::processEvents();
@@ -371,7 +372,7 @@ static QDockWidget *add_moved_dock(const char *name, Qt::DockWidgetArea area)
 	content->setMinimumSize(160, 120);
 	dock->setWidget(content);
 	dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
-	SetUpDockWindow(dock);
+	DockWindow::SetUp(dock);
 	moved_main->addDockWidget(area, dock);
 	return dock;
 }
@@ -506,7 +507,7 @@ static void float_one_dock(bool closable)
 	redock_dock->setWidget(new QWidget);
 	redock_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
 				 (closable ? QDockWidget::DockWidgetClosable : QDockWidget::NoDockWidgetFeatures));
-	redock_key = AddFloatingDockCloseKey(redock_dock);
+	redock_key = DockWindow::SetUp(redock_dock)->CloseKey();
 	redock_main->addDockWidget(Qt::LeftDockWidgetArea, redock_dock);
 	redock_main->show();
 	QApplication::processEvents();
@@ -598,7 +599,7 @@ static void close_key_puts_a_floating_main_dock_back(void **state)
 {
 	(void)state;
 	if (!redock_key) {
-		fprintf(stderr, "AddFloatingDockCloseKey() gave no shortcut\n");
+		fprintf(stderr, "DockWindow gave no close key\n");
 		fail();
 	}
 	const bool keys = redock_key->keys() == QKeySequence::keyBindings(QKeySequence::Close);
@@ -623,11 +624,43 @@ static void close_key_is_added_once(void **state)
 	(void)state;
 	/* An OBSDock is set up when it is made and again in AddDockWidget(). Two
 	 * shortcuts on one key are ambiguous, and Qt activates neither. */
-	QShortcut *again = AddFloatingDockCloseKey(redock_dock);
+	QShortcut *again = DockWindow::SetUp(redock_dock)->CloseKey();
 	const qsizetype keys = redock_dock->findChildren<QShortcut *>(Qt::FindDirectChildrenOnly).size();
 	if (!redock_key || again != redock_key || keys != 1) {
 		fprintf(stderr, "first key %p, second call %p, shortcuts on the dock %d (expected the same one, 1)\n",
 			(void *)redock_key, (void *)again, (int)keys);
+		fail();
+	}
+}
+
+/* #5457: what OBS adds to a dock window (the macOS attribute, the move-end
+ * filter, the close key) is one DockWindow object. An OBSDock is set up when
+ * it is made and again in AddDockWidget(), so a second SetUp() must give the
+ * same object: one filter and one close key (two shortcuts on one key are
+ * ambiguous, and Qt then activates neither). */
+static void dock_window_is_set_up_once(void **state)
+{
+	(void)state;
+	auto *main = new QMainWindow;
+	main->setCentralWidget(new QWidget);
+	auto *dock = new QDockWidget(QStringLiteral("Scenes"), main);
+	dock->setObjectName(QStringLiteral("scenesDock"));
+	dock->setWidget(new QWidget);
+	main->addDockWidget(Qt::LeftDockWidgetArea, dock);
+	DockWindow *first = DockWindow::SetUp(dock);
+	DockWindow *second = DockWindow::SetUp(dock);
+	const qsizetype windows =
+		dock->findChildren<QObject *>(QStringLiteral("dockWindow"), Qt::FindDirectChildrenOnly).size();
+	const qsizetype keys = dock->findChildren<QShortcut *>(Qt::FindDirectChildrenOnly).size();
+	QShortcut *key = first ? first->CloseKey() : nullptr;
+	const bool close_keys = key && key->keys() == QKeySequence::keyBindings(QKeySequence::Close);
+	const bool shown = dock->testAttribute(Qt::WA_MacAlwaysShowToolWindow);
+	delete main;
+	if (!first || first != second || windows != 1 || keys != 1 || !close_keys || !shown) {
+		fprintf(stderr,
+			"first %p, second %p, DockWindow children %d, shortcuts %d, close keys %d, "
+			"WA_MacAlwaysShowToolWindow %d (expected the same object, 1, 1, 1, 1)\n",
+			(void *)first, (void *)second, (int)windows, (int)keys, close_keys, shown);
 		fail();
 	}
 }
@@ -690,6 +723,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
 						quit_teardown),
 		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
+		cmocka_unit_test(dock_window_is_set_up_once),
 		cmocka_unit_test_setup_teardown(moved_dock_keeps_the_main_window_layout, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(moved_dock_docks_into_the_main_window, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(close_of_a_floating_main_dock_puts_it_back, redock_setup,
