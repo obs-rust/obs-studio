@@ -23,7 +23,7 @@
 #include "libobs/obs-get-main-texture-fields.c.h"
 #include "libobs/obs-get-output-source-fields.c.h"
 #include "libobs/obs-get-video-fields.c.h"
-#include "libobs/obs-get-video-frame-counts.c.h"
+#include "libobs/obs-get-video-frame-counts-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
 #include "libobs/obs-hotkey-background-control-fields.c.h"
 #include "libobs/obs-hotkey-background-enum-fields.c.h"

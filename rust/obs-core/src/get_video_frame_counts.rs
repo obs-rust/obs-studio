@@ -26,6 +26,8 @@
     clippy::unreachable
 )]
 
+use crate::core_setup_rules::{Mix, mix_step};
+
 /// The core's mixes as the query sees them: the main mix,
 /// `obs->video.mixes_mutex`, `mixes.num`, `mixes.array[i]`, the fields the
 /// rule asks about and the mix's two `video_t` counters.
@@ -53,11 +55,42 @@ pub trait FrameCounts {
 }
 
 /// The summed `(total, skipped)` frame counts.
-pub fn get_video_frame_counts<M: FrameCounts>(_mixes: &mut M) -> (u32, u32) {
-    todo!("port obs_get_video_frame_counts")
+pub fn get_video_frame_counts<M: FrameCounts>(mixes: &mut M) -> (u32, u32) {
+    let Some(main) = mixes.main_mix() else {
+        return (0, 0);
+    };
+    let (mut total, mut skipped) = (0_u32, 0_u32);
+    mixes.lock();
+    let mut index = 0_usize;
+    while index < mixes.count() {
+        let mix = mixes.at(index);
+        let mut step = mix_step(Mix::Main, mix == main);
+        if step == Mix::EncoderOnly {
+            step = mix_step(step, mixes.encoder_only(&mix));
+        }
+        if step == Mix::View {
+            step = mix_step(step, mixes.same_view(&mix, &main));
+        }
+        if step == Mix::Video {
+            step = mix_step(step, mixes.has_video(&mix));
+        }
+        if step == Mix::Count {
+            total = total.wrapping_add(mixes.total_frames(&mix));
+            skipped = skipped.wrapping_add(mixes.skipped_frames(&mix));
+        }
+        // `index < count()`, so this never wraps.
+        index = index.wrapping_add(1);
+    }
+    mixes.unlock();
+    (total, skipped)
 }
 
 /// Writes each count to its output when there is one, total first.
-pub fn write_counts(_counts: (u32, u32), _total: Option<&mut u32>, _skipped: Option<&mut u32>) {
-    todo!("port obs_get_video_frame_counts")
+pub fn write_counts(counts: (u32, u32), total: Option<&mut u32>, skipped: Option<&mut u32>) {
+    if let Some(total) = total {
+        *total = counts.0;
+    }
+    if let Some(skipped) = skipped {
+        *skipped = counts.1;
+    }
 }

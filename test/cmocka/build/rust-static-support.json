@@ -19,6 +19,7 @@
     "test/cmocka/encoder-video-tex-active-mix-link-support.c",
     "test/cmocka/encoder-weak-refs-link-support.c",
     "test/cmocka/get-main-texture-link-support.c",
+    "test/cmocka/get-video-frame-counts-link-support.c",
     "test/cmocka/get-video-link-support.c",
     "test/cmocka/graphics-device-queries-link-support.c",
     "test/cmocka/graphics-image-convert-link-support.c",
