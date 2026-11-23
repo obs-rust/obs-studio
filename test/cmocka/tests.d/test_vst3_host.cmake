@@ -24,4 +24,18 @@ if(OS_LINUX AND TARGET obs-vst3)
   )
   set_tests_properties(test_vst3_host PROPERTIES TIMEOUT 15)
   add_dependencies(cmocka-tests test_vst3_host)
+
+  if(TARGET obs-vst3-scanner-c-reference)
+    add_dependencies(test_vst3_host obs-vst3-scanner-c-reference)
+    add_test(
+      NAME test_vst3_scanner_parity
+      COMMAND
+        "${CMAKE_COMMAND}" "-DRUST_SCANNER=$<TARGET_FILE:obs-vst3-scanner>"
+        "-DCPP_SCANNER=$<TARGET_FILE:obs-vst3-scanner-c-reference>" "-DHOME_PATH=${_vst3_home}"
+        "-DCACHE_DIR=${CMAKE_CURRENT_BINARY_DIR}/vst3-scanner-parity" -P
+        "${CMAKE_CURRENT_LIST_DIR}/../vst3_scanner_parity.cmake"
+    )
+    set_tests_properties(test_vst3_scanner_parity PROPERTIES TIMEOUT 15 FIXTURES_SETUP vst3_scanner_parity)
+    set_tests_properties(test_vst3_host PROPERTIES FIXTURES_REQUIRED vst3_scanner_parity)
+  endif()
 endif()

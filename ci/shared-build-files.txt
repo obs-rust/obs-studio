@@ -97,4 +97,5 @@ rust/obs-source/src/platform/mod.rs
 rust/obs-sys/build.rs
 rust/obs-util/build.rs
 rust/obs-util/src/platform/mod.rs
+rust/obs-vst3-scanner/src/platform/mod.rs # Shared SDK loader selection needs coverage on every supported scanner platform (#5535).
 test/cmocka/CMakeLists.txt

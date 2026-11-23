@@ -83,6 +83,7 @@ pub struct RustArchives {
     pub core: PathBuf,
     pub gpu_status: PathBuf,
     pub nvenc: PathBuf,
+    pub vst3_scanner: PathBuf,
 }
 
 /// Artifacts of one production hybrid application, without compatibility probes.
@@ -187,7 +188,7 @@ pub fn build(
     let vst3 = options
         .vst3_sdk
         .as_ref()
-        .map(|sdk| plugins::build_vst3(build, root, &core, &api, sdk))
+        .map(|sdk| plugins::build_vst3(build, root, &core, &api, sdk, &archives.vst3_scanner))
         .transpose()?;
     modules.push(plugins::build_x264(build, root, &core)?);
     modules.push(plugins::build_outputs(build, root, &core, &core_options)?);

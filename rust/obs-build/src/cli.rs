@@ -283,6 +283,9 @@ where
     if request.options.nvenc.is_some() {
         cargo.args(["-p", "obs-nvenc-plugin"]);
     }
+    if request.options.vst3_sdk.is_some() {
+        cargo.args(["-p", "obs-vst3-scanner"]);
+    }
     if !debug {
         cargo.arg("--release");
     }

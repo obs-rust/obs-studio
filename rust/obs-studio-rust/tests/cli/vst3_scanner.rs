@@ -111,3 +111,44 @@ fn scanner_distinguishes_an_invalid_candidate_from_no_candidates() {
     let value: Value = serde_json::from_slice(&fs::read(cache).unwrap()).unwrap();
     assert_eq!(value, json!({"version": 1, "plugins": []}));
 }
+
+#[test]
+fn scanner_recovers_a_valid_cache_backup_and_discards_removed_entries() {
+    let tmp = tempfile::tempdir().unwrap();
+    let roots = [tmp.path().join("plugins")];
+    let cache = tmp.path().join("vst3list.json");
+    let backup = tmp.path().join("vst3list.json.bak");
+    let (bundle, _) = module_info(&roots[0]);
+    let binary = if cfg!(target_os = "windows") {
+        bundle.join("Contents/x86_64-win/Éffects.vst3")
+    } else {
+        bundle
+    };
+    let existing = json!({
+        "name": "Cached effect", "id": EFFECT, "path": binary, "pluginName": "Éffects",
+        "discardable": false, "isFX": true,
+    });
+    let removed = json!({
+        "name": "Removed effect", "id": INSTRUMENT, "path": roots[0].join("removed.vst3"),
+        "pluginName": "removed", "discardable": false, "isFX": true,
+    });
+    fs::write(&cache, b"{truncated").unwrap();
+    fs::write(
+        &backup,
+        serde_json::to_vec(&json!({"version": 1, "plugins": [existing.clone(), removed]})).unwrap(),
+    )
+    .unwrap();
+
+    let (code, out, err) = run(Some(&cache), &roots);
+    assert_eq!(code, ExitCode::SUCCESS, "{err}");
+    assert_eq!(out, "VST3_SCAN_DONE\n");
+    let updated: Value = serde_json::from_slice(&fs::read(cache).unwrap()).unwrap();
+    assert_eq!(updated, json!({"version": 1, "plugins": [existing]}));
+    assert_eq!(
+        serde_json::from_slice::<Value>(&fs::read(backup).unwrap()).unwrap()["plugins"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}

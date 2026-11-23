@@ -21,6 +21,7 @@ pub fn build(
     core: &Path,
     api: &Path,
     sdk: &Path,
+    scanner: &Path,
 ) -> Result<Artifacts, String> {
     platform::validate_vst3_target(&build.target)?;
     let root = root.canonicalize().map_err(|e| e.to_string())?;
@@ -63,12 +64,10 @@ pub fn build(
         source.join("build/obs-vst3.editor+.hpp.cpp"),
         source.join("build/obs-vst3.editor.linux+.hpp.cpp"),
         source.join("build/obs-vst3.linux+.hpp.cpp"),
-        discovery.clone(),
-        discovery_host.clone(),
+        discovery,
+        discovery_host,
     ];
     library.include_dirs.push(root.join("frontend/api"));
-    let mut scanner_dependencies = library.dependencies.clone();
-    scanner_dependencies.push(sdk_archive.clone());
     library
         .dependencies
         .extend([api.canonicalize().map_err(|e| e.to_string())?, sdk_archive]);
@@ -80,27 +79,11 @@ pub fn build(
         &build.output.join("obs-vst3/qt/moc_VST3Plugin.cpp"),
     )?;
 
-    let mut scanner = SharedLibrary {
-        name: "obs-vst3-scanner".into(),
-        sources: vec![
-            source.join("vst3-scan/build/obs-vst3-scanner+.hpp.cpp"),
-            source.join("vst3-scan/build/obs-vst3-scanner.posix+.hpp.cpp"),
-            discovery,
-            discovery_host,
-        ],
-        include_dirs: vec![
-            root.clone(),
-            root.join("libobs"),
-            source,
-            build.output.join("config"),
-        ],
-        dependencies: scanner_dependencies,
-        ..SharedLibrary::default()
-    };
-    platform::configure_vst3(&mut scanner, sdk_include);
-    add_package(&mut scanner, &build.target, "simde")?;
+    let scanner = scanner
+        .canonicalize()
+        .map_err(|error| format!("VST3 scanner {}: {error}", scanner.display()))?;
     Ok(Artifacts {
         module: finish(build, &root, library)?,
-        scanner: build.executable(&scanner)?,
+        scanner,
     })
 }
