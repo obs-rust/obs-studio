@@ -163,6 +163,8 @@ mod raw_audio_remove;
 mod raw_audio_remove_parity;
 mod raw_video_callbacks;
 mod raw_video_callbacks_parity;
+mod render_canvas_texture;
+mod render_canvas_texture_parity;
 mod reset_audio;
 mod reset_audio2;
 mod reset_audio2_parity;

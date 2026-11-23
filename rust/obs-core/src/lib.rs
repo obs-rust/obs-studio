@@ -192,6 +192,7 @@ pub mod private_data;
 pub mod raw_audio_add;
 pub mod raw_audio_remove;
 pub mod raw_video_callbacks;
+pub mod render_canvas_texture;
 pub mod reset_audio;
 pub mod reset_audio2;
 pub mod reset_source_uuids;

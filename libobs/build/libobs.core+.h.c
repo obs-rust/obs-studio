@@ -66,7 +66,7 @@
 #include "libobs/obs-module.c.h"
 #include "libobs/obs-object-id-fields.c.h"
 #include "libobs/obs-object-ref-fields.c.h"
-#include "libobs/obs-render-canvas-texture.c.h"
+#include "libobs/obs-render-canvas-texture-fields.c.h"
 #include "libobs/obs-reset-audio-fields.c.h"
 #include "libobs/obs-reset-audio2-fields.c.h"
 #include "libobs/obs-reset-source-uuids-fields.c.h"
