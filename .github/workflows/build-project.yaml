@@ -2792,8 +2792,14 @@ jobs:
             { echo "unexpected $src layout"; cat "$src"; exit 1; }
           # A stale index 404s a just-superseded .deb and an archive host can
           # refuse a connection (run 42755735949): refetch the index and retry.
+          # A timeout that stops the install in the unpack leaves dpkg
+          # interrupted, and apt then refuses every retry (#5504, run
+          # 45113911635): recover first, as the Tier 2 package step does. The
+          # .debs already downloaded stay in apt's cache for the next attempt.
           for attempt in 1 2 3; do
+            dpkg --configure -a || true
             timeout --kill-after=10s 180 apt-get update -qq &&
+              timeout --kill-after=10s 180 apt-get -f install -y &&
               timeout --kill-after=10s 180 apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata && break
             [ "$attempt" = 3 ] && exit 1
             echo "apt attempt $attempt failed; retrying in $((attempt * 10)) s"; sleep $((attempt * 10))
