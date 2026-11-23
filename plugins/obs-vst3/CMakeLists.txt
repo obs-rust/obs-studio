@@ -45,4 +45,4 @@ if(OS_WINDOWS)
 endif()
 
 # VS forbids a project and its solution folder from sharing the same name.
-set_target_properties_obs(obs-vst3 PROPERTIES FOLDER plugins/obs-vst PREFIX "" AUTOMOC ON)
+set_target_properties_obs(obs-vst3 PROPERTIES FOLDER plugins/obs-vst3 PREFIX "" AUTOMOC ON)
