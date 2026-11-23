@@ -1,7 +1,7 @@
 /*
  * GPU-free characterization of obs_canvas_set_channel's signal routing,
- * payload ordering and activation lifetime. The broader caller suite keeps
- * the callback-replacement ownership quirk pinned unchanged.
+ * payload ordering and refcount-level activation. The broader caller suite
+ * keeps the callback-replacement ownership quirk pinned unchanged.
  */
 
 #include <stdarg.h>
@@ -61,25 +61,6 @@ static uint32_t source_size(void *data)
 	return 1;
 }
 
-static void record_event(char kind, obs_source_t *source)
-{
-	if (events.count >= EVENT_CAPACITY) {
-		events.overflow = true;
-		return;
-	}
-	events.events[events.count++] = (struct event){.kind = kind, .source = source};
-}
-
-static void source_activate(void *data)
-{
-	record_event('A', data);
-}
-
-static void source_deactivate(void *data)
-{
-	record_event('D', data);
-}
-
 static void record_signal(char kind, calldata_t *cd)
 {
 	if (events.count >= EVENT_CAPACITY) {
@@ -124,8 +105,6 @@ static int setup(void **state)
 		.destroy = source_destroy,
 		.get_width = source_size,
 		.get_height = source_size,
-		.activate = source_activate,
-		.deactivate = source_deactivate,
 	};
 	obs_register_source(&source_info);
 
@@ -186,28 +165,25 @@ static void assert_event(size_t index, char kind, obs_canvas_t *canvas, long lon
 {
 	assert_true(index < events.count);
 	assert_int_equal(events.events[index].kind, kind);
-	if (kind == 'L' || kind == 'G') {
-		assert_ptr_equal(events.events[index].canvas, canvas);
-		assert_int_equal(events.events[index].channel, channel);
-		assert_ptr_equal(events.events[index].prev_source, prev_source);
-		assert_ptr_equal(events.events[index].source, source);
-	} else {
-		assert_ptr_equal(events.events[index].source, source);
-	}
+	assert_ptr_equal(events.events[index].canvas, canvas);
+	assert_int_equal(events.events[index].channel, channel);
+	assert_ptr_equal(events.events[index].prev_source, prev_source);
+	assert_ptr_equal(events.events[index].source, source);
 }
 
 static void channel_signals_and_activation_follow_the_channel_change(void **state)
 {
 	(void)state;
 
-	/* Main-view changes emit local then global signals, and only activate the
-	 * new source after both handlers have seen the complete payload. */
+	/* Main-view changes emit local then global signals with the complete
+	 * payload. Activation is synchronous at the source refcount level; the
+	 * activate/deactivate callbacks are deferred to a video tick, which this
+	 * GPU-free fixture intentionally does not start. */
 	obs_canvas_set_channel(main_canvas, 2, first_source);
 	assert_false(events.overflow);
-	assert_int_equal(events.count, 3);
+	assert_int_equal(events.count, 2);
 	assert_event(0, 'L', main_canvas, 2, NULL, first_source);
 	assert_event(1, 'G', main_canvas, 2, NULL, first_source);
-	assert_event(2, 'A', NULL, 0, NULL, first_source);
 	assert_true(obs_source_active(first_source));
 	obs_source_t *stored = obs_canvas_get_channel(main_canvas, 2);
 	assert_ptr_equal(stored, first_source);
@@ -220,25 +196,22 @@ static void channel_signals_and_activation_follow_the_channel_change(void **stat
 	assert_int_equal(events.count, 0);
 	assert_true(obs_source_active(first_source));
 
-	/* Replacement activates the incoming source before deactivating the old
-	 * one, after the local and global callbacks have observed the change. */
+	/* Replacement updates activation refcounts and emits local then global
+	 * signals. Callback ordering is covered only by a fixture with video ticks. */
 	obs_canvas_set_channel(main_canvas, 2, second_source);
 	assert_false(events.overflow);
-	assert_int_equal(events.count, 4);
+	assert_int_equal(events.count, 2);
 	assert_event(0, 'L', main_canvas, 2, first_source, second_source);
 	assert_event(1, 'G', main_canvas, 2, first_source, second_source);
-	assert_event(2, 'A', NULL, 0, NULL, second_source);
-	assert_event(3, 'D', NULL, 0, NULL, first_source);
 	assert_true(obs_source_active(second_source));
 	assert_false(obs_source_active(first_source));
 
 	memset(&events, 0, sizeof(events));
 	obs_canvas_set_channel(main_canvas, 2, NULL);
 	assert_false(events.overflow);
-	assert_int_equal(events.count, 3);
+	assert_int_equal(events.count, 2);
 	assert_event(0, 'L', main_canvas, 2, second_source, NULL);
 	assert_event(1, 'G', main_canvas, 2, second_source, NULL);
-	assert_event(2, 'D', NULL, 0, NULL, second_source);
 	assert_false(obs_source_active(second_source));
 
 	/* A non-main canvas still emits its local signal but is not routed through
