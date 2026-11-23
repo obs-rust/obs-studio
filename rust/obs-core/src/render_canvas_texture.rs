@@ -22,7 +22,7 @@
 
 use core::ffi::{CStr, c_int};
 
-use crate::canvas_draw::Technique;
+use crate::canvas_draw::{self, Technique};
 
 /// `GS_BLEND_ZERO` (`enum gs_blend_type`, `graphics/graphics.h`).
 pub const GS_BLEND_ZERO: u32 = 0;
@@ -142,14 +142,57 @@ pub trait Graphics {
 /// `obs_render_main_texture_src_color_only()` ([`SRC_COLOR_ONLY`]): the
 /// main canvas, read once, drawn as [`render_canvas`] draws it.
 pub fn render_main<G: Graphics>(graphics: &mut G, blend: Blend) {
-    let _ = (graphics, blend);
-    todo!("obs_render_main_texture")
+    let canvas = graphics.main_canvas();
+    render_canvas(graphics, canvas, blend);
 }
 
 /// `obs_render_canvas_texture()` ([`OVER`]),
 /// `obs_render_canvas_texture_src_color_only()` ([`SRC_COLOR_ONLY`]) and
 /// the `obs_render_canvas_texture_internal()` they share.
 pub fn render_canvas<G: Graphics>(graphics: &mut G, canvas: Option<G::Canvas>, blend: Blend) {
-    let _ = (graphics, canvas, blend);
-    todo!("obs_render_canvas_texture")
+    // The one intentional difference: the C dereferences a NULL canvas.
+    let Some(canvas) = canvas else {
+        return;
+    };
+    let mix = graphics.mix(canvas);
+    let rendered = match mix {
+        Some(mix) => graphics.texture_rendered(mix),
+        None => false,
+    };
+    if canvas_draw::skip(mix.is_some(), rendered) {
+        return;
+    }
+    let Some(mix) = mix else {
+        return;
+    };
+
+    let source_space = graphics.render_space(mix);
+    let current_space = graphics.color_space();
+    let technique = canvas_draw::technique(source_space, current_space);
+    let multiplier = if canvas_draw::reads_white_level(current_space) {
+        canvas_draw::multiplier(graphics.sdr_white_level())
+    } else {
+        1.0
+    };
+
+    let previous = graphics.framebuffer_srgb_enabled();
+    graphics.enable_framebuffer_srgb(true);
+
+    let texture = graphics.render_texture(mix);
+    let effect = graphics.default_effect();
+    let image = graphics.param(effect, Param::Image);
+    graphics.set_texture_srgb(image, texture);
+    let param = graphics.param(effect, Param::Multiplier);
+    graphics.set_float(param, multiplier);
+
+    graphics.blend_state_push();
+    graphics.blend_function_separate(blend);
+
+    while graphics.effect_loop(effect, technique) {
+        graphics.draw_sprite(texture);
+    }
+
+    graphics.blend_state_pop();
+
+    graphics.enable_framebuffer_srgb(previous);
 }
