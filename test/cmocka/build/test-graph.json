@@ -4487,6 +4487,31 @@
         "libobs/data"
       ]
     },
+    "test_enum_sources": {
+      "sources": [
+        "test/cmocka/test_enum_sources.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "header_libraries": [
+        "Uthash::Uthash"
+      ]
+    },
     "test_expander_unity": {
       "sources": [
         "test/cmocka/test_expander_unity.c"
@@ -24855,6 +24880,15 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_enum_sources": {
+      "target": "test_enum_sources",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_expander_unity": {
       "target": "test_expander_unity",
