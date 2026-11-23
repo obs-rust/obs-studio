@@ -35,6 +35,11 @@ def load(name: str, file: str):
 selection = load('runtime_selection', 'runtime-selection.py')
 runtime = load('ci_runtime', 'ci-runtime.py')
 
+STOCK = (
+    'Types: deb\nURIs: http://archive.ubuntu.com/ubuntu/\nSuites: resolute resolute-updates\n'
+    'Components: main universe\n\n'
+    'Types: deb\nURIs: http://security.ubuntu.com/ubuntu/\nSuites: resolute-security\n'
+    'Components: main universe\n')
 OLD = '1:1.3.dfsg+really1.3.1-1ubuntu3.1'
 NEW = '1:1.3.dfsg+really1.3.1-1ubuntu3.2'
 
@@ -55,9 +60,14 @@ class AptInstallTest(unittest.TestCase):
               'env', 'LC_ALL=C', 'apt-get', '-o', 'Acquire::Retries=3',
               '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
 
-    def install(self, failures=()):
+    def install(self, failures=(), host_list=None):
         calls = []
         errors = iter(failures)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        host = Path(tmp.name) / 'apt-mirrors.txt'
+        if host_list is not None:
+            host.write_text(host_list)
 
         def command(*argv, **kwargs):
             calls.append(argv)
@@ -67,12 +77,21 @@ class AptInstallTest(unittest.TestCase):
                     raise subprocess.CalledProcessError(error[0], argv, output=error[1])
             return ''
 
-        with patch.object(runtime, 'command', side_effect=command):
+        with patch.object(runtime, 'command', side_effect=command), \
+                patch.object(runtime, 'HOST_MIRRORS', host):
             try:
                 runtime.install_packages('container', 'prepared', '', self.packages)
             finally:
                 self.calls = [c for c in calls if 'apt-get' in c]
-                self.all_calls = [c for c in calls if 'apt-get' in c or 'dpkg' in c]
+                self.all_calls = [c for c in calls if 'apt-get' in c or 'dpkg' in c or self.mirror_of(c)]
+                self.mirrors = [self.mirror_of(c) for c in calls if self.mirror_of(c)]
+
+    @staticmethod
+    def mirror_of(call):
+        """The mirror a `use the mirror` call points the main source at."""
+        if call[:3] == ('docker', 'exec', 'container') and 'sh' in call and call[-2:-1] == (runtime.SOURCES,):
+            return call[-1]
+        return None
 
     def test_delta_commands_use_native_acquire_bounds_and_timeout(self):
         self.install()
@@ -111,19 +130,53 @@ class AptInstallTest(unittest.TestCase):
         # archive mount, so one more attempt finishes; a timeout in the unpack
         # leaves dpkg interrupted, so recover it first.
         install = (*self.prefix, 'install', '-y', '--no-install-recommends', *self.packages)
+        update = (*self.prefix, 'update', '-qq')
         for code in (124, 137):
             with self.subTest(code=code):
                 self.install([None, (code, 'timed out')])
-                self.assertEqual(self.all_calls, [(*self.prefix, 'update', '-qq'), install,
-                                                  self.recover, install])
+                # #5510: the retry fetches the index from the next mirror.
+                apt = [c for c in self.all_calls if not self.mirror_of(c)]
+                self.assertEqual(apt, [update, install, self.recover, update, install])
+                self.assertEqual(self.mirrors, ['http://archive.ubuntu.com/ubuntu/',
+                                                'http://mirrors.edge.kernel.org/ubuntu/'])
 
     def test_a_second_timeout_fails_with_the_delta_packages(self):
         with self.assertRaises(RuntimeError) as error:
-            self.install([None, (124, 'timed out'), (124, 'timed out again')])
-        self.assertEqual(len(self.calls), 3)
+            self.install([None, (124, 'timed out'), None, (124, 'timed out again')])
+        self.assertEqual(len(self.calls), 4)
         self.assertEqual(self.all_calls.count(self.recover), 1)
         self.assertIn('exit 124', str(error.exception))
         self.assertIn(self.packages[0], str(error.exception))
+
+    def test_the_main_source_starts_at_the_runners_mirror(self):
+        # #5510: the host's own list, as the build container's Install Git
+        # reads it; the mirror is set before the first index fetch.
+        aws = 'http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\n'
+        self.install(host_list=aws)
+        self.assertEqual(self.mirrors, ['http://us-east-2.ec2.archive.ubuntu.com/ubuntu/'])
+        self.assertTrue(self.mirror_of(self.all_calls[0]), self.all_calls)
+        self.install([None, (124, 'timed out')], host_list=aws)
+        self.assertEqual(self.mirrors, ['http://us-east-2.ec2.archive.ubuntu.com/ubuntu/',
+                                        'http://archive.ubuntu.com/ubuntu/'])
+
+    def test_the_mirror_switch_keeps_an_unknown_sources_layout(self):
+        # The switch is one shell call that edits ubuntu.sources only when it
+        # has the security stanza, and never fails the job.
+        with patch.object(runtime, 'command', return_value='') as command:
+            runtime.use_mirror('container', 'http://x.example/ubuntu/')
+        argv = command.call_args.args
+        self.assertEqual(argv[:4], ('docker', 'exec', 'container', 'sh'))
+        self.assertEqual(argv[-2:], (runtime.SOURCES, 'http://x.example/ubuntu/'))
+        with tempfile.TemporaryDirectory() as tmp:
+            for layout, changed in ((STOCK, True), (STOCK.replace('security.ubuntu.com', 'ports.example'), False)):
+                path = Path(tmp) / 'ubuntu.sources'
+                path.write_text(layout)
+                result = subprocess.run(['sh', *argv[4:-2], str(path), 'http://x.example/ubuntu/'],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = path.read_text()
+                self.assertEqual('URIs: http://x.example/ubuntu/' in text, changed, text)
+                self.assertEqual(text.count('URIs: http://x.example/ubuntu/'), int(changed))
 
     def test_other_install_failures_do_not_recover_or_retry(self):
         with self.assertRaises(RuntimeError):

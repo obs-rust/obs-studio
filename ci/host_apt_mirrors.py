@@ -35,6 +35,14 @@ _URI_LINE = r"({blank}|$)"
 _PRIORITY = r"{blank}+priority:{number}$"
 
 
+# The Tier 2 containers' mirrors after the runner's own (#5510).
+FALLBACK_MIRRORS: tuple[str, ...] = ()
+
+
+def container_mirrors(mirrors: Path) -> list[str]:
+    raise NotImplementedError("#5510")
+
+
 def lines_of(text: str) -> list[str]:
     """The file's lines, the way grep counts them (a last line without \\n counts)."""
     return text.splitlines()

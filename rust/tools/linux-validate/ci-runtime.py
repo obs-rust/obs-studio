@@ -177,6 +177,15 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
     return result
 
 
+# The host's apt mirror list and the containers' main source (#5510).
+HOST_MIRRORS = Path('/etc/apt/apt-mirrors.txt')
+SOURCES = '/etc/apt/sources.list.d/ubuntu.sources'
+
+
+def use_mirror(ident: str, uri: str) -> None:
+    raise NotImplementedError('#5510')
+
+
 # timeout(1) exits 124 when the bound stops a command, 137 when it has to kill it.
 TIMED_OUT = (124, 137)
 

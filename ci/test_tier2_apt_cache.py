@@ -20,6 +20,8 @@ import subprocess
 import tempfile
 import textwrap
 import unittest
+
+import test_host_apt_mirrors as mirror_tests
 from pathlib import Path
 
 WORKFLOW = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "build-project.yaml"
@@ -30,6 +32,95 @@ def job(name: str) -> str:
     m = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)", text, re.S | re.M)
     assert m, f"no job {name}"
     return m.group(1)
+
+
+STOCK_SOURCES = """Types: deb
+URIs: http://archive.ubuntu.com/ubuntu/
+Suites: resolute resolute-updates resolute-backports
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+Types: deb
+URIs: http://security.ubuntu.com/ubuntu/
+Suites: resolute-security
+Components: main universe restricted multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+"""
+
+INSTALL_GIT_APT = r'''#!/bin/sh
+printf 'apt-get %s\n' "$*" >> "$TRACE"
+case "$*" in
+  'update -qq')
+    sed -n '1,/^$/s/^URIs: //p' "$SOURCES" >> "$MIRRORS"
+    count=$(grep -c '^apt-get update -qq$' "$TRACE")
+    [ "$count" -le "$FAIL_UPDATES" ] && exit 124
+    exit 0 ;;
+esac
+if [ -e "$STATE/interrupted" ]; then
+  echo "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem." >&2
+  exit 100
+fi
+case "$*" in
+  '-f install -y') exit 0 ;;
+  'install -y '*)
+    count=$(grep -c '^apt-get install -y ' "$TRACE")
+    if [ "$count" -le "$FAIL_INSTALLS" ]; then : > "$STATE/interrupted"; exit 124; fi
+    exit 0 ;;
+esac
+exit 99
+'''
+
+INSTALL_GIT_DPKG = r'''#!/bin/sh
+printf 'dpkg %s\n' "$*" >> "$TRACE"
+[ "$*" = '--configure -a' ] || exit 99
+rm -f "$STATE/interrupted"
+'''
+
+
+def install_git_run() -> str:
+    """The Install Git step's run block (the shell, dedented)."""
+    j = job("rust-linux-tier2-build")
+    block = j[j.index("name: Install Git"):].split("run: |\n", 1)[1].splitlines()
+    # The run block ends at the first non-empty line indented less than it.
+    indent = len(block[0]) - len(block[0].lstrip())
+    end = next(n for n, line in enumerate(block) if line.strip() and len(line) - len(line.lstrip()) < indent)
+    return textwrap.dedent("\n".join(block[:end]))
+
+
+def run_install_git(*, host_list=None, sources=STOCK_SOURCES, fail_updates=0, fail_installs=0):
+    """Run the step's non-prebaked path with mocked apt-get and dpkg, its
+    /etc/apt files and the host's /run/host-apt in a temp directory.
+    (result, apt/dpkg calls, the main source's URI at each update, sources)."""
+    run = install_git_run()
+    script = run[run.index("src=/etc/apt/sources.list.d/ubuntu.sources"):]
+    script = script[:script.index("\ndone") + len("\ndone")]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "host-apt").mkdir()
+        if host_list is not None:
+            (root / "host-apt" / "apt-mirrors.txt").write_text(host_list)
+        src = root / "ubuntu.sources"
+        src.write_text(sources)
+        script = script.replace("/etc/apt/sources.list.d/ubuntu.sources", str(src))
+        script = script.replace("/run/host-apt", str(root / "host-apt"))
+        # The loop waits 10 and 20 s between attempts; the test does not.
+        script = "sleep() { :; }\n" + script
+        mock_bin = root / "bin"
+        mock_bin.mkdir()
+        for name, body in (("apt-get", INSTALL_GIT_APT), ("dpkg", INSTALL_GIT_DPKG)):
+            (mock_bin / name).write_text(body)
+            (mock_bin / name).chmod(0o755)
+        trace, mirrors = root / "trace", root / "mirrors"
+        trace.touch()
+        mirrors.touch()
+        result = subprocess.run(
+            ["bash", "-e", "-o", "pipefail", "-c", script],
+            capture_output=True, text=True, timeout=30,
+            env={**os.environ, "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
+                 "TRACE": str(trace), "MIRRORS": str(mirrors), "SOURCES": str(src), "STATE": tmp,
+                 "FAIL_UPDATES": str(fail_updates), "FAIL_INSTALLS": str(fail_installs)},
+        )
+        return (result, trace.read_text().splitlines(), mirrors.read_text().splitlines(), src.read_text())
 
 
 def install_script() -> str:
@@ -392,56 +483,10 @@ esac
         # apt-get and dpkg: an install stopped in the unpack leaves dpkg
         # interrupted, and every apt install refuses to run until
         # `dpkg --configure -a`.
-        j = job("rust-linux-tier2-build")
-        block = j[j.index("name: Install Git"):].split("run: |\n", 1)[1].splitlines()
-        # The run block ends at the first non-empty line indented less than it.
-        indent = len(block[0]) - len(block[0].lstrip())
-        end = next(n for n, line in enumerate(block) if line.strip() and len(line) - len(line.lstrip()) < indent)
-        run = textwrap.dedent("\n".join(block[:end]))
-        loop = run[run.index("for attempt in 1 2 3"):]
-        loop = loop[:loop.index("\ndone") + len("\ndone")]
-        # The loop waits 10 and 20 s between attempts; the test does not.
-        script = "sleep() { :; }\n" + loop
-        apt = r'''#!/bin/sh
-printf 'apt-get %s\n' "$*" >> "$TRACE"
-case "$*" in
-  'update -qq') exit 0 ;;
-esac
-if [ -e "$STATE/interrupted" ]; then
-  echo "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem." >&2
-  exit 100
-fi
-case "$*" in
-  '-f install -y') exit 0 ;;
-  'install -y '*)
-    count=$(grep -c '^apt-get install -y ' "$TRACE")
-    if [ "$count" -le "$FAIL_INSTALLS" ]; then : > "$STATE/interrupted"; exit 124; fi
-    exit 0 ;;
-esac
-exit 99
-'''
-        dpkg = r'''#!/bin/sh
-printf 'dpkg %s\n' "$*" >> "$TRACE"
-[ "$*" = '--configure -a' ] || exit 99
-rm -f "$STATE/interrupted"
-'''
         for failures in (0, 1, 2, 3):
-            with self.subTest(failures=failures), tempfile.TemporaryDirectory() as tmp:
-                mock_bin = Path(tmp) / "bin"
-                mock_bin.mkdir()
-                for name, body in (("apt-get", apt), ("dpkg", dpkg)):
-                    (mock_bin / name).write_text(body)
-                    (mock_bin / name).chmod(0o755)
-                trace = Path(tmp) / "trace"
-                trace.touch()
-                result = subprocess.run(
-                    ["bash", "-e", "-o", "pipefail", "-c", script],
-                    capture_output=True, text=True, timeout=30,
-                    env={**os.environ, "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
-                         "TRACE": str(trace), "STATE": tmp, "FAIL_INSTALLS": str(failures)},
-                )
+            with self.subTest(failures=failures):
+                result, calls, _, _ = run_install_git(fail_installs=failures)
                 self.assertEqual(result.returncode == 0, failures < 3, result.stdout + result.stderr)
-                calls = trace.read_text().splitlines()
                 installs = [n for n, call in enumerate(calls) if call.startswith("apt-get install -y ")]
                 self.assertEqual(len(installs), min(failures + 1, 3), calls)
                 for attempt, first in enumerate(n for n, call in enumerate(calls) if call == "apt-get update -qq"):
@@ -449,6 +494,52 @@ rm -f "$STATE/interrupted"
                     self.assertGreater(first, 0, calls)
                     self.assertEqual(calls[first - 1], "dpkg --configure -a", (attempt, calls))
                     self.assertEqual(calls[first + 1], "apt-get -f install -y", (attempt, calls))
+
+    def test_install_git_uses_another_mirror_on_each_attempt(self):
+        # #5510, run 45159376402: `apt-get update` hung for 180 s in all 3
+        # attempts against the one archive. A mirror that accepts and never
+        # answers keeps apt past its bound on every index file (apt's mirror
+        # method never drops it), so each attempt points the main source at
+        # another mirror: the runner's own, then the fallbacks.
+        result, _, mirrors, sources = run_install_git(host_list=mirror_tests.AZURE_LIST, fail_updates=2)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(mirrors, ["http://azure.archive.ubuntu.com/ubuntu/", "http://archive.ubuntu.com/ubuntu/",
+                                   "http://mirrors.edge.kernel.org/ubuntu/"])
+        # The security pocket keeps its own source; the trimmed suites stay.
+        self.assertIn("URIs: http://security.ubuntu.com/ubuntu/\nSuites: resolute-security\n", sources)
+        self.assertIn("URIs: http://mirrors.edge.kernel.org/ubuntu/\nSuites: resolute resolute-updates\n", sources)
+        result, _, mirrors, _ = run_install_git(host_list=mirror_tests.AZURE_LIST, fail_updates=3)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(mirrors), 3)
+
+    def test_install_git_mirror_order_is_host_apt_mirrors_order(self):
+        # The step runs before checkout and uv, so it carries the rule as
+        # shell; it must give the order ci/host_apt_mirrors.py gives.
+        module = mirror_tests.load_mirrors()
+        for text, expected in mirror_tests.CONTAINER_CASES:
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "apt-mirrors.txt"
+                if text is not None:
+                    path.write_text(text)
+                self.assertEqual(module.container_mirrors(path), expected)
+                _, _, mirrors, _ = run_install_git(host_list=text, fail_updates=3)
+                self.assertEqual(mirrors, [expected[n % len(expected)] for n in range(3)])
+
+    def test_install_git_keeps_an_unknown_sources_layout(self):
+        # A fallback must not add a failure: without the security stanza the
+        # step keeps the image's sources and says so.
+        odd = STOCK_SOURCES.replace("http://security.ubuntu.com/ubuntu/", "http://ports.example/ubuntu/")
+        result, _, mirrors, sources = run_install_git(host_list=mirror_tests.AZURE_LIST, sources=odd)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(mirrors, ["http://archive.ubuntu.com/ubuntu/"])
+        self.assertIn("keeping its sources", result.stdout)
+
+    def test_the_build_container_sees_the_hosts_apt_directory_read_only(self):
+        # The whole directory, not apt-mirrors.txt: a missing file would make
+        # Docker create a directory in its place on a persistent runner.
+        j = job("rust-linux-tier2-build")
+        container = j[j.index("container:"):j.index("timeout-minutes:")]
+        self.assertIn("- /etc/apt:/run/host-apt:ro", container)
 
     def test_zstd_is_there_before_the_restore(self):
         # actions/cache versions an entry by its compressor: restoring before
