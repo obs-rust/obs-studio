@@ -38,8 +38,7 @@ pub fn add<V: Video>(
     callback: V::Callback,
     param: V::Param,
 ) {
-    let _ = (video, conversion, callback, param);
-    todo!("obs_add_raw_video_callback")
+    add2(video, conversion, 1, callback, param);
 }
 
 /// `obs_add_raw_video_callback2`: one start on the main mix's video with the
@@ -51,13 +50,16 @@ pub fn add2<V: Video>(
     callback: V::Callback,
     param: V::Param,
 ) {
-    let _ = (video, conversion, frame_rate_divisor, callback, param);
-    todo!("obs_add_raw_video_callback2")
+    match video.main_video() {
+        Some(main) => video.start(main, conversion, frame_rate_divisor, callback, param),
+        None => video.warn_not_set_up(),
+    }
 }
 
 /// `obs_remove_raw_video_callback`: one stop on the main mix's video, or
 /// nothing when there is no mix.
 pub fn remove<V: Video>(video: &mut V, callback: V::Callback, param: V::Param) {
-    let _ = (video, callback, param);
-    todo!("obs_remove_raw_video_callback")
+    if let Some(main) = video.main_video() {
+        video.stop(main, callback, param);
+    }
 }

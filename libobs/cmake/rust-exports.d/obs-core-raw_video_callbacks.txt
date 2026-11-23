@@ -1,0 +1,3 @@
+obs_add_raw_video_callback
+obs_add_raw_video_callback2
+obs_remove_raw_video_callback
