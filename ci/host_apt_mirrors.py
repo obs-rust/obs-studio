@@ -35,12 +35,47 @@ _URI_LINE = r"({blank}|$)"
 _PRIORITY = r"{blank}+priority:{number}$"
 
 
-# The Tier 2 containers' mirrors after the runner's own (#5510).
-FALLBACK_MIRRORS: tuple[str, ...] = ()
+# The Tier 2 containers' mirrors after the runner's own (#5510): the archive
+# this script knows, over HTTP (the stock container has no CA certificates
+# before Install Git), then kernel.org's CDN mirror, outside Azure, AWS and
+# Canonical.
+FALLBACK_MIRRORS = ("http://archive.ubuntu.com/ubuntu/", "http://mirrors.edge.kernel.org/ubuntu/")
+NO_PRIORITY = 1000
+
+
+def runner_http_mirror(text: str) -> str | None:
+    """The runner's own mirror: the plain-HTTP, non-security entry with the
+    lowest priority (file order breaks a tie; no priority sorts last).
+
+    The Install Git step of the Tier 2 build carries the same rule as awk;
+    test_tier2_apt_cache runs it against this function's cases."""
+    best: tuple[int, str] | None = None
+    for line in text.splitlines():
+        fields = line.split()
+        if not fields or not fields[0].startswith("http://") or "security" in fields[0]:
+            continue
+        priority = next((int(f.split(":", 1)[1]) for f in fields[1:] if re.fullmatch(r"priority:[0-9]+", f)),
+                        NO_PRIORITY)
+        if best is None or priority < best[0]:
+            best = (priority, fields[0])
+    return best[1] if best else None
 
 
 def container_mirrors(mirrors: Path) -> list[str]:
-    raise NotImplementedError("#5510")
+    """One mirror per apt attempt in a Tier 2 container (#5510): the runner's
+    own, then FALLBACK_MIRRORS, without duplicates. A mirror that accepts and
+    never answers keeps apt past its bound on every index file, and apt's
+    mirror method never drops it, so the attempts change mirrors instead."""
+    try:
+        text = mirrors.read_text(encoding="utf-8", errors="surrogateescape") if mirrors.is_file() else ""
+    except OSError:
+        text = ""
+    first = runner_http_mirror(text)
+    order: list[str] = []
+    for uri in ((first,) if first else ()) + FALLBACK_MIRRORS:
+        if uri not in order:
+            order.append(uri)
+    return order
 
 
 def lines_of(text: str) -> list[str]:

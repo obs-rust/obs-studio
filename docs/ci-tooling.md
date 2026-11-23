@@ -1691,6 +1691,19 @@ is retried once; the downloaded `.deb` files stay in the archive mount (#5504).
 An update timeout and other errors fail at once. Persistent failures report the
 delta packages and fail the job.
 
+The Tier 2 containers fetch from one mirror at a time and change mirrors
+between attempts (#5510): first the runner's own (the first plain-HTTP,
+non-security entry of the host's `/etc/apt/apt-mirrors.txt`, which the build
+container mounts read-only at `/run/host-apt`), then `archive.ubuntu.com` and
+`mirrors.edge.kernel.org`, over HTTP because the stock container has no CA
+certificates before `Install Git`. A mirror that accepts connections and never
+answers keeps `apt-get update` past its bound on every index file, and apt's
+`mirror+file:` method never drops it, so a mirror list alone does not help.
+`ci/host_apt_mirrors.py` holds the list and the rule; the build step carries
+the same rule as shell, and `ci/test_tier2_apt_cache.py` checks both against
+the same cases. The runtime delta's timeout retry fetches the index from the
+next mirror. The security pocket keeps `security.ubuntu.com`.
+
 The separate prepared release runtime is refreshed manually. Its producer is
 `ci/tier2_setup_probe.py produce`, invoked by the existing `ci.yml`
 `tier2-setup-producer` job; it is not the GHCR `tier2-image` job. Request a
