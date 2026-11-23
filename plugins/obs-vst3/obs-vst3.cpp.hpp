@@ -836,7 +836,8 @@ static inline void processBlock(struct Vst3AudioData *filterData, const std::sha
 			}
 		}
 	}
-	plugin->processBlock(filterData->copyBuffers, filterData->channels, sidechain, sidechainFrames, filterData->frames);
+	plugin->processBlock(filterData->copyBuffers, filterData->channels, sidechain, sidechainFrames,
+			     filterData->frames);
 }
 
 static inline void process(struct Vst3AudioData *filterData, const std::shared_ptr<VST3Plugin> &plugin)
