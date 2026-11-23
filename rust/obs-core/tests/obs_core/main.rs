@@ -165,6 +165,8 @@ mod reset_audio;
 mod reset_audio2;
 mod reset_audio2_parity;
 mod reset_audio_parity;
+mod reset_source_uuids;
+mod reset_source_uuids_parity;
 mod set_cmdline_args;
 mod set_cmdline_args_parity;
 mod set_locale;
