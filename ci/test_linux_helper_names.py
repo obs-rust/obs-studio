@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HELPERS = {
     "OBS_FFMPEG_MUX_NAME": ("obs-ffmpeg-mux", "plugins/obs-ffmpeg/ffmpeg-mux/CMakeLists.txt"),
     "OBS_NVENC_TEST_NAME": ("obs-nvenc-test", "plugins/obs-nvenc/obs-nvenc-test/CMakeLists.txt"),
+    "OBS_VST3_SCANNER_NAME": ("obs-vst3-scanner", "plugins/obs-vst3/vst3-scan/CMakeLists.txt"),
 }
 # Posix callers that start a helper, and the CMake file that builds them.
 CALLERS = {
@@ -25,6 +26,9 @@ CALLERS = {
     "OBS_NVENC_TEST_NAME": [
         ("plugins/obs-nvenc/nvenc-helpers.c.h", "plugins/obs-nvenc/CMakeLists.txt"),
         ("frontend/utility/platform-x11.cpp.hpp", "frontend/cmake/os-linux.cmake"),
+    ],
+    "OBS_VST3_SCANNER_NAME": [
+        ("plugins/obs-vst3/hosts/linux/vst3-host-linux.cpp.hpp", "plugins/obs-vst3/CMakeLists.txt"),
     ],
 }
 
@@ -60,9 +64,9 @@ class LinuxHelperNamesTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("app_identity_check", ROOT / "ci/app_identity_check.py")
         check = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(check)
-        check.check_deb_commands(["obs-studio-rust-gui", "obs-studio-rust-ffmpeg-mux"])
+        check.check_deb_commands(["obs-studio-rust-gui", "obs-studio-rust-ffmpeg-mux", "obs-studio-rust-vst3-scanner"])
         with self.assertRaises(RuntimeError):
-            check.check_deb_commands(["obs-studio-rust-gui", "obs-nvenc-test"])
+            check.check_deb_commands(["obs-studio-rust-gui", "obs-vst3-scanner"])
 
 
 if __name__ == "__main__":

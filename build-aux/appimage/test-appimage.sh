@@ -394,7 +394,11 @@ fi
 for m in obs-webrtc.so obs-vst3.so; do
     grep -qx "$m" "$INVENTORY" || fail "the AppImage does not ship $m"
 done
-[ -x "$APPDIR/usr/bin/obs-vst3-scanner" ] || fail "the AppImage does not ship the VST3 scanner next to OBS"
+VST3_SCANNER=obs-vst3-scanner
+if [ "$CONFIG_NAME" = obs-studio-rust ]; then
+    VST3_SCANNER=obs-studio-rust-vst3-scanner
+fi
+[ -x "$APPDIR/usr/bin/$VST3_SCANNER" ] || fail "the AppImage does not ship the VST3 scanner next to OBS"
 
 # ============================================================================
 # No desktop-session package is installed in this scenario, so nothing in the

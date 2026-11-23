@@ -39,5 +39,10 @@ void vst3_prepare_plugin_environment()
 
 const char *vst3_scanner_executable()
 {
-	return "obs-vst3-scanner";
+#ifndef OBS_VST3_SCANNER_NAME
+#define OBS_VST3_SCANNER_NAME "obs-vst3-scanner"
+#endif
+	return OBS_VST3_SCANNER_NAME;
 }
+
+#undef OBS_VST3_SCANNER_NAME
