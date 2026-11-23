@@ -3,6 +3,7 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-canvas-channel-fields.c.h"
+#include "libobs/obs-canvas-channel-setter.c.h"
 #include "libobs/obs-canvas-clear-mix-fields.c.h"
 #include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-has-valid-video-info-fields.c.h"
