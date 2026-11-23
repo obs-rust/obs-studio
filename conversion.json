@@ -1,17 +1,17 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 83588,
-      "libobs": 99374,
+      "frontend": 83622,
+      "libobs": 99461,
       "plugins": 148660,
       "shared": 15968
     },
-    "percent": 17.49,
-    "ported_lines": 60801,
-    "total_lines": 347590
+    "percent": 17.51,
+    "ported_lines": 60873,
+    "total_lines": 347711
   },
-  "commit": "b55dc05c",
-  "date": "2026-11-22",
+  "commit": "a89799fa",
+  "date": "2026-11-23",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 52.0,
-          "ported_lines": 34860,
-          "total_lines": 67044
+          "percent": 52.04,
+          "ported_lines": 34932,
+          "total_lines": 67131
         },
         "graphics": {
           "percent": 72.14,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 958,
-      "hybrid_lines": 38573,
-      "percent": 61.18,
-      "ported_lines": 60801,
-      "total_lines": 99374
+      "files": 963,
+      "hybrid_lines": 38588,
+      "percent": 61.2,
+      "ported_lines": 60873,
+      "total_lines": 99461
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 54.0,
-            "ported_lines": 33507,
-            "total_lines": 62055
+            "percent": 54.04,
+            "ported_lines": 33579,
+            "total_lines": 62142
           },
           "graphics": {
             "percent": 72.66,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 923,
-        "hybrid_lines": 34254,
-        "percent": 62.3,
+        "files": 928,
+        "hybrid_lines": 34269,
+        "percent": 62.32,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -283,6 +283,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-encoder-video-tex-active.c.h",
+          "obs-enter-leave-graphics.c.h",
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
@@ -505,8 +506,10 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-cmdline-args.c.h",
           "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
+          "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -665,15 +668,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 56615,
-        "total_lines": 90869
+        "ported_lines": 56687,
+        "total_lines": 90956
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 53.33,
-            "ported_lines": 29907,
-            "total_lines": 56081
+            "percent": 53.37,
+            "ported_lines": 29979,
+            "total_lines": 56168
           },
           "graphics": {
             "percent": 72.66,
@@ -691,9 +694,9 @@
             "total_lines": 9978
           }
         },
-        "files": 901,
-        "hybrid_lines": 31880,
-        "percent": 62.41,
+        "files": 906,
+        "hybrid_lines": 31895,
+        "percent": 62.43,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -894,6 +897,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-encoder-video-tex-active.c.h",
+          "obs-enter-leave-graphics.c.h",
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
@@ -1102,8 +1106,10 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-cmdline-args.c.h",
           "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
+          "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -1260,15 +1266,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52936,
-        "total_lines": 84816
+        "ported_lines": 53008,
+        "total_lines": 84903
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 53.45,
-            "ported_lines": 30848,
-            "total_lines": 57712
+            "percent": 53.5,
+            "ported_lines": 30920,
+            "total_lines": 57799
           },
           "graphics": {
             "percent": 72.21,
@@ -1286,9 +1292,9 @@
             "total_lines": 10704
           }
         },
-        "files": 912,
-        "hybrid_lines": 33238,
-        "percent": 61.95,
+        "files": 917,
+        "hybrid_lines": 33253,
+        "percent": 61.97,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1491,6 +1497,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-encoder-video-tex-active.c.h",
+          "obs-enter-leave-graphics.c.h",
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
@@ -1699,8 +1706,10 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-cmdline-args.c.h",
           "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
+          "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -1862,12 +1871,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 54114,
-        "total_lines": 87352
+        "ported_lines": 54186,
+        "total_lines": 87439
       }
     }
   },
   "rust": {
-    "lines": 231881
+    "lines": 232539
   }
 }
