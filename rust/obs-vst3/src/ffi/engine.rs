@@ -1,12 +1,13 @@
 use super::automation::Automation;
 use super::connection::{self, Endpoint};
+use super::factory::{class_name, decode_class_id};
 use super::handler::{Controls, Handler};
 use super::host_app::HostApp;
 use super::stream::Stream;
 use crate::Error;
 use crate::bus::{BusPlan, Description, Kind};
 use crate::parameters::Transfer;
-use crate::platform::{Module, WINDOWS_COM_ORDER};
+use crate::platform::{Module, ModuleUse};
 use std::ffi::CString;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -19,9 +20,8 @@ use vst3::Steinberg::Vst::{
     ProcessData, ProcessSetup,
 };
 use vst3::Steinberg::{
-    FUnknown, IPluginBase, IPluginBaseTrait, IPluginFactory, IPluginFactory2, IPluginFactory2Trait,
-    IPluginFactory3, IPluginFactory3Trait, IPluginFactoryTrait, PClassInfo, PClassInfo2,
-    PClassInfoW, TUID, kResultOk,
+    FUnknown, IPluginBase, IPluginBaseTrait, IPluginFactory, IPluginFactory3, IPluginFactory3Trait,
+    IPluginFactoryTrait, TUID, kResultOk,
 };
 use vst3::{ComPtr, ComWrapper, Interface};
 
@@ -33,7 +33,7 @@ const REALTIME: i32 = 0;
 const SAMPLE_32: i32 = 0;
 
 pub struct Engine {
-    _handler: ComPtr<IComponentHandler>,
+    handler: Option<RegisteredHandler>,
     controls: Arc<Controls>,
     processor: ComPtr<IAudioProcessor>,
     connections: Option<[Endpoint; 2]>,
@@ -51,7 +51,7 @@ pub struct Engine {
     pub(super) main_input: usize,
     pub(super) main_output: usize,
     pub(super) sidechain: Option<usize>,
-    max_frames: usize,
+    pub(super) max_frames: usize,
     active: bool,
     processing: bool,
 }
@@ -104,6 +104,31 @@ impl Drop for Initialized {
     }
 }
 
+struct RegisteredHandler {
+    controller: ComPtr<IEditController>,
+    _handler: ComPtr<IComponentHandler>,
+}
+
+impl RegisteredHandler {
+    fn new(controller: ComPtr<IEditController>, handler: ComPtr<IComponentHandler>) -> Self {
+        // SAFETY: The controller is initialized and both interfaces remain live
+        // until the guard detaches the handler, including on setup failure.
+        unsafe { controller.setComponentHandler(handler.as_ptr()) };
+        Self {
+            controller,
+            _handler: handler,
+        }
+    }
+}
+
+impl Drop for RegisteredHandler {
+    fn drop(&mut self) {
+        // SAFETY: The controller still owns a live SDK object and the handler
+        // remains live for the callback to release any references it retained.
+        unsafe { self.controller.setComponentHandler(ptr::null_mut()) };
+    }
+}
+
 impl Engine {
     pub fn open(
         path: &Path,
@@ -134,7 +159,7 @@ impl Engine {
             return Err(Error("invalid VST3 processing setup"));
         }
         let id = decode_class_id(class_id).ok_or(Error("invalid VST3 class ID"))?;
-        let module = Module::open(path)?;
+        let module = Module::open(path, ModuleUse::Host)?;
         if let Some(factory) = module.factory().cast::<IPluginFactory3>() {
             // SAFETY: The VST3 module and its components drop before this host context.
             unsafe { factory.setHostContext(host.as_ptr()) };
@@ -168,6 +193,21 @@ impl Engine {
             .or_else(|| controller.cast::<IAudioProcessor>())
             .ok_or(Error("VST3 processor not found"))?;
 
+        let controls = Arc::new(Controls {
+            component: component.clone(),
+            controller: controller.clone(),
+            processor: processor.clone(),
+            process_lock: Mutex::new(()),
+            pending_latency_restart: AtomicBool::new(false),
+        });
+        // SAFETY: The controller owns its parameter metadata after initialization.
+        let parameter_count =
+            usize::try_from(unsafe { controller.getParameterCount() }).unwrap_or_default();
+        let automation = AutomationState::new(parameter_count);
+        let handler = RegisteredHandler::new(
+            controller.clone(),
+            Handler::create(&controls, Arc::clone(&automation.from_gui)),
+        );
         let NegotiatedBuses {
             plan,
             input: actual_input,
@@ -190,23 +230,10 @@ impl Engine {
         // begin zeroed. The flags below identify the fields valid for plug-ins.
         let mut context: ProcessContext = unsafe { mem::zeroed() };
         context.sampleRate = sample_rate;
-        context.state = kPlaying | kRecording | kSystemTimeValid;
-        let controls = Arc::new(Controls {
-            component: component.clone(),
-            controller: controller.clone(),
-            processor: processor.clone(),
-            process_lock: Mutex::new(()),
-            pending_latency_restart: AtomicBool::new(false),
-        });
-        // SAFETY: The controller owns its parameter metadata after initialization.
-        let parameter_count =
-            usize::try_from(unsafe { controller.getParameterCount() }).unwrap_or_default();
-        let automation = AutomationState::new(parameter_count);
-        let handler = Handler::create(&controls, Arc::clone(&automation.from_gui));
-        // SAFETY: The retained handler remains live until the controller is disconnected.
-        unsafe { controller.setComponentHandler(handler.as_ptr()) };
+        context.state =
+            u32::from_ne_bytes((kPlaying | kRecording | kSystemTimeValid).to_ne_bytes());
         let mut engine = Self {
-            _handler: handler,
+            handler: Some(handler),
             controls,
             processor,
             connections,
@@ -233,8 +260,12 @@ impl Engine {
     }
 
     pub(super) fn sidechain_channels(&self) -> usize {
-        self.sidechain
-            .map_or(0, |index| self.input.buses[index].channels.len())
+        self.sidechain.map_or(0, |index| {
+            self.input
+                .buses
+                .get(index)
+                .map_or(0, |bus| bus.channels.len().min(2))
+        })
     }
 
     pub(super) fn controller_ptr(&self) -> *mut IEditController {
@@ -255,6 +286,10 @@ impl Engine {
         }
         // SAFETY: The initialized component is live and process is exclusive.
         if unsafe { self.component.setActive(u8::from(active)) } != kResultOk {
+            if active {
+                // SAFETY: Restore the live component after a rejected activation.
+                unsafe { self.component.setActive(0) };
+            }
             return Err(Error("VST3 component activation failed"));
         }
         self.active = active;
@@ -384,60 +419,11 @@ impl Engine {
     }
 }
 
-fn class_name(factory: &ComPtr<IPluginFactory>, id: &TUID) -> Option<CString> {
-    const AUDIO_CLASS: &[u8] = b"Audio Module Class";
-    let v3 = factory.cast::<IPluginFactory3>();
-    let v2 = factory.cast::<IPluginFactory2>();
-    // SAFETY: Each SDK metadata struct consists of numeric fields and inline
-    // arrays. The owned factory remains live throughout enumeration.
-    unsafe {
-        for index in 0..factory.countClasses() {
-            if let Some(v3) = &v3 {
-                let mut record: PClassInfoW = mem::zeroed();
-                if v3.getClassInfoUnicode(index, &mut record) == kResultOk {
-                    if &record.cid == id && bytes(&record.category) == AUDIO_CLASS {
-                        let wide = record.name.split(|unit| *unit == 0).next()?;
-                        return CString::new(String::from_utf16_lossy(wide)).ok();
-                    }
-                    continue;
-                }
-            }
-            if let Some(v2) = &v2 {
-                let mut record: PClassInfo2 = mem::zeroed();
-                if v2.getClassInfo2(index, &mut record) == kResultOk {
-                    if &record.cid == id && bytes(&record.category) == AUDIO_CLASS {
-                        return CString::new(bytes(&record.name)).ok();
-                    }
-                    continue;
-                }
-            }
-            let mut record: PClassInfo = mem::zeroed();
-            if factory.getClassInfo(index, &mut record) == kResultOk
-                && &record.cid == id
-                && bytes(&record.category) == AUDIO_CLASS
-            {
-                return CString::new(bytes(&record.name)).ok();
-            }
-        }
-    }
-    None
-}
-
-fn bytes(chars: &[std::ffi::c_char]) -> Vec<u8> {
-    chars
-        .iter()
-        .take_while(|ch| **ch != 0)
-        .map(|ch| ch.to_ne_bytes()[0])
-        .collect()
-}
-
 impl Drop for Engine {
     fn drop(&mut self) {
         let _ = self.set_processing(false);
         let _ = self.activate(false);
-        // SAFETY: The controller is still initialized. Detach the callback before
-        // releasing the component, controller or module.
-        unsafe { self.controller.setComponentHandler(ptr::null_mut()) };
+        let _ = self.handler.take();
         let _ = self.connections.take();
         // Follow PlugProvider's original order after both endpoints disconnect.
         let _ = self.component_init.take();
@@ -454,26 +440,6 @@ fn create<I: Interface>(factory: &ComPtr<IPluginFactory>, cid: &TUID) -> Option<
             .then(|| ComPtr::from_raw(object.cast::<I>()))
             .flatten()
     }
-}
-
-fn decode_class_id(class_id: &str) -> Option<TUID> {
-    if !class_id.is_ascii() || class_id.len() != 32 {
-        return None;
-    }
-    let mut bytes = [0; 16];
-    for (index, byte) in bytes.iter_mut().enumerate() {
-        *byte = std::ffi::c_char::from_ne_bytes([u8::from_str_radix(
-            &class_id[index * 2..index * 2 + 2],
-            16,
-        )
-        .ok()?]);
-    }
-    if WINDOWS_COM_ORDER {
-        bytes[..4].reverse();
-        bytes[4..6].reverse();
-        bytes[6..8].reverse();
-    }
-    Some(bytes)
 }
 
 struct NegotiatedBuses {

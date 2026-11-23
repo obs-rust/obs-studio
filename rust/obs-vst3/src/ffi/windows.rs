@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::platform::ModuleUse;
 use libloading::os::windows::Library;
 use std::path::Path;
 use vst3::{ComPtr, Steinberg::IPluginFactory};
@@ -30,15 +31,24 @@ impl Drop for ActiveLibrary {
 }
 
 impl Module {
-    pub(crate) fn open(path: &Path) -> Result<Self, Error> {
-        let path = if path.is_dir() {
-            let name = path.file_name().ok_or(Error("invalid VST3 bundle"))?;
-            path.join("Contents")
+    pub(crate) fn open(path: &Path, _usage: ModuleUse) -> Result<Self, Error> {
+        if !path.is_dir() {
+            return Self::open_binary(path);
+        }
+        let name = path.file_name().ok_or(Error("invalid VST3 bundle"))?;
+        let contents = path.join("Contents");
+        if std::env::consts::ARCH == "aarch64" {
+            return Self::open_binary(&contents.join("arm64-win").join(name))
+                .or_else(|_| Self::open_binary(&contents.join("arm64x-win").join(name)));
+        }
+        Self::open_binary(
+            &contents
                 .join(format!("{}-win", std::env::consts::ARCH))
-                .join(name)
-        } else {
-            path.to_owned()
-        };
+                .join(name),
+        )
+    }
+
+    fn open_binary(path: &Path) -> Result<Self, Error> {
         // SAFETY: The caller explicitly loads a VST3 DLL. The mandatory
         // factory and optional lifecycle exports use the SDK's Windows ABI.
         unsafe {

@@ -43,7 +43,7 @@ pub(super) fn scan(candidates: &BTreeSet<PathBuf>, cached: Option<Cache>) -> Cac
     for path in candidates {
         if let Some(previous) = reusable.remove(path) {
             if previous.iter().any(|class| class.discardable) {
-                classes.extend(platform::enumerate(path));
+                classes.extend(enumerate(path));
             } else {
                 classes.extend(previous);
             }
@@ -65,9 +65,25 @@ pub(super) fn scan(candidates: &BTreeSet<PathBuf>, cached: Option<Cache>) -> Cac
 fn read_classes(path: &Path) -> Vec<Class> {
     let mut classes = metadata::classes(path);
     if classes.is_empty() {
-        classes = platform::enumerate(path);
+        classes = enumerate(path);
     }
     classes
+}
+
+fn enumerate(path: &Path) -> Vec<Class> {
+    obs_vst3::enumerate(path)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|native| {
+            class(
+                path,
+                native.name,
+                native.id,
+                native.discardable,
+                native.sub_categories.split('|'),
+            )
+        })
+        .collect()
 }
 
 pub(super) fn class(

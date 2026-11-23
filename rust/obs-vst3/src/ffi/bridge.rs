@@ -132,6 +132,9 @@ unsafe extern "C" fn vst3_rust_host_process(
     else {
         return false;
     };
+    if frames > instance.max_frames {
+        return false;
+    }
     // SAFETY: OBS supplies channels live main planes of at least frames each.
     // Borrow samples only for each copy so even aliased planes are supported.
     let main = unsafe { slice::from_raw_parts(main, channels) };
@@ -161,7 +164,11 @@ unsafe extern "C" fn vst3_rust_host_process(
             };
         }
     }
-    if instance.process(frames, timestamp).is_err() {
+    let processed = instance.process(frames, timestamp).is_ok();
+    // A plug-in can request a restart while reporting a failed block.
+    // SAFETY: The native caller supplies writable storage for the flag.
+    unsafe { gui_pending.write(instance.needs_gui_drain()) };
+    if !processed {
         return false;
     }
     for (channel, &target) in main.iter().enumerate() {
@@ -174,8 +181,6 @@ unsafe extern "C" fn vst3_rust_host_process(
             unsafe { slice::from_raw_parts_mut(target, frames) }.copy_from_slice(source);
         }
     }
-    // SAFETY: The native caller provides writable storage for the pending flag.
-    unsafe { gui_pending.write(instance.needs_gui_drain()) };
     true
 }
 

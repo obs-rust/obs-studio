@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::platform::ModuleUse;
 use std::ffi::{CStr, c_char, c_void};
 use std::mem;
 use std::path::Path;
@@ -23,6 +24,7 @@ unsafe extern "C" {
     fn CFStringCreateWithCString(allocator: CfRef, bytes: *const c_char, encoding: u32) -> CfRef;
     fn CFBundleCreate(allocator: CfRef, url: CfRef) -> CfRef;
     fn CFBundleLoadExecutable(bundle: CfRef) -> u8;
+    fn CFBundleUnloadExecutable(bundle: CfRef);
     fn CFBundleGetFunctionPointerForName(bundle: CfRef, name: CfRef) -> CfRef;
     fn CFRelease(value: CfRef);
 }
@@ -51,8 +53,23 @@ pub(crate) struct Module {
     _library: ActiveBundle,
 }
 
+struct LoadedBundle {
+    bundle: OwnedCf,
+    usage: ModuleUse,
+}
+
+impl Drop for LoadedBundle {
+    fn drop(&mut self) {
+        if matches!(self.usage, ModuleUse::Scanner) {
+            // SAFETY: The scanner has released all SDK objects and called bundleExit.
+            // The host keeps the original SDK behavior for native editor bundles.
+            unsafe { CFBundleUnloadExecutable(self.bundle.as_ptr()) };
+        }
+    }
+}
+
 struct ActiveBundle {
-    _bundle: OwnedCf,
+    _bundle: LoadedBundle,
     exit: Exit,
 }
 
@@ -65,7 +82,7 @@ impl Drop for ActiveBundle {
 }
 
 impl Module {
-    pub(crate) fn open(path: &Path) -> Result<Self, Error> {
+    pub(crate) fn open(path: &Path, usage: ModuleUse) -> Result<Self, Error> {
         let bytes = path.as_os_str().as_encoded_bytes();
         let length = isize::try_from(bytes.len()).map_err(|_| Error("invalid VST3 bundle path"))?;
         // SAFETY: The CF create functions borrow valid path bytes and return
@@ -83,18 +100,20 @@ impl Module {
             if CFBundleLoadExecutable(bundle.as_ptr()) == 0 {
                 return Err(Error("could not load the VST3 bundle executable"));
             }
+            let loaded = LoadedBundle { bundle, usage };
+            let bundle = &loaded.bundle;
             let entry: Entry = mem::transmute(
-                symbol(&bundle, c"bundleEntry")
+                symbol(bundle, c"bundleEntry")
                     .ok_or(Error("missing bundleEntry"))?
                     .as_ptr(),
             );
             let exit: Exit = mem::transmute(
-                symbol(&bundle, c"bundleExit")
+                symbol(bundle, c"bundleExit")
                     .ok_or(Error("missing bundleExit"))?
                     .as_ptr(),
             );
             let get_factory: GetFactory = mem::transmute(
-                symbol(&bundle, c"GetPluginFactory")
+                symbol(bundle, c"GetPluginFactory")
                     .ok_or(Error("missing GetPluginFactory"))?
                     .as_ptr(),
             );
@@ -102,7 +121,7 @@ impl Module {
                 return Err(Error("bundleEntry rejected initialization"));
             }
             let library = ActiveBundle {
-                _bundle: bundle,
+                _bundle: loaded,
                 exit,
             };
             let factory = ComPtr::from_raw(get_factory()).ok_or(Error("null VST3 factory"))?;

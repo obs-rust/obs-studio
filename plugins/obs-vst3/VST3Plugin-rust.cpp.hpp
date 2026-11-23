@@ -49,10 +49,8 @@ bool VST3Plugin::processBlock(float *const *main, size_t channels, const float *
 			      size_t sidechainFrames, size_t frames)
 {
 	bool guiPending = false;
-	if (!vst3_rust_host_process(rustHost, main, channels, sidechain, sidechainFrames, frames,
-				    static_cast<int64_t>(os_gettime_ns()), &guiPending)) {
-		return false;
-	}
+	const bool processed = vst3_rust_host_process(rustHost, main, channels, sidechain, sidechainFrames, frames,
+						      static_cast<int64_t>(os_gettime_ns()), &guiPending);
 
 	if (guiPending && !uiDrainScheduled.exchange(true, std::memory_order_acq_rel)) {
 		if (QObject *receiver = QCoreApplication::instance()) {
@@ -60,8 +58,8 @@ bool VST3Plugin::processBlock(float *const *main, size_t channels, const float *
 			QMetaObject::invokeMethod(
 				receiver,
 				[self] {
-					if (self) {
-						self->drainDspToGui();
+					if (auto *plugin = self.data()) {
+						plugin->drainDspToGui();
 					}
 				},
 				Qt::QueuedConnection);
@@ -69,7 +67,7 @@ bool VST3Plugin::processBlock(float *const *main, size_t channels, const float *
 			uiDrainScheduled.store(false, std::memory_order_release);
 		}
 	}
-	return true;
+	return processed;
 }
 
 void VST3Plugin::drainDspToGui()

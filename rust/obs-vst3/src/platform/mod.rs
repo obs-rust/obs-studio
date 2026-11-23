@@ -19,3 +19,9 @@ cfg_select! {
 }
 
 pub(crate) use host::{Module, WINDOWS_COM_ORDER};
+
+#[derive(Clone, Copy)]
+pub(crate) enum ModuleUse {
+    Host,
+    Scanner,
+}

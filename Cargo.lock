@@ -852,11 +852,10 @@ name = "obs-vst3-scanner"
 version = "0.1.0"
 dependencies = [
  "json5",
- "libloading",
+ "obs-vst3",
  "serde",
  "serde_json",
  "tempfile",
- "vst3",
 ]
 
 [[package]]

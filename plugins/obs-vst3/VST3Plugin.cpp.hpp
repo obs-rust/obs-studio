@@ -351,8 +351,8 @@ void VST3Plugin::postprocess()
 			QMetaObject::invokeMethod(
 				receiver,
 				[self] {
-					if (self) {
-						self->drainDspToGui();
+					if (auto *plugin = self.data()) {
+						plugin->drainDspToGui();
 					}
 				},
 				Qt::QueuedConnection);
@@ -433,15 +433,13 @@ bool VST3Plugin::processBlock(float *const *main, size_t channels, const float *
 			}
 		}
 	}
-	if (!process(static_cast<int>(frames))) {
-		return false;
-	}
+	const bool processed = process(static_cast<int>(frames));
 	for (size_t ch = 0; ch < channels; ++ch) {
 		if (main[ch]) {
 			memcpy(main[ch], channelBuffer32(kOutput, static_cast<int>(ch)), frames * sizeof(float));
 		}
 	}
-	return true;
+	return processed;
 }
 
 bool VST3Plugin::saveStates(std::vector<uint8_t> &compOut, std::vector<uint8_t> &ctrlOut) const

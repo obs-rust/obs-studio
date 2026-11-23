@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::platform::ModuleUse;
 use libloading::os::unix::Library;
 use std::ffi::c_void;
 use std::path::Path;
@@ -31,7 +32,7 @@ impl Drop for ActiveLibrary {
 }
 
 impl Module {
-    pub(crate) fn open(bundle: &Path) -> Result<Self, Error> {
+    pub(crate) fn open(bundle: &Path, _usage: ModuleUse) -> Result<Self, Error> {
         let mut binary = bundle
             .file_stem()
             .ok_or(Error("invalid VST3 bundle"))?
