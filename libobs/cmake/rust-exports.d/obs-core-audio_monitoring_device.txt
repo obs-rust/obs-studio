@@ -1,0 +1,2 @@
+obs_reset_audio_monitoring
+obs_set_audio_monitoring_device
