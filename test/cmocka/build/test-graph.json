@@ -14026,6 +14026,21 @@
         "libobs/data"
       ]
     },
+    "test_raw_video_callbacks": {
+      "sources": [
+        "test/cmocka/test_raw_video_callbacks.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_record_disk_space": {
       "sources": [
         "test/cmocka/test_record_disk_space.c",
@@ -27992,6 +28007,14 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_raw_video_callbacks": {
+      "target": "test_raw_video_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 60
     },
     "test_record_disk_space": {
       "target": "test_record_disk_space"
