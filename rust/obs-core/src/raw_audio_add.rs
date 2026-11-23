@@ -29,6 +29,6 @@ pub fn add<A: Audio>(
     callback: A::Callback,
     param: A::Param,
 ) {
-    let _ = (audio, mix, conversion, callback, param);
-    todo!("obs_add_raw_audio_callback")
+    let output = audio.main_audio();
+    audio.connect(output, mix, conversion, callback, param);
 }
