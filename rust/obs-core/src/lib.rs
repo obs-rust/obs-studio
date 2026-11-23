@@ -189,6 +189,7 @@ pub mod object_validity_query;
 pub mod output_protocol_registry;
 pub mod platform;
 pub mod private_data;
+pub mod raw_audio_add;
 pub mod raw_audio_remove;
 pub mod reset_audio;
 pub mod reset_audio2;
