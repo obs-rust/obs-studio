@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
+if(NOT ENABLE_VST3)
+  return()
+endif()
+
 find_package(Qt6 REQUIRED Widgets)
 include(cmake/sdk.cmake)
 
