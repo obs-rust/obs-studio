@@ -810,6 +810,7 @@ dependencies = [
  "obs-build",
  "obs-mcp",
  "obs-sys",
+ "obs-vst3",
  "obs-vst3-scanner",
  "pkg-config",
  "serde_json",
@@ -837,6 +838,10 @@ dependencies = [
  "pkg-config",
  "proptest",
 ]
+
+[[package]]
+name = "obs-vst3"
+version = "0.1.0"
 
 [[package]]
 name = "obs-vst3-scanner"
