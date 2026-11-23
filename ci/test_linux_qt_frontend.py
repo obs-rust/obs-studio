@@ -265,7 +265,8 @@ class LinuxQtFrontendTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 report = [call for call in self.calls("uv") if "ci/cpp_lint.py" in call["argv"]]
                 self.assertEqual([call["argv"] for call in report],
-                                 [["run", "--no-project", "ci/cpp_lint.py", "--build", str(self.build)]])
+                                 [["run", "--no-project", "ci/cpp_lint.py", "--build", str(self.build),
+                                   "--install-clazy"]])
                 self.assertIn("qt-phase phase=lint seconds=", result.stdout)
                 self.assertLess(result.stdout.index("qt-phase phase=test"), result.stdout.index("qt-phase phase=lint"))
                 self.assertEqual("exited 1 (report only, ignored)" in result.stdout, code == "1")

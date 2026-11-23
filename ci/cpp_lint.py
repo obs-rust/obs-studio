@@ -33,6 +33,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -413,7 +414,8 @@ def read(path: str) -> str | None:
 
 
 def lint(build: Path, base: str | None, *, git: Git = git, runner: Runner = run,
-         env: dict[str, str] | None = None) -> Report:
+         env: dict[str, str] | None = None, which: Callable[[str], str | None] = shutil.which,
+         install_clazy: bool = False) -> Report:
     env = dict(os.environ) if env is None else env
     report = Report()
     report(f"== C++ lint report (report only, #5453): {CLANG_TIDY}, {LIZARD}")
@@ -447,6 +449,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--build", type=Path, required=True, help="build dir with compile_commands.json")
     parser.add_argument("--base", help="commit to diff against (default: the GitHub event, or origin/master)")
+    parser.add_argument("--install-clazy", action="store_true", help="#5453 step 2")
     args = parser.parse_args(argv)
     try:
         report = lint(args.build.resolve(), args.base)
