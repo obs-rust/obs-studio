@@ -79,6 +79,8 @@ mod enum_contexts_parity;
 mod enum_modules_parity;
 mod enum_scenes;
 mod enum_scenes_parity;
+mod enum_sources;
+mod enum_sources_parity;
 mod find_modules;
 mod find_modules_parity;
 mod get_audio;

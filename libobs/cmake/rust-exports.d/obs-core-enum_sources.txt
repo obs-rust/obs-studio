@@ -1,0 +1,4 @@
+obs_canvas_enum_scenes
+obs_enum_all_sources
+obs_enum_canvases
+obs_enum_sources
