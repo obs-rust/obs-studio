@@ -155,6 +155,8 @@ mod private_data;
 mod private_data_parity;
 mod raw_audio_remove;
 mod raw_audio_remove_parity;
+mod reset_audio;
+mod reset_audio_parity;
 mod set_cmdline_args;
 mod set_cmdline_args_parity;
 mod set_locale;
