@@ -316,9 +316,7 @@ class WorkflowTest(unittest.TestCase):
     def test_completion_trigger_is_isolated_from_rebase_and_untrusted_checkout(self):
         guard = load_ci("test_ai_rebase_token_guard")
         workflow = (ROOT / ".github/workflows/ai-rebase.yaml").read_text()
-        self.assertIn("workflow_run:", workflow)
-        self.assertIn("workflows: [Pull]", workflow)
-        self.assertIn("types: [completed]", workflow)
+        self.assertNotIn("workflow_run:", workflow)
         jobs = guard.jobs(workflow)
         recovery = jobs["capacity-recovery"]
         self.assertIn("github.event.workflow_run.id", recovery)

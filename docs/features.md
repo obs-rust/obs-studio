@@ -3213,3 +3213,5 @@ area.
 - MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
 
 - MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).
+
+- **Bounded automatic conflict retries.** AI rebases wait six hours before retrying an unchanged PR, preserve capacity recovery, and limit attempts to three per sweep and six per hour. Issue [#5497](https://github.com/obs-rust/obs-studio/issues/5497).

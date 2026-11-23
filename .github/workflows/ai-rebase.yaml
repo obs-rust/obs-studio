@@ -3,7 +3,7 @@ name: AI rebase
 # Rebases conflicting (DIRTY) PRs onto master and resolves conflicts with the
 # clud agent (--unattended, DeepSeek Flash via OpenRouter) following
 # ci/ai_rebase_prompt.md; ci/ai_rebase.py verifies and pushes. How many PRs a run rebases comes
-# from ci/backpressure.py's live headroom, not from a setting: when the merge
+# from hard attempt caps plus ci/backpressure.py's live headroom: when the merge
 # queue is backed up or runners are starved, this rebases nothing, since every
 # rebase restarts a PR's CI.
 #
@@ -16,12 +16,9 @@ name: AI rebase
 #   secrets.AI_REBASE_APP_PRIVATE_KEY   its private key
 # It must not be GITHUB_TOKEN: a push/enqueue made with GITHUB_TOKEN starts
 # no workflows, so the rebased PR would never get CI.
+# Schedule/manual scan retains capacity recovery without a Pull-completion
+# feedback edge; master pushes do not start sweeps.
 on:
-  push:
-    branches: [master]
-  workflow_run:
-    workflows: [Pull]
-    types: [completed]
   schedule:
     - cron: "17,47 * * * *"
   workflow_dispatch:
@@ -43,10 +40,7 @@ jobs:
   capacity-recovery:
     if: >-
       (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio') &&
-      github.repository == 'obs-rust/obs-studio' &&
-      (github.event_name != 'workflow_run' ||
-       ((github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'merge_group') &&
-        (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')))
+      github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # Serialize all recovery paths, without waiting behind a 30-minute rebase.
