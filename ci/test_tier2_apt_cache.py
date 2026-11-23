@@ -385,6 +385,71 @@ esac
         self.assertIn("for attempt in 1 2 3", install_git)
         self.assertIn("--fix-missing", install_git)
 
+    def test_install_git_recovers_dpkg_before_each_retry(self):
+        # #5504, run 45113911635: a slow mirror let `timeout 180` stop the
+        # first install in the unpack; the retries then failed at once on
+        # "dpkg was interrupted". Run the step's real retry loop with mocked
+        # apt-get and dpkg: an install stopped in the unpack leaves dpkg
+        # interrupted, and every apt install refuses to run until
+        # `dpkg --configure -a`.
+        j = job("rust-linux-tier2-build")
+        block = j[j.index("name: Install Git"):].split("run: |\n", 1)[1].splitlines()
+        # The run block ends at the first non-empty line indented less than it.
+        indent = len(block[0]) - len(block[0].lstrip())
+        end = next(n for n, line in enumerate(block) if line.strip() and len(line) - len(line.lstrip()) < indent)
+        run = textwrap.dedent("\n".join(block[:end]))
+        loop = run[run.index("for attempt in 1 2 3"):]
+        loop = loop[:loop.index("\ndone") + len("\ndone")]
+        # The loop waits 10 and 20 s between attempts; the test does not.
+        script = "sleep() { :; }\n" + loop
+        apt = r'''#!/bin/sh
+printf 'apt-get %s\n' "$*" >> "$TRACE"
+case "$*" in
+  'update -qq') exit 0 ;;
+esac
+if [ -e "$STATE/interrupted" ]; then
+  echo "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem." >&2
+  exit 100
+fi
+case "$*" in
+  '-f install -y') exit 0 ;;
+  'install -y '*)
+    count=$(grep -c '^apt-get install -y ' "$TRACE")
+    if [ "$count" -le "$FAIL_INSTALLS" ]; then : > "$STATE/interrupted"; exit 124; fi
+    exit 0 ;;
+esac
+exit 99
+'''
+        dpkg = r'''#!/bin/sh
+printf 'dpkg %s\n' "$*" >> "$TRACE"
+[ "$*" = '--configure -a' ] || exit 99
+rm -f "$STATE/interrupted"
+'''
+        for failures in (0, 1, 2, 3):
+            with self.subTest(failures=failures), tempfile.TemporaryDirectory() as tmp:
+                mock_bin = Path(tmp) / "bin"
+                mock_bin.mkdir()
+                for name, body in (("apt-get", apt), ("dpkg", dpkg)):
+                    (mock_bin / name).write_text(body)
+                    (mock_bin / name).chmod(0o755)
+                trace = Path(tmp) / "trace"
+                trace.touch()
+                result = subprocess.run(
+                    ["bash", "-e", "-o", "pipefail", "-c", script],
+                    capture_output=True, text=True, timeout=30,
+                    env={**os.environ, "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
+                         "TRACE": str(trace), "STATE": tmp, "FAIL_INSTALLS": str(failures)},
+                )
+                self.assertEqual(result.returncode == 0, failures < 3, result.stdout + result.stderr)
+                calls = trace.read_text().splitlines()
+                installs = [n for n, call in enumerate(calls) if call.startswith("apt-get install -y ")]
+                self.assertEqual(len(installs), min(failures + 1, 3), calls)
+                for attempt, first in enumerate(n for n, call in enumerate(calls) if call == "apt-get update -qq"):
+                    # Each attempt recovers dpkg before it touches apt.
+                    self.assertGreater(first, 0, calls)
+                    self.assertEqual(calls[first - 1], "dpkg --configure -a", (attempt, calls))
+                    self.assertEqual(calls[first + 1], "apt-get -f install -y", (attempt, calls))
+
     def test_zstd_is_there_before_the_restore(self):
         # actions/cache versions an entry by its compressor: restoring before
         # zstd is installed looks for a gzip entry the zstd save never wrote,
