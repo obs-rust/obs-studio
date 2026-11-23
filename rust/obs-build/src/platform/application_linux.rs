@@ -95,6 +95,9 @@ pub fn stage(inputs: &RuntimeInputs<'_>, destination: &Path) -> Result<StagedRun
     {
         return Err("runtime modules omit the selected browser module".into());
     }
+    if selected.contains(std::ffi::OsStr::new("obs-vst3.so")) != inputs.vst3_scanner.is_some() {
+        return Err("staging VST3 requires both the module and its scanner".into());
+    }
     std::fs::create_dir_all(destination).map_err(|e| e.to_string())?;
     let runtime = destination.canonicalize().map_err(|e| e.to_string())?;
     for data in [
@@ -165,6 +168,9 @@ pub fn stage(inputs: &RuntimeInputs<'_>, destination: &Path) -> Result<StagedRun
             helper,
             &bin.join(helper.file_name().ok_or("NVENC helper has no filename")?),
         )?;
+    }
+    if let Some(scanner) = inputs.vst3_scanner {
+        copy(scanner, &bin.join("obs-vst3-scanner"))?;
     }
     copy_tree(
         &inputs.root.join("libobs/data"),

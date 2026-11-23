@@ -108,6 +108,14 @@ add_core_module(
     PLATFORMS WINDOWS MACOS LINUX
     WITH_MESSAGE
 )
+option(ENABLE_VST3 "Build the VST3 audio filter and scanner" OFF)
+if(ENABLE_VST3 AND ENABLE_FRONTEND)
+  if(OS_MACOS)
+    add_core_module(obs-vst3)
+  else()
+    add_core_module(obs-vst3 PLATFORMS WINDOWS LINUX ARCHITECTURES x64 x86_64)
+  endif()
+endif()
 add_core_module(obs-webrtc)
 
 check_obs_websocket()

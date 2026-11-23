@@ -390,9 +390,11 @@ fi
 # Modules users depend on that a build must not quietly leave out. The saved
 # profile run below then requires every inventoried module to load.
 #   obs-webrtc.so: the WHIP service and output (obs-rust/obs-studio#1744)
-for m in obs-webrtc.so; do
+#   obs-vst3.so: the VST3 audio filter (obs-rust/obs-studio#5532)
+for m in obs-webrtc.so obs-vst3.so; do
     grep -qx "$m" "$INVENTORY" || fail "the AppImage does not ship $m"
 done
+[ -x "$APPDIR/usr/bin/obs-vst3-scanner" ] || fail "the AppImage does not ship the VST3 scanner next to OBS"
 
 # ============================================================================
 # No desktop-session package is installed in this scenario, so nothing in the
@@ -1113,7 +1115,12 @@ cat >"$XDG_CONFIG_HOME/obs-studio/basic/scenes/Test.json" <<'EOF'
         },
         {
             "id": "pulse_input_capture", "versioned_id": "pulse_input_capture",
-            "name": "Mic", "settings": {"device_id": "obs-test-mic"}
+            "name": "Mic", "settings": {"device_id": "obs-test-mic"},
+            "filters": [{
+                "id": "vst3_filter", "versioned_id": "vst3_filter",
+                "name": "VST3 passthrough", "enabled": true,
+                "settings": {"vst3_plugin": "0123456789ABCDEF0123456789ABCDEF"}
+            }]
         }
     ]
 }
@@ -1207,6 +1214,9 @@ else
 fi
 source_snapshot >"$OUT/upstream-before.txt"
 
+# An incomplete bundle makes OBS launch the packaged scanner. The saved
+# filter references an unavailable effect, so the test microphone must still record.
+mkdir -p "$HOME/.vst3/Unavailable.vst3"
 require_no_obs_running
 LD_LIBRARY_PATH="$HOSTILE_LD" "$APPDIR/AppRun" --disable-shutdown-check --verbose \
     --profile Test --collection Test --startrecording "${VCAM_ARGS[@]}" >"$OUT/obs-profile-stdout.log" 2>&1 &
@@ -1345,6 +1355,12 @@ else
         grep -q " $m\$" <<<"$loaded" || fail "OBS did not load its module $m"
     done <"$INVENTORY"
 fi
+if [ -n "$LOG" ]; then
+    grep -Fq -- "- filter: 'VST3 passthrough' (vst3_filter)" "$LOG" ||
+        fail "OBS did not restore the VST3 filter from the saved profile"
+fi
+[ -s "$XDG_CONFIG_HOME/$CONFIG_NAME/plugin_config/obs-vst3/vst3list.json" ] ||
+    fail "the packaged VST3 scanner did not write a cache for the incomplete bundle"
 if [ -z "$LAUNCH_ONLY" ]; then
     REC="$(find "$REC_DIR" -name '*.mkv' 2>/dev/null | head -1)"
     if [ -n "$REC" ]; then

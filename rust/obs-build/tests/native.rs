@@ -2935,6 +2935,7 @@ fn production_runtime_stages_selected_artifacts_and_rejects_stale_outputs() {
         renderer: &renderer,
         ffmpeg: &ffmpeg,
         nvenc_helper: None,
+        vst3_scanner: None,
         modules: &[&module, &ffmpeg.module],
         browser: None,
         scripting: None,
@@ -2988,6 +2989,11 @@ fn production_runtime_stages_selected_artifacts_and_rejects_stale_outputs() {
     fs::write(&nvenc_library, "selected Rust NVENC module").unwrap();
     fs::write(&nvenc_helper, "selected capability helper").unwrap();
     let nvenc_data = module.data.clone();
+    let vst3_library = artifacts.join("obs-vst3.so");
+    let vst3_scanner = artifacts.join("obs-vst3-scanner");
+    fs::write(&vst3_library, "selected VST3 module").unwrap();
+    fs::write(&vst3_scanner, "selected VST3 scanner").unwrap();
+    let vst3_data = module.data.clone();
     let production = application::Artifacts {
         core,
         api,
@@ -3004,12 +3010,19 @@ fn production_runtime_stages_selected_artifacts_and_rejects_stale_outputs() {
             },
             helper: nvenc_helper,
         }),
+        vst3: Some(plugins::Vst3Artifacts {
+            module: plugins::Module {
+                library: vst3_library,
+                data: vst3_data,
+            },
+            scanner: vst3_scanner,
+        }),
     };
     let destination = temporary.path().join("production-runtime");
     let runtime = production.stage(&build, &root, &destination).unwrap();
     assert_eq!(
         runtime.modules,
-        ["fixture-source", "obs-ffmpeg", "obs-nvenc"]
+        ["fixture-source", "obs-ffmpeg", "obs-nvenc", "obs-vst3"]
     );
     assert_eq!(
         fs::read_to_string(destination.join("bin/obs-nvenc-test")).unwrap(),
@@ -3018,6 +3031,21 @@ fn production_runtime_stages_selected_artifacts_and_rejects_stale_outputs() {
     assert_eq!(
         fs::read_to_string(destination.join("lib64/obs-modules/core/obs-nvenc.so")).unwrap(),
         "selected Rust NVENC module"
+    );
+    assert_eq!(
+        fs::read_to_string(destination.join("bin/obs-vst3-scanner")).unwrap(),
+        "selected VST3 scanner"
+    );
+    assert_eq!(
+        fs::read_to_string(destination.join("lib64/obs-modules/core/obs-vst3.so")).unwrap(),
+        "selected VST3 module"
+    );
+    assert_eq!(
+        fs::read_to_string(
+            destination.join("share/obs/obs-modules/core/obs-vst3/locale/en-US.ini")
+        )
+        .unwrap(),
+        "translated"
     );
 }
 
@@ -3073,7 +3101,9 @@ fn production_nvenc_defaults_and_explicit_selection_match_cmake() {
 fn production_vst3_requires_an_explicit_sdk_and_registers_as_core() {
     use obs_build::{application::BuildOptions, cli};
     let target = "x86_64-unknown-linux-gnu";
-    let defaults = BuildOptions::for_target(target).unwrap().core_module_names();
+    let defaults = BuildOptions::for_target(target)
+        .unwrap()
+        .core_module_names();
     assert!(!defaults.iter().any(|name| name == "obs-vst3"));
     let cli::Invocation::Build(request) =
         cli::parse(["build", "--target", target, "--vst3-sdk", "/sdk/vst3"]).unwrap()

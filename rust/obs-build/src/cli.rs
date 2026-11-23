@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-pub const USAGE: &str = "Usage: obs-build build [OPTIONS]\n       obs-build mcp-runtime --request PATH\n\nBuild and stage the Linux hybrid OBS application through Cargo and cc::Build.\n\n  --root PATH                 Source checkout (default: current directory)\n  --output PATH               Build directory (default: ROOT/build_cargo)\n  --target TRIPLE              Requested native target (default: this target)\n  --profile NAME               debug, release, relwithdebinfo, minsizerel\n  --separate-core             Compile core group members individually\n  --core-pch                  Enable core/backend precompiled headers\n  --disable-hevc              Disable HEVC\n  --disable-service-updates   Disable RTMP service updates\n  --without-nvenc             Omit the NVIDIA hardware encoder and helper\n  --without-nvenc-ffmpeg-ids  Do not register FFmpeg NVENC encoder aliases\n  --without-websocket         Omit the original obs-websocket plugin\n  --without-frontend-tools    Omit the frontend Tools plugin\n  --without-scripting         Omit Lua/Python scripting\n  --without-lua               Omit Lua bindings\n  --without-python            Omit Python bindings\n  --with-vlc | --with-jack | --with-sndio | --with-fdk | --with-qsv\n  --cef-root PATH             Build browser source/panels using this CEF SDK\n  --without-browser-panels    Build browser source without panels\n  --datachannel-include PATH  WebRTC SDK headers (requires library)\n  --datachannel-library PATH  WebRTC SDK library (requires headers)\n  -h, --help                  Show help\n";
+pub const USAGE: &str = "Usage: obs-build build [OPTIONS]\n       obs-build mcp-runtime --request PATH\n\nBuild and stage the Linux hybrid OBS application through Cargo and cc::Build.\n\n  --root PATH                 Source checkout (default: current directory)\n  --output PATH               Build directory (default: ROOT/build_cargo)\n  --target TRIPLE              Requested native target (default: this target)\n  --profile NAME               debug, release, relwithdebinfo, minsizerel\n  --separate-core             Compile core group members individually\n  --core-pch                  Enable core/backend precompiled headers\n  --disable-hevc              Disable HEVC\n  --disable-service-updates   Disable RTMP service updates\n  --without-nvenc             Omit the NVIDIA hardware encoder and helper\n  --without-nvenc-ffmpeg-ids  Do not register FFmpeg NVENC encoder aliases\n  --without-websocket         Omit the original obs-websocket plugin\n  --without-frontend-tools    Omit the frontend Tools plugin\n  --without-scripting         Omit Lua/Python scripting\n  --without-lua               Omit Lua bindings\n  --without-python            Omit Python bindings\n  --with-vlc | --with-jack | --with-sndio | --with-fdk | --with-qsv\n  --vst3-sdk PATH             Build the VST3 filter and scanner using this SDK\n  --cef-root PATH             Build browser source/panels using this CEF SDK\n  --without-browser-panels    Build browser source without panels\n  --datachannel-include PATH  WebRTC SDK headers (requires library)\n  --datachannel-library PATH  WebRTC SDK library (requires headers)\n  -h, --help                  Show help\n";
 
 pub enum Invocation {
     Help,
@@ -69,6 +69,7 @@ where
             | "--output"
             | "--target"
             | "--profile"
+            | "--vst3-sdk"
             | "--cef-root"
             | "--datachannel-include"
             | "--datachannel-library" => {
@@ -158,6 +159,7 @@ where
         }
     }
     options.fdk = flags.contains("--with-fdk");
+    options.vst3_sdk = values.get("--vst3-sdk").map(PathBuf::from);
     if flags.contains("--with-qsv") {
         options.qsv = Some(plugins::QsvOptions {
             hevc: options.core.hevc,

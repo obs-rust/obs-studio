@@ -59,6 +59,8 @@ LATER = {
     # #1744: the AppImage ships obs-webrtc.
     "configure": [
         ("-DENABLE_WEBRTC=OFF", "-DENABLE_WEBRTC=ON"),
+        # #5532: the x86-64 AppImage ships the VST3 host and scanner.
+        ("-DENABLE_BROWSER=OFF", "-DENABLE_VST3=ON -DENABLE_BROWSER=OFF"),
     ],
     "build": [
         ("ccache -s\n", "zccache status || true\n"
@@ -275,6 +277,7 @@ class BuildScriptTest(unittest.TestCase):
             self.assertEqual(argv[:2], ["--preset", "ubuntu-ci"])
             self.assertIn("-DENABLE_RUST_LIBOBS=FALSE", argv)
             self.assertIn("-DENABLE_QSV11=TRUE", argv)
+            self.assertIn("-DENABLE_VST3=ON", argv)
             version = next(a for a in argv if a.startswith("-DOBS_VERSION_OVERRIDE="))
             self.assertRegex(version, r"=\d+\.\d+\.\d+.*$")
             self.assertEqual(output.read_text(), "rust=FALSE\n")

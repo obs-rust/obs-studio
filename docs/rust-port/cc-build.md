@@ -44,6 +44,11 @@ Run the executable printed by the command. Each invocation stages a fresh
 `LD_LIBRARY_PATH`. This layout still relies on the host's native SDK/runtime
 libraries and is not a distributable package.
 
+On x86-64 Linux, pass `--vst3-sdk PATH` to include the VST3 host. Point it at
+the VST3 SDK 3.8 checkout used by the CMake build, with its submodules populated.
+The command stages the filter as a core module and puts `obs-vst3-scanner` in
+`bin/` alongside the application. Use X11 to run the filter.
+
 Profiles are `debug`, `release`, `relwithdebinfo` (default) and `minsizerel`.
 `--separate-core` and `--core-pch` select core compilation modes. Help lists the
 optional plugin/SDK and scripting selections. Native Linux is the only full
