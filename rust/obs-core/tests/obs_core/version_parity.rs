@@ -31,11 +31,20 @@ fn real_header_numbers_and_layout() {
     }
     assert_eq!(
         parts,
-        [LIBOBS_API_MAJOR_VER, LIBOBS_API_MINOR_VER, LIBOBS_API_PATCH_VER, obs_get_version()]
+        [
+            LIBOBS_API_MAJOR_VER,
+            LIBOBS_API_MINOR_VER,
+            LIBOBS_API_PATCH_VER,
+            obs_get_version()
+        ]
     );
     assert_eq!(
         layout,
-        [size_of::<u32>(), size_of::<*const c_char>(), align_of::<*const c_char>()]
+        [
+            size_of::<u32>(),
+            size_of::<*const c_char>(),
+            align_of::<*const c_char>()
+        ]
     );
 }
 

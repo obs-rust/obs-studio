@@ -1,7 +1,7 @@
 //! Tier 1: the version packing and the numbers read from `obs-config.h`.
 use obs_core::version::{
-    LIBOBS_API_MAJOR_VER, LIBOBS_API_MINOR_VER, LIBOBS_API_PATCH_VER, LIBOBS_API_VER,
-    OBS_CONFIG_H, define_value, make_semantic_version,
+    LIBOBS_API_MAJOR_VER, LIBOBS_API_MINOR_VER, LIBOBS_API_PATCH_VER, LIBOBS_API_VER, OBS_CONFIG_H,
+    define_value, make_semantic_version,
 };
 
 #[test]
@@ -20,13 +20,26 @@ fn packing_is_major_minor_patch() {
 
 #[test]
 fn numbers_come_from_obs_config_h() {
-    assert_eq!(define_value(OBS_CONFIG_H, "LIBOBS_API_MAJOR_VER"), Some(LIBOBS_API_MAJOR_VER));
-    assert_eq!(define_value(OBS_CONFIG_H, "LIBOBS_API_MINOR_VER"), Some(LIBOBS_API_MINOR_VER));
-    assert_eq!(define_value(OBS_CONFIG_H, "LIBOBS_API_PATCH_VER"), Some(LIBOBS_API_PATCH_VER));
-    assert!(LIBOBS_API_MAJOR_VER > 0);
+    assert_eq!(
+        define_value(OBS_CONFIG_H, "LIBOBS_API_MAJOR_VER"),
+        Some(LIBOBS_API_MAJOR_VER)
+    );
+    assert_eq!(
+        define_value(OBS_CONFIG_H, "LIBOBS_API_MINOR_VER"),
+        Some(LIBOBS_API_MINOR_VER)
+    );
+    assert_eq!(
+        define_value(OBS_CONFIG_H, "LIBOBS_API_PATCH_VER"),
+        Some(LIBOBS_API_PATCH_VER)
+    );
+    const { assert!(LIBOBS_API_MAJOR_VER > 0) };
     assert_eq!(
         LIBOBS_API_VER,
-        make_semantic_version(LIBOBS_API_MAJOR_VER, LIBOBS_API_MINOR_VER, LIBOBS_API_PATCH_VER)
+        make_semantic_version(
+            LIBOBS_API_MAJOR_VER,
+            LIBOBS_API_MINOR_VER,
+            LIBOBS_API_PATCH_VER
+        )
     );
 }
 

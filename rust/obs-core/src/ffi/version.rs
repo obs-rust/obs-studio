@@ -20,6 +20,8 @@ pub extern "C" fn obs_get_version() -> u32 {
 /// Nothing may write the `OBS_VERSION` global concurrently; libobs never does.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_get_version_string() -> *const c_char {
-    let _ = obs_version_string_field as unsafe extern "C" fn() -> *const *const c_char;
-    core::ptr::null()
+    // SAFETY: the adapter returns the address of the live `OBS_VERSION`
+    // global, defined before startup and after shutdown. Only the pointer is
+    // read; its string is never dereferenced here.
+    unsafe { *obs_version_string_field() }
 }
