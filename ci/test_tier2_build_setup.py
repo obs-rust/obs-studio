@@ -95,8 +95,10 @@ runpath_flags=()
         restore = re.search(r"- uses: ./\.github/actions/cache\n        id: apt-cache.*?(?=\n      - |\Z)", job, re.S)[0]
         self.assertIn("if: steps.pcache.outputs.apt == ''", restore)
         save = step(job, "Save apt Downloads 💾")
+        self.assertIn("(!cancelled())", save, "a timed-out install must still persist its .debs")
+        self.assertIn("steps.apt-count.outputs.count != '0'", save)
         self.assertIn("github.event_name == 'push' && github.ref == 'refs/heads/master'", save)
-        self.assertIn("steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''", save)
+        self.assertIn("steps.pcache.outputs.apt == ''", save)
         for cache in (restore, save):
             self.assertIn("path: ../../_temp/apt-archives/*.deb", cache)
 

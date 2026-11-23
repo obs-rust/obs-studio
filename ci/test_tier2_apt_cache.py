@@ -150,18 +150,23 @@ class AptCacheTest(unittest.TestCase):
             self.assertIn("path: ../../_temp/apt-archives/*.deb", j, name)
             self.assertIn("hashFiles('rust/tools/linux-validate/apt-packages.txt')", j, name)
 
-    def test_consumers_request_the_master_producers_exact_key(self):
+    def test_consumers_restore_the_master_producers_newest_entry(self):
         build = job("rust-linux-tier2-build")
         producer = build.split("- name: Save apt Downloads", 1)[1].split("\n      - ", 1)[0]
         key = re.search(r"^          key: (.+)$", producer, re.M)[1]
         self.assertIn("github.event_name == 'push' && github.ref == 'refs/heads/master'", producer)
         self.assertIn("mode: save", producer)
         self.assertNotIn("github.", key, "apt contents must not be keyed by the run or PR")
+        # The archive grows across runs and a cache entry is immutable, so the
+        # save key ends in the .deb count and consumers match on the prefix.
+        self.assertTrue(key.endswith("-${{ steps.apt-count.outputs.count }}"), key)
+        prefix = key.rsplit("-${{", 1)[0]
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             with self.subTest(job=name):
                 restore = job(name).split("id: apt-cache", 1)[1].split("\n      - ", 1)[0]
                 self.assertIn("mode: restore", restore)
-                self.assertEqual(re.search(r"^          key: (.+)$", restore, re.M)[1], key)
+                self.assertIn("restore-keys: |", restore)
+                self.assertIn(f"{prefix}-", restore)
 
     def test_archive_version_is_portable_between_hosted_container_and_dell(self):
         # actions/cache hashes the literal input paths into its hidden version.

@@ -44,7 +44,10 @@ runs:
 
     - name: Save cache
       id: save
-      if: inputs.mode == 'save'
+      # !cancelled(): a caller may deliberately save after an earlier step
+      # failed (the apt archive is worth keeping even when the install timed
+      # out), but a cancelled run must not write a half-filled entry.
+      if: (!cancelled()) && inputs.mode == 'save'
       uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ inputs.path }}
