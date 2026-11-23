@@ -68,6 +68,7 @@
 #include "libobs/obs-object-ref-fields.c.h"
 #include "libobs/obs-reset-audio-fields.c.h"
 #include "libobs/obs-reset-audio2-fields.c.h"
+#include "libobs/obs-reset-source-uuids.c.h"
 #include "libobs/obs-set-locale-fields.c.h"
 #include "libobs/obs-set-output-source-fields.c.h"
 #include "libobs/obs-set-video-levels-fields.c.h"
