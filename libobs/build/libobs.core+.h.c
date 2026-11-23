@@ -67,6 +67,7 @@
 #include "libobs/obs-object-id-fields.c.h"
 #include "libobs/obs-object-ref-fields.c.h"
 #include "libobs/obs-raw-audio-add.c.h"
+#include "libobs/obs-raw-video-callbacks.c.h"
 #include "libobs/obs-reset-audio-fields.c.h"
 #include "libobs/obs-reset-audio2-fields.c.h"
 #include "libobs/obs-reset-source-uuids.c.h"
