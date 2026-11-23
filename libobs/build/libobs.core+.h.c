@@ -3,6 +3,7 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-audio-info-queries-fields.c.h"
+#include "libobs/obs-audio-monitoring-device.c.h"
 #include "libobs/obs-base-effect-fields.c.h"
 #include "libobs/obs-context-profiler-name-store.c.h"
 #include "libobs/obs-context-runtime.c.h"
