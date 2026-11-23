@@ -794,6 +794,7 @@ dependencies = [
  "obs-build",
  "obs-mcp",
  "obs-sys",
+ "obs-vst3-scanner",
  "pkg-config",
  "serde_json",
  "sha2",
@@ -820,6 +821,10 @@ dependencies = [
  "pkg-config",
  "proptest",
 ]
+
+[[package]]
+name = "obs-vst3-scanner"
+version = "0.1.0"
 
 [[package]]
 name = "once_cell"

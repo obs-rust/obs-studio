@@ -1,0 +1,15 @@
+[package]
+autotests = false
+name = "obs-vst3-scanner"
+version = "0.1.0"
+description = "Discover VST3 audio effects for the OBS host"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+test = false

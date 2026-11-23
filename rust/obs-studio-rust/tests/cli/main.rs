@@ -8,6 +8,7 @@ mod locale_manifest_contract;
 #[cfg(feature = "bundled-native")]
 mod mcp_stdio;
 mod protocol;
+mod vst3_scanner;
 
 #[cfg(feature = "bundled-native")]
 #[path = "../../../obs-sys/tests/native.rs"]
