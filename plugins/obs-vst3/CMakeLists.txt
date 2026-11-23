@@ -3,7 +3,12 @@ cmake_minimum_required(VERSION 3.28...3.30)
 find_package(Qt6 REQUIRED Widgets)
 include(cmake/sdk.cmake)
 
-add_library(obs-vst3-discovery STATIC build/obs-vst3.discovery+.hpp.cpp)
+add_library(
+  obs-vst3-discovery
+  STATIC
+  build/obs-vst3.discovery+.hpp.cpp
+  "build/obs-vst3.discovery.${_vst3_host}+.hpp.cpp"
+)
 target_link_libraries(obs-vst3-discovery PUBLIC OBS::libobs OBS::vst3-sdk)
 set_target_properties(obs-vst3-discovery PROPERTIES FOLDER plugins/obs-vst3 POSITION_INDEPENDENT_CODE ON)
 
@@ -19,10 +24,17 @@ target_sources(
     VST3Plugin.h
     build/obs-vst3.core+.hpp.cpp
     build/obs-vst3.editor+.hpp.cpp
+    "$<$<PLATFORM_ID:Linux>:build/obs-vst3.editor.linux+.hpp.cpp>"
+    "$<$<PLATFORM_ID:Windows>:build/obs-vst3.editor.windows+.hpp.cpp>"
     "$<$<PLATFORM_ID:Linux>:build/obs-vst3.linux+.hpp.cpp>"
     "$<$<PLATFORM_ID:Darwin>:build/obs-vst3.macos+.hpp.mm>"
+    "$<$<PLATFORM_ID:Darwin>:build/obs-vst3.host.macos+.hpp.cpp>"
+    "$<$<PLATFORM_ID:Windows>:build/obs-vst3.host.windows+.hpp.cpp>"
 )
 target_compile_options(obs-vst3 PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJCXX,AppleClang>:-fobjc-arc>")
+if(OS_MACOS)
+  set_target_properties(obs-vst3 PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
+endif()
 target_link_libraries(obs-vst3 PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
 
 if(OS_WINDOWS)

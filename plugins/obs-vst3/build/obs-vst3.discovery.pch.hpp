@@ -1,6 +1,7 @@
 #pragma once
 
 #include "plugins/obs-vst3/VST3Scanner.h"
+#include "plugins/obs-vst3/vst3-discovery-platform.h"
 
 #include <pluginterfaces/base/ipluginbase.h>
 #include <public.sdk/source/vst/hosting/module.h>

@@ -56,12 +56,15 @@ pub fn build(
     let sdk_archive = build.static_library(&sdk_library)?;
 
     let discovery = source.join("build/obs-vst3.discovery+.hpp.cpp");
+    let discovery_host = source.join("build/obs-vst3.discovery.linux+.hpp.cpp");
     let mut library = module(build, &root, core, "obs-vst3")?;
     library.sources = vec![
         source.join("build/obs-vst3.core+.hpp.cpp"),
         source.join("build/obs-vst3.editor+.hpp.cpp"),
+        source.join("build/obs-vst3.editor.linux+.hpp.cpp"),
         source.join("build/obs-vst3.linux+.hpp.cpp"),
         discovery.clone(),
+        discovery_host.clone(),
     ];
     library.include_dirs.push(root.join("frontend/api"));
     let mut scanner_dependencies = library.dependencies.clone();
@@ -81,7 +84,9 @@ pub fn build(
         name: "obs-vst3-scanner".into(),
         sources: vec![
             source.join("vst3-scan/build/obs-vst3-scanner+.hpp.cpp"),
+            source.join("vst3-scan/build/obs-vst3-scanner.posix+.hpp.cpp"),
             discovery,
+            discovery_host,
         ],
         include_dirs: vec![
             root.clone(),

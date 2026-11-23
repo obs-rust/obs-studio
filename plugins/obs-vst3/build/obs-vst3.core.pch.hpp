@@ -6,6 +6,7 @@
 #include "plugins/obs-vst3/VST3Plugin.h"
 #include "plugins/obs-vst3/VST3Scanner.h"
 #include "plugins/obs-vst3/obs-vst3.h"
+#include "plugins/obs-vst3/vst3-platform.h"
 
 #include <pluginterfaces/base/funknown.h>
 #include <pluginterfaces/base/smartpointer.h>
@@ -57,8 +58,3 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#ifdef __linux__
-#include "plugins/obs-vst3/RunLoopImpl.h"
-#include <obs-nix-platform.h>
-#endif

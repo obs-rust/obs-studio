@@ -123,7 +123,6 @@ public:
 	std::atomic<bool> uiDrainScheduled{false};
 	void drainDspToGui();
 
-	int sampleRate = 0;
 	int maxBlockSize = 0;
 	int symbolicSampleSize = 0;
 	bool realtime = kRealtime;

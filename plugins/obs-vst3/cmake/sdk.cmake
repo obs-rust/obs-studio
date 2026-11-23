@@ -59,3 +59,13 @@ set_target_properties(
   PROPERTIES FOLDER plugins/obs-vst3 POSITION_INDEPENDENT_CODE ON COMPILE_WARNING_AS_ERROR OFF
 )
 target_compile_options(obs-vst3-sdk PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJCXX,AppleClang>:-fobjc-arc>")
+if(OS_MACOS)
+  set_target_properties(
+    obs-vst3-sdk
+    PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES XCODE_ATTRIBUTE_GCC_TREAT_WARNINGS_AS_ERRORS NO
+  )
+  set_source_files_properties(
+    "${_vst3_sdk}/public.sdk/source/vst/hosting/module_mac.mm"
+    PROPERTIES COMPILE_OPTIONS "-Wno-unused-parameter"
+  )
+endif()

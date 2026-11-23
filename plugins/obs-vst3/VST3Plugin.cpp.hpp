@@ -26,15 +26,6 @@ const FUID IPlugViewContentScaleSupport::iid(0x65ED9690, 0x8AC44525, 0x8AADEF7A,
 const FUID IPlugFrame::iid(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
 } // namespace Steinberg
 
-#ifdef __linux__
-// Hack for LSP plugins which crash with NVIDIA drivers. Switch LSP UI rendering from OpenGL(GLX) to Cairo (software).
-static void ensure_lsp_cairo_backend()
-{
-	setenv("LSP_WS_LIB_GLXSURFACE", "off", 1);
-	infovst3plugin("Workaround for LSP plugins on linux; LSP_WS_LIB_GLXSURFACE=off set (forcing Cairo backend)\n");
-}
-#endif
-
 VST3Plugin::VST3Plugin()
 {
 	if (!hostContext) {
@@ -43,10 +34,8 @@ VST3Plugin::VST3Plugin()
 
 	componentContext = new VST3ComponentHolder(this);
 
-#ifdef __linux__
-	ensure_lsp_cairo_backend();
-#endif
-};
+	vst3_prepare_plugin_environment();
+}
 
 VST3Plugin::~VST3Plugin()
 {
@@ -192,7 +181,6 @@ bool VST3Plugin::init(const std::string &classId, const std::string &path_, int 
 
 	path = path_;
 
-	sampleRate = sampleRate;
 	maxBlockSize = max_blocksize;
 	symbolicSampleSize = kSample32;
 	realtime = kRealtime;
@@ -485,31 +473,11 @@ bool VST3Plugin::createView()
 		return false;
 	}
 
-#ifdef _WIN32
-	if (view->isPlatformTypeSupported(Steinberg::kPlatformTypeHWND) != Steinberg::kResultTrue) {
-		infovst3plugin("Editor view does not support HWND");
+	const auto platformType = vst3_editor_platform_type(hostContext->backend());
+	if (!platformType || view->isPlatformTypeSupported(platformType) != Steinberg::kResultTrue) {
+		infovst3plugin("Editor view does not support this display backend");
 		return false;
 	}
-#elif defined(__APPLE__)
-	if (view->isPlatformTypeSupported(Steinberg::kPlatformTypeNSView) != Steinberg::kResultTrue) {
-		infovst3plugin("Editor view does not support NSView");
-		return false;
-	}
-#elif defined(__linux__)
-	if (hostContext->backend() == VST3Backend::X11 &&
-	    view->isPlatformTypeSupported(Steinberg::kPlatformTypeX11EmbedWindowID) != Steinberg::kResultTrue) {
-		infovst3plugin("Editor view does not support X11");
-		return false;
-	}
-	if (hostContext->backend() == VST3Backend::Wayland) {
-		infovst3plugin(
-			"Our VST3 host does not support Wayland for GUI. VST3s will be active in headless mode.");
-		return false;
-	}
-#else
-	infovst3plugin("Platform is not supported yet");
-	return false;
-#endif
 
 	return true;
 }

@@ -34,12 +34,6 @@ constexpr auto S_SIDECHAIN_SOURCE = "sidechain_source";
 #define TEXT_SCAN MT_("VST3.Scanning")
 #define TEXT_SIDECHAIN_SOURCE  MT_("VST3.SidechainSource")
 
-#ifdef _WIN32
-#define VST3_SCANNER "obs-vst3-scanner.exe"
-#else
-#define VST3_SCANNER "obs-vst3-scanner"
-#endif
-
 // --------------------------------------------------------
 #define do_log(level, format, ...) \
 	blog(level, "[VST3 filter ('%s')]: " format, obs_source_get_name(filterData->context), ## __VA_ARGS__)
@@ -64,9 +58,6 @@ struct sidechain_prop_info {
 // ----------------- global host & runloop ----------------
 namespace {
 std::unique_ptr<VST3HostApp> gHostApp;
-#ifdef __linux__
-std::unique_ptr<RunLoopImpl> gRunLoop;
-#endif
 } // namespace
 
 VST3HostApp *getHostApp() noexcept
@@ -76,56 +67,24 @@ VST3HostApp *getHostApp() noexcept
 
 bool loadHost()
 {
-	VST3Backend backend = VST3Backend::Unknown;
-
-#ifdef _WIN32
-	backend = VST3Backend::Windows;
-#elif defined(__APPLE__)
-	backend = VST3Backend::MacOS;
-#elif defined(__linux__)
-	const auto platform = obs_get_nix_platform();
-
-	if (platform == OBS_NIX_PLATFORM_X11_EGL) {
-		backend = VST3Backend::X11;
-	} else if (platform == OBS_NIX_PLATFORM_WAYLAND) {
-		backend = VST3Backend::Wayland;
-	}
-#endif
+	const VST3Backend backend = vst3_host_backend();
 
 	if (backend == VST3Backend::Unknown || backend == VST3Backend::Wayland) {
 		blog(LOG_WARNING, "[VST3 Host] Unsupported platform");
 		return false;
 	}
 
-	auto hostApp = std::make_unique<VST3HostApp>(backend);
-
-#ifdef __linux__
-	auto runLoop = std::make_unique<RunLoopImpl>();
-	hostApp->setRunLoop(runLoop.get());
-#endif
-
-	gHostApp = std::move(hostApp);
-
-#ifdef __linux__
-	gRunLoop = std::move(runLoop);
-#endif
+	gHostApp = std::make_unique<VST3HostApp>(backend);
+	vst3_attach_run_loop(*gHostApp);
 
 	return true;
 }
 
 void unloadHost()
 {
-#ifdef __linux__
 	if (gHostApp) {
-		gHostApp->setRunLoop(nullptr);
+		vst3_detach_run_loop(*gHostApp);
 	}
-
-	if (gRunLoop) {
-		gRunLoop->stop();
-	}
-
-	gRunLoop.reset();
-#endif
 
 	gHostApp.reset();
 }
@@ -137,7 +96,7 @@ os_process_pipe_t *vst3ScanPipe;
 
 static os_process_pipe_t *start_pipe(const char *jsonpath)
 {
-	char *exe = os_get_executable_path_ptr(VST3_SCANNER);
+	char *exe = os_get_executable_path_ptr(vst3_scanner_executable());
 	os_process_args_t *args = os_process_args_create(exe);
 	bfree(exe);
 
@@ -1322,7 +1281,6 @@ void register_vst3_source()
 #undef TEXT_RESCAN
 #undef TEXT_SCAN
 #undef TEXT_SIDECHAIN_SOURCE
-#undef VST3_SCANNER
 #undef do_log
 #undef warnvst3
 #undef infovst3

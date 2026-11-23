@@ -17,37 +17,12 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.discovery.pch.hpp"
 
-std::vector<std::string> VST3Scanner::getDefaultSearchPaths()
+static bool isVst3Bundle(const std::filesystem::directory_entry &entry)
 {
-	std::vector<std::string> paths;
-
-#ifdef _WIN32
-	char *programFiles = std::getenv("ProgramFiles");
-	if (programFiles) {
-		paths.emplace_back(std::string(programFiles) + "\\Common Files\\VST3");
+	if (entry.path().extension() != ".vst3") {
+		return false;
 	}
-
-	const wchar_t *localAppData = _wgetenv(L"LOCALAPPDATA");
-	if (localAppData) {
-		char *utf8 = nullptr;
-		if (os_wcs_to_utf8_ptr(localAppData, 0, &utf8)) {
-			paths.emplace_back(std::string(utf8) + "\\Programs\\Common\\VST3");
-		}
-		bfree(utf8);
-	}
-#elif defined(__APPLE__)
-	paths.emplace_back("/Library/Audio/Plug-Ins/VST3");
-	if (const char *home = std::getenv("HOME")) {
-		paths.emplace_back(std::string(home) + "/Library/Audio/Plug-Ins/VST3");
-	}
-#elif defined(__linux__)
-	paths.emplace_back("/usr/lib/vst3");
-	paths.emplace_back("/usr/local/lib/vst3");
-	if (const char *home = std::getenv("HOME")) {
-		paths.emplace_back(std::string(home) + "/.vst3");
-	}
-#endif
-	return paths;
+	return vst3_discovery_uses_binary_paths() ? entry.is_regular_file() : entry.is_directory();
 }
 
 std::unordered_set<std::string> VST3Scanner::getVST3Paths()
@@ -65,12 +40,9 @@ std::unordered_set<std::string> VST3Scanner::getVST3Paths()
 				continue;
 			}
 
-#ifdef _WIN32
-			if (entry.is_regular_file() && entry.path().extension() == ".vst3")
-#else
-			if (entry.is_directory() && entry.path().extension() == ".vst3")
-#endif
+			if (isVst3Bundle(entry)) {
 				fsPaths.insert(entry.path().u8string());
+			}
 		}
 	}
 
@@ -126,17 +98,9 @@ bool VST3Scanner::hasVST3()
 					continue;
 				}
 
-				const auto &p = entry.path();
-
-#ifdef _WIN32
-				if (entry.is_regular_file() && p.extension() == ".vst3") {
+				if (isVst3Bundle(entry)) {
 					return true;
 				}
-#else
-				if (entry.is_directory() && p.extension() == ".vst3") {
-					return true;
-				}
-#endif
 			}
 		} catch (const std::exception &e) {
 			(void)e;
@@ -200,19 +164,17 @@ bool VST3Scanner::tryReadModuleInfo(const std::string &bundlePath)
 	fs::path p = fs::u8path(bundlePath);
 	fs::path bundleRoot;
 
-#ifdef _WIN32
-	if (!fs::is_regular_file(p)) {
-		return false;
+	if (vst3_discovery_uses_binary_paths()) {
+		if (!fs::is_regular_file(p)) {
+			return false;
+		}
+		bundleRoot = p.parent_path().parent_path().parent_path();
+	} else {
+		if (!fs::is_directory(p)) {
+			return false;
+		}
+		bundleRoot = p;
 	}
-
-	bundleRoot = p.parent_path().parent_path().parent_path();
-#else
-	if (!fs::is_directory(p)) {
-		return false;
-	}
-
-	bundleRoot = p;
-#endif
 
 	fs::path jsonPath = bundleRoot / "Contents" / "Resources" / "moduleinfo.json";
 

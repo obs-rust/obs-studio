@@ -17,22 +17,9 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.editor.pch.hpp"
 
-#ifdef _WIN32
-constexpr int obsIconId = 101;
-#endif
-
-#ifdef __linux__
-VST3HostApp *getHostApp() noexcept;
-#endif
-
 using namespace Steinberg;
 
 namespace {
-
-bool sameSize(const ViewRect &lhs, const ViewRect &rhs)
-{
-	return lhs.getWidth() == rhs.getWidth() && lhs.getHeight() == rhs.getHeight();
-}
 
 void reportError(const char *message)
 {
@@ -41,19 +28,7 @@ void reportError(const char *message)
 
 } // namespace
 
-#ifdef _WIN32
-HMODULE getCurrentModule()
-{
-	HMODULE module = nullptr;
-
-	GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-			   reinterpret_cast<LPCWSTR>(&getCurrentModule), &module);
-
-	return module;
-}
-#endif
-
-class VST3EditorWindow::PlugFrameImpl : public IPlugFrame {
+class VST3EditorWindow::PlugFrameImpl final : public IPlugFrame {
 public:
 	explicit PlugFrameImpl(VST3EditorWindow *window) : window_(window) {}
 	tresult PLUGIN_API resizeView(IPlugView *view, ViewRect *newSize) override
@@ -75,13 +50,7 @@ public:
 			*obj = static_cast<IPlugFrame *>(this);
 			return kResultOk;
 		}
-#ifdef __linux__
-		if (getHostApp() && FUnknownPrivate::iidEqual(_iid, Linux::IRunLoop::iid)) {
-			return getHostApp()->queryInterface(_iid, obj);
-		}
-#endif
-		*obj = nullptr;
-		return kNoInterface;
+		return queryPlatformFrameInterface(_iid, obj);
 	}
 	// refcounting does not matter here, cf SDK
 	uint32_t PLUGIN_API addRef() override { return 1; }
@@ -109,20 +78,7 @@ VST3EditorWindow::VST3EditorWindow(IPlugView *view, const std::string &title) : 
 
 	setWindowTitle(QString::fromUtf8(title.data(), static_cast<qsizetype>(title.size())));
 
-#ifdef __APPLE__
-	setAttribute(Qt::WA_MacAlwaysShowToolWindow);
-#endif
-#ifdef _WIN32
-	if (const HICON icon = LoadIconW(getCurrentModule(), MAKEINTRESOURCEW(obsIconId))) {
-		setWindowIcon(QIcon(QPixmap::fromImage(QImage::fromHICON(icon))));
-	}
-#endif
-#ifdef __linux__
-	resizeLinuxTimer_ = new QTimer(this);
-	resizeLinuxTimer_->setSingleShot(true);
-	resizeLinuxTimer_->setInterval(10);
-	connect(resizeLinuxTimer_, &QTimer::timeout, this, [this] { handleLinuxResize(); });
-#endif
+	initializePlatformWindow();
 }
 
 VST3EditorWindow::~VST3EditorWindow() = default;
@@ -145,11 +101,9 @@ bool VST3EditorWindow::create(int width, int height)
 	viewContainer_->setGeometry(0, 0, qtInitialSize.width(), qtInitialSize.height());
 
 	QWidget::create();
-#ifdef __APPLE__
 	if (resizable_) {
-		setMacContentAspectRatio(qtInitialSize);
+		preparePlatformView(qtInitialSize);
 	}
-#endif
 	const WId nativeParentId = viewContainer_->winId();
 	if (!windowHandle() || !nativeParentId) {
 		reportError("failed to create the native window");
@@ -161,15 +115,7 @@ bool VST3EditorWindow::create(int width, int height)
 	frame_ = std::make_unique<PlugFrameImpl>(this);
 	view_->setFrame(frame_.get());
 	void *nativeParent = reinterpret_cast<void *>(nativeParentId);
-#ifdef _WIN32
-	const FIDString platformType = kPlatformTypeHWND;
-#elif defined(__APPLE__)
-	const FIDString platformType = kPlatformTypeNSView;
-#else
-	const FIDString platformType = kPlatformTypeX11EmbedWindowID;
-#endif
-
-	if (view_->attached(nativeParent, platformType) != kResultOk) {
+	if (view_->attached(nativeParent, platformViewType()) != kResultOk) {
 		view_->setFrame(nullptr);
 		frame_.reset();
 		reportError("failed to attach the plug-in view");
@@ -214,8 +160,8 @@ bool VST3EditorWindow::getClosedState() const
 
 bool VST3EditorWindow::event(QEvent *event)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0) && (defined(_WIN32) || defined(__APPLE__))
-	if (event->type() == QEvent::DevicePixelRatioChange) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
+	if (event->type() == QEvent::DevicePixelRatioChange && usesContentScaleFactor()) {
 		handlingDpiChange_ = true;
 
 		const bool handled = QWidget::event(event);
@@ -250,109 +196,12 @@ void VST3EditorWindow::resizeEvent(QResizeEvent *event)
 		return;
 	}
 
-#ifdef _WIN32
-	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&actualRect);
-#elif defined(__APPLE__)
-	ViewRect requested = qtToVst3Rect(event->size());
-	ViewRect constrained = requested;
-
-	if (resizable_) {
-		view_->checkSizeConstraint(&constrained);
-	}
-
-	if (!sameSize(requested, constrained)) {
-		correctingHostResize_ = true;
-		resize(vst3ToQtSize(constrained));
-		correctingHostResize_ = false;
-	}
-
-	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&actualRect);
-#else
-	resizeLinuxTimer_->start();
-#endif
+	handlePlatformResize(event->size());
 }
 
-#ifdef _WIN32
-bool VST3EditorWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+bool VST3EditorWindow::sameSize(const ViewRect &lhs, const ViewRect &rhs)
 {
-	if (eventType != QByteArrayLiteral("windows_generic_MSG")) {
-		return QWidget::nativeEvent(eventType, message, result);
-	}
-
-	auto *msg = static_cast<MSG *>(message);
-
-	if (!view_ || !attached_ || !resizable_ || msg->hwnd != reinterpret_cast<HWND>(winId()) ||
-	    msg->message != WM_SIZING) {
-		return QWidget::nativeEvent(eventType, message, result);
-	}
-
-	auto *windowRect = reinterpret_cast<RECT *>(msg->lParam);
-	if (!windowRect) {
-		return QWidget::nativeEvent(eventType, message, result);
-	}
-
-	const LONG style = GetWindowLong(msg->hwnd, GWL_STYLE);
-	const LONG exStyle = GetWindowLong(msg->hwnd, GWL_EXSTYLE);
-
-	RECT nonClientRect{0, 0, 0, 0};
-	AdjustWindowRectEx(&nonClientRect, style, FALSE, exStyle);
-
-	const int extraWidth = nonClientRect.right - nonClientRect.left;
-	const int extraHeight = nonClientRect.bottom - nonClientRect.top;
-
-	const int windowWidth = windowRect->right - windowRect->left;
-	const int windowHeight = windowRect->bottom - windowRect->top;
-
-	ViewRect constrained(0, 0, windowWidth - extraWidth, windowHeight - extraHeight);
-	view_->checkSizeConstraint(&constrained);
-
-	const int newWindowWidth = constrained.getWidth() + extraWidth;
-	const int newWindowHeight = constrained.getHeight() + extraHeight;
-
-	switch (msg->wParam) {
-	case WMSZ_LEFT:
-	case WMSZ_TOPLEFT:
-	case WMSZ_BOTTOMLEFT:
-		windowRect->left = windowRect->right - newWindowWidth;
-		break;
-
-	default:
-		windowRect->right = windowRect->left + newWindowWidth;
-		break;
-	}
-
-	switch (msg->wParam) {
-	case WMSZ_TOP:
-	case WMSZ_TOPLEFT:
-	case WMSZ_TOPRIGHT:
-		windowRect->top = windowRect->bottom - newWindowHeight;
-		break;
-
-	default:
-		windowRect->bottom = windowRect->top + newWindowHeight;
-		break;
-	}
-
-	if (result) {
-		*result = TRUE;
-	}
-
-	return true;
-}
-#endif
-
-qreal VST3EditorWindow::vst3CoordinateScaleFactor() const
-{
-#if defined(_WIN32)
-	return windowHandle() ? windowHandle()->devicePixelRatio() : devicePixelRatioF();
-#elif defined(__linux__)
-	if (QGuiApplication::platformName() == QStringLiteral("xcb")) {
-		return windowHandle() ? windowHandle()->devicePixelRatio() : devicePixelRatioF();
-	}
-#endif
-	return 1.0;
+	return lhs.getWidth() == rhs.getWidth() && lhs.getHeight() == rhs.getHeight();
 }
 
 QSize VST3EditorWindow::vst3ToQtSize(const ViewRect &rect) const
@@ -404,49 +253,12 @@ tresult PLUGIN_API VST3EditorWindow::resizeFromPlugin(const ViewRect &rect)
 	return kResultTrue;
 }
 
-#ifdef __linux__
-// TODO: improve X11 handling. It gave me a lot of headaches. Currently we use a throttle timer to call the plugin
-// onSize. Without it I had repaint issues. Known BUG: currently there's still repaint issues with LSP VST3s when
-// they are resized with their inner handle but not when the container is resized. Other VST3s on linux are fine.
-void VST3EditorWindow::handleLinuxResize()
-{
-	if (!view_ || !attached_ || resizingFromPlugin_ || correctingHostResize_) {
-		return;
-	}
-
-	const QSize requestedQtSize = viewContainer_->size();
-	ViewRect requestedRect = qtToVst3Rect(requestedQtSize);
-	ViewRect constrainedRect = requestedRect;
-
-	tresult constraintResult = kResultFalse;
-
-	if (resizable_) {
-		constraintResult = view_->checkSizeConstraint(&constrainedRect);
-	}
-
-	if (constraintResult == kResultTrue && !sameSize(requestedRect, constrainedRect)) {
-		const QSize constrainedQtSize = vst3ToQtSize(constrainedRect);
-
-		correctingHostResize_ = true;
-		if (constrainedRect.getWidth() > requestedRect.getWidth() &&
-		    constrainedRect.getHeight() > requestedRect.getHeight()) {
-			setMinimumSize(constrainedQtSize);
-		} else {
-			resize(constrainedQtSize);
-		}
-		correctingHostResize_ = false;
-
-		ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-		view_->onSize(&actualRect);
-		return;
-	}
-	view_->onSize(&requestedRect);
-}
-#endif
-
 bool VST3EditorWindow::updateContentScaleFactor()
 {
-#if defined(_WIN32) || defined(__APPLE__)
+	if (!usesContentScaleFactor()) {
+		return false;
+	}
+
 	const qreal scale = devicePixelRatioF();
 
 	if (contentScaleFactor_ == scale) {
@@ -462,9 +274,6 @@ bool VST3EditorWindow::updateContentScaleFactor()
 	}
 
 	return true;
-#else
-	return false;
-#endif
 }
 
 void VST3EditorWindow::handleScaleChange()

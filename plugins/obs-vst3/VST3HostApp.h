@@ -18,9 +18,6 @@
 #pragma once
 
 #include <pluginterfaces/base/funknown.h>
-#ifdef __linux__
-#include <pluginterfaces/gui/iplugview.h>
-#endif
 #include <pluginterfaces/vst/ivsthostapplication.h>
 #include <pluginterfaces/vst/ivstpluginterfacesupport.h>
 #include <pluginterfaces/vst/vsttypes.h>
@@ -63,14 +60,10 @@ public:
 
 	FUnknown *getFUnknown() noexcept { return static_cast<FUnknown *>(static_cast<IHostApplication *>(this)); }
 
-#ifdef __linux__
-	//========== Pass Runloop ===========//
-	void setRunLoop(Steinberg::Linux::IRunLoop *rl) { runLoop = rl; }
+	void setRunLoop(FUnknown *value) { runLoop = value; }
 
 private:
-	Steinberg::Linux::IRunLoop *runLoop = nullptr;
-#endif
-private:
+	FUnknown *runLoop = nullptr;
 	const VST3Backend backend_;
 
 	std::vector<FUID> FUIDArray_;

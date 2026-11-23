@@ -17,7 +17,19 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.macos.pch.hpp"
 
-void VST3EditorWindow::setMacContentAspectRatio(const QSize &size)
+using namespace Steinberg;
+
+void VST3EditorWindow::initializePlatformWindow()
+{
+	setAttribute(Qt::WA_MacAlwaysShowToolWindow);
+}
+
+FIDString VST3EditorWindow::platformViewType()
+{
+	return kPlatformTypeNSView;
+}
+
+void VST3EditorWindow::preparePlatformView(const QSize &size)
 {
 	if (size.isEmpty()) {
 		return;
@@ -31,4 +43,44 @@ void VST3EditorWindow::setMacContentAspectRatio(const QSize &size)
 
 	nativeView.window.contentAspectRatio =
 		NSMakeSize(static_cast<CGFloat>(size.width()), static_cast<CGFloat>(size.height()));
+}
+
+tresult VST3EditorWindow::queryPlatformFrameInterface(const TUID, void **obj)
+{
+	*obj = nullptr;
+	return kNoInterface;
+}
+
+void VST3EditorWindow::handlePlatformResize(const QSize &size)
+{
+	ViewRect requested = qtToVst3Rect(size);
+	ViewRect constrained = requested;
+
+	if (resizable_) {
+		view_->checkSizeConstraint(&constrained);
+	}
+
+	if (!sameSize(requested, constrained)) {
+		correctingHostResize_ = true;
+		resize(vst3ToQtSize(constrained));
+		correctingHostResize_ = false;
+	}
+
+	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
+	view_->onSize(&actualRect);
+}
+
+qreal VST3EditorWindow::vst3CoordinateScaleFactor() const
+{
+	return 1.0;
+}
+
+bool VST3EditorWindow::usesContentScaleFactor()
+{
+	return true;
+}
+
+bool VST3EditorWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+{
+	return QWidget::nativeEvent(eventType, message, result);
 }

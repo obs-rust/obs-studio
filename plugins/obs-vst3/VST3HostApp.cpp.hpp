@@ -76,12 +76,23 @@ tresult PLUGIN_API VST3HostApp::queryInterface(const TUID iid_, void **obj)
 		*obj = static_cast<IPlugInterfaceSupport *>(this);
 		return kResultOk;
 	}
-#ifdef __linux__
-	if (runLoop && FUnknownPrivate::iidEqual(iid_, Linux::IRunLoop::iid)) {
-		*obj = static_cast<Linux::IRunLoop *>(runLoop);
-		return kResultOk;
+	if (runLoop) {
+		return runLoop->queryInterface(iid_, obj);
 	}
-#endif
 	*obj = nullptr;
 	return kNoInterface;
+}
+
+Steinberg::FIDString vst3_editor_platform_type(VST3Backend backend)
+{
+	switch (backend) {
+	case VST3Backend::Windows:
+		return Steinberg::kPlatformTypeHWND;
+	case VST3Backend::MacOS:
+		return Steinberg::kPlatformTypeNSView;
+	case VST3Backend::X11:
+		return Steinberg::kPlatformTypeX11EmbedWindowID;
+	default:
+		return nullptr;
+	}
 }

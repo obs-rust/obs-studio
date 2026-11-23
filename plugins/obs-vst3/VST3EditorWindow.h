@@ -49,11 +49,19 @@ protected:
 	bool event(QEvent *event) override;
 	void closeEvent(QCloseEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
-#ifdef _WIN32
 	bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
-#endif
+
 private:
 	class PlugFrameImpl;
+
+	static Steinberg::FIDString platformViewType();
+	static bool usesContentScaleFactor();
+	static Steinberg::tresult queryPlatformFrameInterface(const Steinberg::TUID iid, void **obj);
+	static bool sameSize(const Steinberg::ViewRect &lhs, const Steinberg::ViewRect &rhs);
+	void initializePlatformWindow();
+	void preparePlatformView(const QSize &size);
+	void handlePlatformResize(const QSize &size);
+	void handleDeferredResize();
 
 	QSize vst3ToQtSize(const Steinberg::ViewRect &rect) const;
 	Steinberg::ViewRect qtToVst3Rect(const QSize &size) const;
@@ -77,12 +85,5 @@ private:
 
 	bool handlingDpiChange_ = false;
 	qreal contentScaleFactor_ = 0.0;
-
-#ifdef __APPLE__
-	void setMacContentAspectRatio(const QSize &size);
-#endif
-#ifdef __linux__
-	void handleLinuxResize();
-	QTimer *resizeLinuxTimer_ = nullptr;
-#endif
+	QTimer *resizeTimer_ = nullptr;
 };

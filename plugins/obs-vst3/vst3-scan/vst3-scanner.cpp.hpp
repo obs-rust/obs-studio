@@ -185,51 +185,20 @@ bool retrieveVst3List()
 	return scanVst3List();
 }
 
-#ifdef _WIN32
-int wmain(int argc, wchar_t *argv_w[])
-#else
-int main(int argc, char *argv[])
-#endif
+int vst3_scanner_main(const char *cachePath)
 {
-#ifdef _WIN32
-	char **argv;
+	setvbuf(stderr, nullptr, _IONBF, 0);
 
-	SetErrorMode(SEM_FAILCRITICALERRORS);
-	SetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE | BASE_SEARCH_PATH_PERMANENT);
-	SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-	SetDllDirectoryW(L"");
-
-	argv = static_cast<char **>(malloc(argc * sizeof(char *)));
-	for (int i = 0; i < argc; i++) {
-		size_t len = wcslen(argv_w[i]);
-		int size;
-
-		size = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], (int)len, NULL, 0, NULL, NULL);
-		argv[i] = static_cast<char *>(malloc(size + 1));
-		WideCharToMultiByte(CP_UTF8, 0, argv_w[i], (int)len, argv[i], size + 1, NULL, NULL);
-		argv[i][size] = 0;
-	}
-#endif
-	setvbuf(stderr, NULL, _IONBF, 0);
-
-	if (argc < 2 || !argv[1]) {
-		fprintf(stderr, "Usage: %s <vst3list.json>\n", argv[0]);
+	if (!cachePath || !*cachePath) {
+		fprintf(stderr, "Usage: obs-vst3-scanner <vst3list.json>\n");
 		return EXIT_FAILURE;
 	}
-	vst3ConfigPath = argv[1];
+	vst3ConfigPath = cachePath;
 
-#ifdef _WIN32
-	const auto separator = vst3ConfigPath.find_last_of("/\\");
-#else
-	const auto separator = vst3ConfigPath.find_last_of('/');
-#endif
-	if (separator != std::string::npos) {
-		const auto directory = vst3ConfigPath.substr(0, separator + 1);
-
-		if (os_mkdirs(directory.c_str()) == MKDIR_ERROR) {
-			fprintf(stderr, "Cannot create cache directory: %s\n", directory.c_str());
-			return EXIT_FAILURE;
-		}
+	const auto directory = std::filesystem::u8path(vst3ConfigPath).parent_path().u8string();
+	if (!directory.empty() && os_mkdirs(directory.c_str()) == MKDIR_ERROR) {
+		fprintf(stderr, "Cannot create cache directory: %s\n", directory.c_str());
+		return EXIT_FAILURE;
 	}
 
 	if (!retrieveVst3List()) {
@@ -238,12 +207,6 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-#ifdef _WIN32
-	for (int i = 0; i < argc; i++) {
-		free(argv[i]);
-	}
-	free(argv);
-#endif
 	fprintf(stdout, "VST3_SCAN_DONE\n");
 	std::fflush(stdout);
 	delete list;
