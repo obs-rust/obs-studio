@@ -151,6 +151,7 @@ pub mod enter_leave_graphics;
 pub mod enum_contexts;
 pub mod enum_modules;
 pub mod enum_scenes;
+pub mod enum_sources;
 pub mod find_modules;
 pub mod get_audio;
 pub mod get_main_canvas;
