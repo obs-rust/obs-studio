@@ -1,0 +1,65 @@
+name: Apt Seed
+run-name: Seed the Tier 2 apt archive 📦
+# The Tier 2 jobs download ~339 MB of .debs inside a ten-minute step, so on a
+# slow link no build ever finishes the download and the archive never grows
+# (#5522 keeps partial downloads; this job is what fills the rest). It has no
+# build to lose: it restores the archive, downloads in bounded attempts, and
+# saves the larger result under the same content key the builds restore by
+# prefix. Scheduled rather than push-only so the archive converges even when
+# every build run times out.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 41 */6 * * *
+# Read-only at the top level; the cache save mints its own grant (SEC-002).
+permissions:
+  contents: read
+concurrency:
+  group: apt-seed
+  cancel-in-progress: false
+jobs:
+  seed:
+    timeout-minutes: 55
+    name: Seed apt Archive 📦
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          enable-cache: false
+      # Same directory and same cache path as build-project's Keep apt
+      # Downloads: ../../_temp is runner.temp from the default checkout path,
+      # and actions/cache versions by that literal path.
+      - name: Prepare Archive 📦
+        run: |
+          dir="$RUNNER_TEMP/apt-archives"
+          mkdir -p "$dir"
+          chmod a+rwx "$dir"
+          echo "TIER2_APT_ARCHIVES=$dir" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/cache
+        id: apt-cache
+        with:
+          mode: restore
+          path: ../../_temp/apt-archives/*.deb
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-complete
+          restore-keys: |
+            tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-
+      - name: Download Missing Packages 📦
+        run: uv run --no-project ci/seed_apt_cache.py
+      - name: Count apt Downloads 📦
+        id: apt-count
+        run: |
+          count=$(find "${TIER2_APT_ARCHIVES}" -maxdepth 1 -type f -name '*.deb' | wc -l)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "apt archive holds $count downloaded .deb files"
+      - name: Save apt Downloads 💾
+        if: github.ref == 'refs/heads/master' && steps.apt-count.outputs.count != '0'
+        uses: ./.github/actions/cache
+        with:
+          mode: save
+          path: ../../_temp/apt-archives/*.deb
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ steps.apt-count.outputs.count }}
