@@ -177,17 +177,42 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
     return result
 
 
+# timeout(1) exits 124 when the bound stops a command, 137 when it has to kill it.
+TIMED_OUT = (124, 137)
+
+
+def install_once(install: tuple[str, ...], recover: tuple[str, ...]) -> None:
+    """The delta install; a timeout retries it once (#5504). A slow mirror can
+    stop apt (run 45113911635), and the .debs it downloaded stay in the
+    archive mount, so the second attempt goes on from there. A timeout in the
+    unpack leaves dpkg interrupted, which fails every later apt-get until
+    `dpkg --configure -a`. Other errors still fail at once (#5249)."""
+    try:
+        command(*install, capture_stderr=True)
+    except subprocess.CalledProcessError as error:
+        if error.returncode not in TIMED_OUT:
+            raise
+        print(f'Runtime delta install timed out (exit {error.returncode}); '
+              'recovering dpkg and retrying once', flush=True)
+        try:
+            command(*recover, capture_stderr=True)
+        except subprocess.CalledProcessError as recovery:
+            print(f'dpkg --configure -a failed (exit {recovery.returncode}); retrying anyway', flush=True)
+        command(*install, capture_stderr=True)
+
+
 def install_prepared_delta(ident: str, packages: list[str]) -> None:
     # Normal delta setup is about 45 s (#5237); allow 4x that per apt command.
     # apt.conf(5) delegates per-transport Timeout to apt-transport-http/https(1).
-    apt = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '180s',
-           'env', 'LC_ALL=C', 'apt-get', '-o', 'Acquire::Retries=3',
+    bound = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '180s', 'env', 'LC_ALL=C')
+    apt = (*bound, 'apt-get', '-o', 'Acquire::Retries=3',
            '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
     install = (*apt, 'install', '-y', '--no-install-recommends', *packages)
+    recover = (*bound, 'dpkg', '--configure', '-a')
     try:
         command(*apt, 'update', '-qq', capture_stderr=True)
         try:
-            command(*install, capture_stderr=True)
+            install_once(install, recover)
         except subprocess.CalledProcessError as error:
             if error.returncode != 100 or not re.search(
                     r"E: Version '[^'\n]+' for '[^'\n]+' was not found", error.output or ''):
@@ -195,7 +220,7 @@ def install_prepared_delta(ident: str, packages: list[str]) -> None:
             # Refresh once for a superseded pin; never substitute newer versions.
             print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
             command(*apt, 'update', '-qq', capture_stderr=True)
-            command(*install, capture_stderr=True)
+            install_once(install, recover)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
                            f'{" ".join(packages)}:\n{error.output or ""}') from error
