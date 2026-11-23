@@ -53,6 +53,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/tier2_image.py publish
+      # A private package degrades silently: select_image() falls back to
+      # stock Ubuntu on any probe error, so every Tier 2 job re-downloads its
+      # .debs and nothing says why. Assert the documented invariant here.
+      - name: Verify the Tier 2 Image Is Public
+        run: uv run --no-project ci/tier2_image.py verify
 
   check-format:
     name: Format 🔍
