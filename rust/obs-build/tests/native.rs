@@ -3070,6 +3070,22 @@ fn production_nvenc_defaults_and_explicit_selection_match_cmake() {
 }
 
 #[test]
+fn production_vst3_requires_an_explicit_sdk_and_registers_as_core() {
+    use obs_build::{application::BuildOptions, cli};
+    let target = "x86_64-unknown-linux-gnu";
+    let defaults = BuildOptions::for_target(target).unwrap().core_module_names();
+    assert!(!defaults.iter().any(|name| name == "obs-vst3"));
+    let cli::Invocation::Build(request) =
+        cli::parse(["build", "--target", target, "--vst3-sdk", "/sdk/vst3"]).unwrap()
+    else {
+        panic!("expected a production build request");
+    };
+    let module_names = request.options.core_module_names();
+    assert!(module_names.iter().any(|name| name == "obs-vst3"));
+    assert!(module_names.iter().any(|name| name == "obs-vst"));
+}
+
+#[test]
 fn bundled_frontend_plugins_follow_application_feature_selection() {
     let mut options =
         obs_build::application::BuildOptions::for_target("x86_64-unknown-linux-gnu").unwrap();
