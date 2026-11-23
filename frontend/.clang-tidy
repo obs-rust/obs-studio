@@ -1,0 +1,20 @@
+# clang-tidy checks for the Qt frontend (#5453). ci/cpp_lint.py runs them on
+# the unity groups a change touches, report only for now. The set is small on
+# purpose: bugs, performance, the static analyzer and a few modernizations,
+# not the upstream style (misc-const-correctness alone gave 147 findings in
+# the dock code). -Wconversion already covers the narrowing conversions.
+Checks: >-
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  performance-*,
+  -performance-enum-size,
+  clang-analyzer-*,
+  modernize-use-override,
+  modernize-use-nullptr,
+  cppcoreguidelines-pro-type-reinterpret-cast,
+  readability-function-cognitive-complexity
+WarningsAsErrors: ''
+CheckOptions:
+  readability-function-cognitive-complexity.Threshold: 15

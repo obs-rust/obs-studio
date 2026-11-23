@@ -8,6 +8,9 @@ runs the Qt-linked cmocka tests (tests.d fragments that find Qt6).
     uv run --no-project ci/linux_qt_frontend.py QT_PREFIX FFMPEG_PREFIX BUILD_DIR
 
 Env: CCACHE_DIR (optional), CTEST_JOBS (default 4).
+
+After the tests it runs the C++ lint report (ci/cpp_lint.py, #5453) on the
+build's compile DB. The report never fails the job.
 """
 
 from __future__ import annotations
@@ -53,6 +56,10 @@ REAL_QT_TESTS = [
 ]
 # The two forms `ninja -t targets all` gives a built executable: phony (from
 # the cmocka test fragment) and the linker rule.
+# The C++ lint report (#5453): report only, so its exit code and a timeout
+# are printed, never raised. It has its own time budget; this is the stop.
+CPP_LINT = ["uv", "run", "--no-project", "ci/cpp_lint.py", "--build"]
+CPP_LINT_TIMEOUT = 600
 TARGET = re.compile(r"^([A-Za-z0-9_]*): phony$|^([A-Za-z0-9_]*): CXX_EXECUTABLE_LINKER")
 
 
@@ -141,6 +148,8 @@ def run(qt: Path, ff: Path, build: Path) -> None:
          "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
          f"-DCMAKE_PREFIX_PATH={qt};{ff}", f"-DQt6_DIR={qt}/lib/cmake/Qt6",
          "-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+         # compile_commands.json for the C++ lint report (#5453).
+         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
          *ENABLE_FLAGS],
         log,
     )
@@ -191,6 +200,21 @@ def run(qt: Path, ff: Path, build: Path) -> None:
         "-j", os.environ.get("CTEST_JOBS") or "4", "-R", ctest_regex(built),
     ])
     phase("test", start)
+
+    start = time.monotonic()
+    cpp_lint(build)
+    phase("lint", start)
+
+
+def cpp_lint(build: Path) -> None:
+    """The C++ lint report (#5453). Report only: it never fails the job."""
+    try:
+        result = subprocess.run([*CPP_LINT, str(build)], cwd=SRC, timeout=CPP_LINT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f"== C++ lint report did not run: {error}", flush=True)
+        return
+    if result.returncode != 0:
+        print(f"== C++ lint report exited {result.returncode} (report only, ignored)", flush=True)
 
 
 def main(argv: list[str]) -> int:

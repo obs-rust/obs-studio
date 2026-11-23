@@ -395,6 +395,44 @@ class ClientLanesTest(unittest.TestCase):
         tests.assert_not_called()
 
 
+class CppLintTest(unittest.TestCase):
+    """#5453: ./lint runs the C++ lint report only with a compile DB, and
+    never fails on it."""
+
+    def call(self, env: dict[str, str]) -> tuple[list, str]:
+        with mock.patch.dict(os.environ, env, clear=False), \
+                mock.patch.object(local_gate.subprocess, "run",
+                                  return_value=subprocess.CompletedProcess([], 1)) as run, \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            if not env:
+                os.environ.pop("OBS_CPP_LINT_BUILD", None)
+            local_gate.cpp_lint()
+        return run.call_args_list, out.getvalue()
+
+    def test_without_a_compile_db_it_says_so_and_runs_nothing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as empty:
+            for env in ({}, {"OBS_CPP_LINT_BUILD": empty}):
+                with self.subTest(env=env):
+                    calls, out = self.call(env)
+                    self.assertEqual(calls, [])
+                    self.assertIn("+ cpp-lint: skipped (set OBS_CPP_LINT_BUILD", out)
+
+    def test_with_a_compile_db_it_runs_the_report_and_ignores_its_exit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as build:
+            Path(build, "compile_commands.json").write_text("[]", encoding="utf-8")
+            calls, _ = self.call({"OBS_CPP_LINT_BUILD": build})
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].args[0][1:], ["ci/cpp_lint.py", "--build", build])
+        self.assertIs(calls[0].kwargs["check"], False)
+
+    def test_the_lint_lane_runs_it(self):
+        source = Path(local_gate.__file__).read_text(encoding="utf-8")
+        lane = source[source.index("def lane_lint("):source.index("def lane_dylint(")]
+        self.assertIn("    cpp_lint()\n", lane)
+
+
 class ClangFormatScopeTest(unittest.TestCase):
     """CI's clang-format job checks every changed C/C++/ObjC file
     (.github/actions/run-clang-format, checkGlob '*.c' '*.h' ...), but the

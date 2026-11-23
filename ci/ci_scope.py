@@ -421,6 +421,9 @@ QT_PREFIXES = (
     "shared/properties-view/",
     "plugins/frontend-tools/",
     "ci/linux_qt_frontend",
+    # The C++ lint report runs in the Qt job (#5453).
+    "ci/cpp_lint",
+    "ci/test_cpp_lint",
 )
 QT_FILES = {
     "ci/fetch_libs_asset.py",
