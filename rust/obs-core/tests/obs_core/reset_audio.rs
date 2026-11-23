@@ -215,7 +215,10 @@ fn returns_the_reset2_result() {
     assert_eq!(core.stored, before);
 
     for result in [false, true] {
-        assert_eq!(reset_audio(info(48000, SPEAKERS_STEREO), |_| result), result);
+        assert_eq!(
+            reset_audio(info(48000, SPEAKERS_STEREO), |_| result),
+            result
+        );
     }
 }
 
@@ -224,7 +227,12 @@ fn returns_the_reset2_result() {
 /// #3272).
 #[test]
 fn passes_any_rate_and_layout_through() {
-    for (rate, speakers) in [(0, 0), (u32::MAX, -1), (1, c_int::MAX), (192_000, c_int::MIN)] {
+    for (rate, speakers) in [
+        (0, 0),
+        (u32::MAX, -1),
+        (1, c_int::MAX),
+        (192_000, c_int::MIN),
+    ] {
         let mut seen = None;
         reset_audio(info(rate, speakers), |info2| {
             seen = Some(info2);

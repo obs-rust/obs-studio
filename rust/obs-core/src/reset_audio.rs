@@ -25,8 +25,11 @@ use crate::audio_info_queries::{AudioInfo, AudioInfo2};
 
 /// `obs_reset_audio(oai)`: `info` is `*oai`, and `reset2` is one call of
 /// `obs_reset_audio2()` with the info it receives.
-#[allow(clippy::todo)]
 pub fn reset_audio(info: AudioInfo, reset2: impl FnOnce(AudioInfo2) -> bool) -> bool {
-    let _ = (info, reset2);
-    todo!("obs_reset_audio")
+    reset2(AudioInfo2 {
+        samples_per_sec: info.samples_per_sec,
+        speakers: info.speakers,
+        max_buffering_ms: 0,
+        fixed_buffering: false,
+    })
 }
