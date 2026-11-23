@@ -53,6 +53,19 @@ pub trait Sources {
 
 /// `obs_reset_source_uuids()` over `sources`.
 pub fn reset_source_uuids<S: Sources>(sources: &mut S) {
-    let _ = sources;
-    todo!("obs_reset_source_uuids")
+    sources.lock();
+    let mut table = sources.head();
+    let mut new_table = None;
+    // uthash's `HASH_ITER`: the next link is read before the entry moves.
+    let mut entry = table;
+    while let Some(current) = entry {
+        entry = sources.next(current);
+        sources.delete(&mut table, current);
+        sources.free_uuid(current);
+        sources.new_uuid(current);
+        sources.add(&mut new_table, current);
+    }
+    // The old table is freed with its last entry; only the head changes.
+    sources.store(new_table);
+    sources.unlock();
 }
