@@ -87,10 +87,14 @@ def install_git_run() -> str:
     return textwrap.dedent("\n".join(block[:end]))
 
 
-def run_install_git(*, host_list=None, sources=STOCK_SOURCES, fail_updates=0, fail_installs=0):
+MIRROR_ORDER = "/etc/apt/ci-tier2-mirrors"
+
+
+def run_install_git(*, host_list=None, sources=STOCK_SOURCES, fail_updates=0, fail_installs=0, order=None):
     """Run the step's non-prebaked path with mocked apt-get and dpkg, its
     /etc/apt files and the host's /run/host-apt in a temp directory.
-    (result, apt/dpkg calls, the main source's URI at each update, sources)."""
+    (result, apt/dpkg calls, the main source's URI at each update, sources).
+    With order=[], the mirror order it keeps for later steps is appended."""
     run = install_git_run()
     script = run[run.index("src=/etc/apt/sources.list.d/ubuntu.sources"):]
     script = script[:script.index("\ndone") + len("\ndone")]
@@ -103,6 +107,7 @@ def run_install_git(*, host_list=None, sources=STOCK_SOURCES, fail_updates=0, fa
         src.write_text(sources)
         script = script.replace("/etc/apt/sources.list.d/ubuntu.sources", str(src))
         script = script.replace("/run/host-apt", str(root / "host-apt"))
+        script = script.replace(MIRROR_ORDER, str(root / "ci-tier2-mirrors"))
         # The loop waits 10 and 20 s between attempts; the test does not.
         script = "sleep() { :; }\n" + script
         mock_bin = root / "bin"
@@ -120,6 +125,8 @@ def run_install_git(*, host_list=None, sources=STOCK_SOURCES, fail_updates=0, fa
                  "TRACE": str(trace), "MIRRORS": str(mirrors), "SOURCES": str(src), "STATE": tmp,
                  "FAIL_UPDATES": str(fail_updates), "FAIL_INSTALLS": str(fail_installs)},
         )
+        if order is not None and (root / "ci-tier2-mirrors").exists():
+            order.extend((root / "ci-tier2-mirrors").read_text().split())
         return (result, trace.read_text().splitlines(), mirrors.read_text().splitlines(), src.read_text())
 
 
@@ -446,8 +453,14 @@ esac
             j = job(name)
             updates = re.findall(r"^\s+(?:timeout --kill-after=10s \d+ )?(?:sudo )?apt-get update[^\n]*", j, re.M)
             if name.endswith("-build"):
-                self.assertEqual(len(updates), 1, name)
+                # A package retry on another mirror fetches that mirror's
+                # index (#5518); test_tier2_install_uses_the_next_mirror_on_each_retry
+                # checks that only a retry does.
+                self.assertEqual(len(updates), 2, name)
                 self.assertLess(j.index(updates[0].strip()), j.index("actions/checkout@"), name)
+                packages = j.index("name: Install Tier 2 Packages")
+                self.assertLess(packages, j.index(updates[1].strip()), name)
+                self.assertLess(j.index(updates[1].strip()), j.index("\n      - ", packages), name)
             else:
                 helper = (WORKFLOW.parents[2]/"rust/tools/linux-validate/ci-runtime.py").read_text()
                 self.assertEqual(helper.count("'apt-get', 'update'"), 1)
@@ -533,6 +546,100 @@ esac
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(mirrors, ["http://archive.ubuntu.com/ubuntu/"])
         self.assertIn("keeping its sources", result.stdout)
+
+    def test_install_git_keeps_its_mirror_order_for_the_package_step(self):
+        # #5518: the package step moves on from the mirror Install Git ended
+        # on, so Install Git keeps the whole order, not just the last URI.
+        for fail_updates in (0, 1):
+            with self.subTest(fail_updates=fail_updates):
+                order = []
+                result, _, _, _ = run_install_git(host_list=mirror_tests.AZURE_LIST, fail_updates=fail_updates,
+                                                  order=order)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(order, ["http://azure.archive.ubuntu.com/ubuntu/", "http://archive.ubuntu.com/ubuntu/",
+                                         "http://mirrors.edge.kernel.org/ubuntu/"])
+        # No rotation (unknown sources layout): no order, so the package
+        # step keeps the image's sources too.
+        odd = STOCK_SOURCES.replace("http://security.ubuntu.com/ubuntu/", "http://ports.example/ubuntu/")
+        order = []
+        run_install_git(host_list=mirror_tests.AZURE_LIST, sources=odd, order=order)
+        self.assertEqual(order, [])
+
+    def test_tier2_install_uses_the_next_mirror_on_each_retry(self):
+        # #5518, runs 45187119925 and 45194364427: the AWS runner's own mirror
+        # answered Install Git, then served the ~400 packages so slowly that
+        # attempt 1 hit its 300 s bound and attempt 2, on the same mirror, ran
+        # into the step's limit. Each retry points the main source at the
+        # mirror after the current one in Install Git's order and refetches
+        # the index before installing; the .debs already fetched stay.
+        mock = r'''#!/bin/sh
+case "$*" in
+  'sed -i '*) exec "$@" ;;
+esac
+printf '%s\n' "$*" >> "$TRACE"
+case "$*" in
+  'apt-get update -qq') sed -n '1,/^$/s/^URIs: //p' "$SOURCES" >> "$MIRRORS" ;;
+  'eatmydata dpkg --configure -a') exit 0 ;;
+  'eatmydata apt-get -f install -y '*) exit 0 ;;
+  'eatmydata apt-get install '*)
+    printf 'install at %s\n' "$(sed -n '1,/^$/s/^URIs: //p' "$SOURCES")" >> "$TRACE"
+    count=$(grep -c '^eatmydata apt-get install ' "$TRACE")
+    [ "$count" -gt "$FAIL_INSTALLS" ] ;;
+  *) exit 99 ;;
+esac
+'''
+        azure, archive, kernel = ("http://azure.archive.ubuntu.com/ubuntu/", "http://archive.ubuntu.com/ubuntu/",
+                                  "http://mirrors.edge.kernel.org/ubuntu/")
+        cases = (
+            # (mirror order or None, Install Git's last mirror, failures, URI each install ran at)
+            ([azure, archive, kernel], azure, 0, [azure]),
+            ([azure, archive, kernel], azure, 1, [azure, archive]),
+            ([azure, archive, kernel], archive, 2, [archive, kernel, azure]),
+            # No order kept: today's retries on the image's sources.
+            (None, archive, 1, [archive, archive]),
+        )
+        for order, last, failures, expected in cases:
+            with self.subTest(order=order, last=last, failures=failures), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                src = root / "ubuntu.sources"
+                src.write_text(STOCK_SOURCES.replace("URIs: http://archive.ubuntu.com/ubuntu/", f"URIs: {last}"))
+                order_file = root / "ci-tier2-mirrors"
+                if order is not None:
+                    order_file.write_text("\n".join(order) + "\n")
+                script = "unset -f sudo\n" + install_script()
+                script = script.replace("/etc/apt/sources.list.d/ubuntu.sources", str(src))
+                script = script.replace(MIRROR_ORDER, str(order_file))
+                archives = root / "archives"
+                archives.mkdir()
+                trace, mirrors = root / "trace", root / "mirrors"
+                trace.touch()
+                mirrors.touch()
+                mock_bin = root / "bin"
+                mock_bin.mkdir()
+                (mock_bin / "sudo").write_text(mock)
+                (mock_bin / "sudo").chmod(0o755)
+                result = subprocess.run(
+                    ["bash", "-e", "-c", script],
+                    cwd=WORKFLOW.parents[2], capture_output=True, text=True, timeout=10,
+                    env={**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
+                         "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
+                         "TIER2_APT_ARCHIVES": str(archives), "TRACE": str(trace), "MIRRORS": str(mirrors),
+                         "SOURCES": str(src), "TIER2_APT_SHARED": "false", "RUNNER_TEMP": tmp,
+                         "FAIL_INSTALLS": str(failures), "RETRY_ATTEMPTS": "3", "RETRY_DELAY": "0"},
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                calls = trace.read_text().splitlines()
+                self.assertEqual([c.removeprefix("install at ") for c in calls if c.startswith("install at ")],
+                                 expected, calls)
+                # A retry on a new mirror fetches that mirror's index first;
+                # attempt 1 reuses Install Git's fresh index.
+                self.assertEqual(mirrors.read_text().splitlines(),
+                                 expected[1:] if order is not None else [], calls)
+                for n, call in enumerate(calls):
+                    if call == "apt-get update -qq":
+                        self.assertEqual(calls[n + 1], "eatmydata dpkg --configure -a", calls)
+                # The security pocket keeps its own source.
+                self.assertIn("URIs: http://security.ubuntu.com/ubuntu/\nSuites: resolute-security\n", src.read_text())
 
     def test_the_build_container_sees_the_hosts_apt_directory_read_only(self):
         # The whole directory, not apt-mirrors.txt: a missing file would make

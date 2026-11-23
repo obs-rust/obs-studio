@@ -1722,7 +1722,11 @@ answers keeps `apt-get update` past its bound on every index file, and apt's
 `ci/host_apt_mirrors.py` holds the list and the rule; the build step carries
 the same rule as shell, and `ci/test_tier2_apt_cache.py` checks both against
 the same cases. The runtime delta's timeout retry fetches the index from the
-next mirror. The security pocket keeps `security.ubuntu.com`.
+next mirror. So does each retry of the build's `Install Tier 2 Packages`
+(#5518): `Install Git` keeps its mirror order in `/etc/apt/ci-tier2-mirrors`,
+and a retry moves from the mirror `Install Git` ended on to the next one, since
+a mirror can answer the bootstrap and then serve the ~400 packages too slowly
+for the install's 300 s bound. The security pocket keeps `security.ubuntu.com`.
 
 The separate prepared release runtime is refreshed manually. Its producer is
 `ci/tier2_setup_probe.py produce`, invoked by the existing `ci.yml`
