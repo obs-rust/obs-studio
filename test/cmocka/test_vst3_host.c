@@ -1,6 +1,8 @@
 /* Drive the installed VST3 host through the public libobs filter API. */
 #include <obs.h>
+#if OBS_VST3_TEST_X11
 #include <obs-nix-platform.h>
+#endif
 #include <util/platform.h>
 
 #include <math.h>
@@ -12,9 +14,11 @@
 #define SOURCE_ID "vst3_test_audio"
 #define FILTER_ID "vst3_filter"
 
-void *vst3_test_qt_start(int *argc, char **argv);
+void *vst3_test_qt_start(int *argc, char **argv, bool editor);
 void vst3_test_qt_drain(void);
 void vst3_test_qt_stop(void *app);
+bool vst3_test_qt_window_visible(void);
+bool vst3_test_qt_close_window(void);
 
 struct capture {
 	uint32_t frames;
@@ -133,7 +137,24 @@ static obs_source_t *create_filter(const char *class_id, const char *state)
 	return filter;
 }
 
-static bool test_host(const char *module_path, const char *data_path, const char *class_id, const char *second_id)
+static bool verify_editor(obs_source_t *filter)
+{
+	obs_properties_t *props = obs_source_properties(filter);
+	obs_property_t *button = obs_properties_get(props, "vst3_open_gui");
+	bool passed = button && obs_property_visible(button) && obs_property_button_clicked(button, filter) &&
+		      vst3_test_qt_window_visible() && vst3_test_qt_close_window() && !vst3_test_qt_window_visible() &&
+		      obs_property_button_clicked(button, filter) && vst3_test_qt_window_visible() &&
+		      vst3_test_qt_close_window() && !vst3_test_qt_window_visible();
+	obs_properties_destroy(props);
+	if (passed)
+		puts("Opened, closed and reopened the native VST3 editor");
+	else
+		fprintf(stderr, "The native VST3 editor could not be opened, closed and reopened\n");
+	return passed;
+}
+
+static bool test_host(const char *module_path, const char *data_path, const char *class_id, const char *second_id,
+		      bool editor)
 {
 	obs_module_t *module = NULL;
 	if (obs_open_module(&module, module_path, data_path) != MODULE_SUCCESS || !obs_init_module(module) ||
@@ -168,6 +189,8 @@ static bool test_host(const char *module_path, const char *data_path, const char
 	/* Little-endian state with gain 0.5 and zeroed reserved bytes. */
 	filter = create_filter(class_id, "0000003f0000000000000000");
 	bool passed = verify_gain(source, filter, 0.5f);
+	if (editor)
+		passed = filter && verify_editor(filter) && passed;
 	obs_data_t *saved = filter ? obs_save_source(filter) : NULL;
 	obs_source_release(filter);
 	filter = saved ? obs_load_private_source(saved) : NULL;
@@ -188,16 +211,19 @@ static bool test_host(const char *module_path, const char *data_path, const char
 
 int main(int argc, char **argv)
 {
-	if (argc != 6) {
-		fprintf(stderr, "usage: %s MODULE LOCALES CONFIG CLASS_ID SECOND_CLASS_ID\n", argv[0]);
+	const bool editor = argc == 7 && strcmp(argv[6], "--editor") == 0;
+	if (argc != 6 && !editor) {
+		fprintf(stderr, "usage: %s MODULE LOCALES CONFIG CLASS_ID SECOND_CLASS_ID [--editor]\n", argv[0]);
 		return 2;
 	}
 
+#if OBS_VST3_TEST_X11
 	obs_set_nix_platform(OBS_NIX_PLATFORM_X11_EGL);
-	void *app = vst3_test_qt_start(&argc, argv);
+#endif
+	void *app = vst3_test_qt_start(&argc, argv, editor);
 	bool passed = false;
 	if (obs_startup("en-US", argv[3], NULL)) {
-		passed = test_host(argv[1], argv[2], argv[4], argv[5]);
+		passed = test_host(argv[1], argv[2], argv[4], argv[5], editor);
 		obs_wait_for_destroy_queue();
 		vst3_test_qt_drain();
 		obs_shutdown();

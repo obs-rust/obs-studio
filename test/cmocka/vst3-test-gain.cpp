@@ -3,6 +3,7 @@
 
 #include "pluginterfaces/base/ibstream.h"
 #include "pluginterfaces/base/ipluginbase.h"
+#include "pluginterfaces/gui/iplugview.h"
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 #include "pluginterfaces/vst/vstspeaker.h"
@@ -24,6 +25,87 @@ bool same_id(const char *left, const char *right)
 {
 	return left && right && std::memcmp(left, right, sizeof(TUID)) == 0;
 }
+
+class GainView final : public IPlugView {
+public:
+	tresult PLUGIN_API queryInterface(const TUID iid, void **object) override
+	{
+		if (!same_id(iid, FUnknown_iid) && !same_id(iid, IPlugView_iid)) {
+			*object = nullptr;
+			return kNoInterface;
+		}
+		*object = static_cast<IPlugView *>(this);
+		addRef();
+		return kResultOk;
+	}
+
+	uint32 PLUGIN_API addRef() override { return ++references; }
+
+	uint32 PLUGIN_API release() override
+	{
+		const uint32 remaining = --references;
+		if (!remaining) {
+			delete this;
+		}
+		return remaining;
+	}
+
+	tresult PLUGIN_API isPlatformTypeSupported(FIDString type) override
+	{
+#if SMTG_OS_WINDOWS
+		const char *native_type = kPlatformTypeHWND;
+#elif SMTG_OS_MACOS
+		const char *native_type = kPlatformTypeNSView;
+#else
+		const char *native_type = kPlatformTypeX11EmbedWindowID;
+#endif
+		return type && std::strcmp(type, native_type) == 0 ? kResultTrue : kResultFalse;
+	}
+
+	tresult PLUGIN_API attached(void *parent, FIDString type) override
+	{
+		if (!parent || !frame || attached_to_parent || isPlatformTypeSupported(type) != kResultTrue) {
+			return kInvalidArgument;
+		}
+		attached_to_parent = true;
+		return kResultOk;
+	}
+
+	tresult PLUGIN_API removed() override
+	{
+		attached_to_parent = false;
+		return kResultOk;
+	}
+
+	tresult PLUGIN_API onWheel(float) override { return kResultFalse; }
+	tresult PLUGIN_API onKeyDown(char16, int16, int16) override { return kResultFalse; }
+	tresult PLUGIN_API onKeyUp(char16, int16, int16) override { return kResultFalse; }
+	tresult PLUGIN_API onFocus(TBool) override { return kResultOk; }
+	tresult PLUGIN_API canResize() override { return kResultFalse; }
+
+	tresult PLUGIN_API getSize(ViewRect *rect) override
+	{
+		if (!rect) {
+			return kInvalidArgument;
+		}
+		*rect = ViewRect(0, 0, 240, 160);
+		return kResultOk;
+	}
+
+	tresult PLUGIN_API onSize(ViewRect *) override { return kResultOk; }
+	tresult PLUGIN_API checkSizeConstraint(ViewRect *rect) override { return getSize(rect); }
+
+	tresult PLUGIN_API setFrame(IPlugFrame *new_frame) override
+	{
+		frame = new_frame;
+		return kResultOk;
+	}
+
+private:
+	std::atomic<uint32> references{1};
+	IPlugFrame *frame = nullptr;
+	bool attached_to_parent = false;
+};
 
 class Gain final : public IComponent, public IAudioProcessor, public IEditController {
 public:
@@ -183,7 +265,10 @@ public:
 	ParamValue PLUGIN_API getParamNormalized(ParamID) override { return 0.0; }
 	tresult PLUGIN_API setParamNormalized(ParamID, ParamValue) override { return kInvalidArgument; }
 	tresult PLUGIN_API setComponentHandler(IComponentHandler *) override { return kResultOk; }
-	IPlugView *PLUGIN_API createView(FIDString) override { return nullptr; }
+	IPlugView *PLUGIN_API createView(FIDString name) override
+	{
+		return name && std::strcmp(name, ViewType::kEditor) == 0 ? new (std::nothrow) GainView : nullptr;
+	}
 
 private:
 	std::atomic<uint32> references{1};

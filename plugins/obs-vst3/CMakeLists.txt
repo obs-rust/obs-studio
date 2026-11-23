@@ -53,3 +53,7 @@ endif()
 
 # VS forbids a project and its solution folder from sharing the same name.
 set_target_properties_obs(obs-vst3 PROPERTIES FOLDER plugins/obs-vst3 PREFIX "" AUTOMOC ON)
+
+if(OS_WINDOWS OR OS_MACOS)
+  include("${CMAKE_SOURCE_DIR}/test/cmocka/vst3-package.cmake")
+endif()
