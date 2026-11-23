@@ -54,6 +54,12 @@ if "-t" in sys.argv[1:]:
 
 RECORDER_STUB = RECORD
 
+# The C++ lint report's exit code is the test's to choose (#5453).
+UV_STUB = RECORD + """
+if "ci/cpp_lint.py" in sys.argv:
+    sys.exit(int(os.environ.get("CPP_LINT_EXIT", "0")))
+"""
+
 
 def qt6_fragments() -> list[str]:
     """The cmocka fragments that find Qt6, in the order the driver reads them."""
@@ -91,7 +97,7 @@ class LinuxQtFrontendTest(unittest.TestCase):
             ("cmake", CMAKE_STUB),
             ("pkg-config", PKG_CONFIG_STUB),
             ("ninja", NINJA_STUB),
-            ("uv", RECORDER_STUB),
+            ("uv", UV_STUB),
             ("xvfb-run", RECORDER_STUB),
         ):
             stub = self.bin / name
@@ -162,7 +168,8 @@ class LinuxQtFrontendTest(unittest.TestCase):
         self.assertIn(f"-DQt6_DIR={self.qt}/lib/cmake/Qt6", cmake["argv"])
         for flag in ("-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
                      "-DENABLE_UNIT_TESTS=ON", "-DENABLE_RUST_LIBOBS=OFF", "-DENABLE_FRONTEND=ON",
-                     "-DENABLE_SCRIPTING=OFF", "-DENABLE_BROWSER=OFF", "-DENABLE_WEBSOCKET=OFF"):
+                     "-DENABLE_SCRIPTING=OFF", "-DENABLE_BROWSER=OFF", "-DENABLE_WEBSOCKET=OFF",
+                     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"):
             self.assertIn(flag, cmake["argv"])
         self.assertEqual(cmake["env"]["PKG_CONFIG_PATH"], f"{self.ff}/lib/pkgconfig")
         self.assertEqual(cmake["env"]["LD_LIBRARY_PATH"], f"{self.ff}/lib")
@@ -247,6 +254,21 @@ class LinuxQtFrontendTest(unittest.TestCase):
         for name, reason in skips.items():
             self.assertIn(name, qt6_fragments())
             self.assertTrue(reason.strip(), name)
+
+    def test_the_cpp_lint_report_runs_last_and_never_fails_the_job(self) -> None:
+        """#5453: the report reads the build's compile DB after the tests;
+        it is report only, so its failure is printed, not the job's."""
+        for code in ("0", "1"):
+            with self.subTest(exit=code):
+                (self.record / "calls.jsonl").unlink(missing_ok=True)
+                result = self.run_script(*self.prefixes(), CPP_LINT_EXIT=code)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                report = [call for call in self.calls("uv") if "ci/cpp_lint.py" in call["argv"]]
+                self.assertEqual([call["argv"] for call in report],
+                                 [["run", "--no-project", "ci/cpp_lint.py", "--build", str(self.build)]])
+                self.assertIn("qt-phase phase=lint seconds=", result.stdout)
+                self.assertLess(result.stdout.index("qt-phase phase=test"), result.stdout.index("qt-phase phase=lint"))
+                self.assertEqual("exited 1 (report only, ignored)" in result.stdout, code == "1")
 
     def test_the_ctest_job_count_is_configurable(self) -> None:
         self.assertEqual(self.run_script(*self.prefixes(), CTEST_JOBS="7").returncode, 0)

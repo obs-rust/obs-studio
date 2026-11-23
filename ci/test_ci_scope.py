@@ -548,6 +548,12 @@ class QtScopeTest(unittest.TestCase):
         )  # only the Qt job's own files
         self.assertTrue(self.qt("ci/linux_qt_frontend.py"))
 
+    def test_the_cpp_lint_report_and_its_config_run_the_job(self):
+        """#5453: the report runs in the Qt job, so a change to it runs there."""
+        for path in ("ci/cpp_lint.py", "ci/test_cpp_lint.py", "frontend/.clang-tidy"):
+            with self.subTest(path=path):
+                self.assertTrue(self.qt(path))
+
     def test_qt_cache_contract_changes_run_the_job(self):
         for path in ("ci/test_qt_cache_budget.py", "ci/test_qt_cache_identity.py"):
             with self.subTest(path=path):
