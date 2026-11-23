@@ -1,24 +1,24 @@
 {
   "repo": "obs-rust/obs-studio",
-  "generated_at": "2026-11-23T01:01:37Z",
-  "generated_pacific": "Nov 22, 2026 05:01 PM PST",
-  "since": "2026-11-22T08:00:00Z",
+  "generated_at": "2026-11-23T14:53:39Z",
+  "generated_pacific": "Nov 23, 2026 06:53 AM PST",
+  "since": "2026-11-23T08:00:00Z",
   "since_caption": "new since 12:00 AM Pacific (America/Los_Angeles)",
-  "today_total": 24,
+  "today_total": 11,
   "ranked_by": "merged_prs",
-  "merged_pr_total": 3056,
+  "merged_pr_total": 3073,
   "unattributed_prs": [],
   "contributors": [
     {
       "login": "zackees",
       "avatar_url": "https://github.com/zackees.png?size=200",
-      "merged_prs": 2038,
-      "issues_filed": 1412,
-      "today_prs": 5,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+5 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+5</span>",
-      "score": 2038,
+      "merged_prs": 2039,
+      "issues_filed": 1414,
+      "today_prs": 1,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+1 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+1</span>",
+      "score": 2039,
       "first_contribution": "2026-10-08T20:57:49Z",
-      "last_contribution": "2026-11-22T09:51:50Z",
+      "last_contribution": "2026-11-23T09:27:10Z",
       "pr_numbers": [
         2,
         3,
@@ -2057,9 +2057,12 @@
         5438,
         5441,
         5442,
-        5444
+        5444,
+        5499
       ],
       "issue_numbers": [
+        5501,
+        5497,
         5401,
         5400,
         5397,
@@ -3478,13 +3481,13 @@
     {
       "login": "rdoupe",
       "avatar_url": "https://github.com/rdoupe.png?size=200",
-      "merged_prs": 657,
-      "issues_filed": 560,
-      "today_prs": 13,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+13 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+13</span>",
-      "score": 657,
+      "merged_prs": 666,
+      "issues_filed": 571,
+      "today_prs": 3,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+3 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+3</span>",
+      "score": 666,
       "first_contribution": "2026-10-10T22:17:15Z",
-      "last_contribution": "2026-11-23T00:40:23Z",
+      "last_contribution": "2026-11-23T12:44:55Z",
       "pr_numbers": [
         109,
         193,
@@ -4142,9 +4145,29 @@
         5469,
         5472,
         5476,
-        5481
+        5481,
+        5483,
+        5485,
+        5488,
+        5490,
+        5492,
+        5494,
+        5496,
+        5500,
+        5505
       ],
       "issue_numbers": [
+        5514,
+        5511,
+        5507,
+        5502,
+        5498,
+        5495,
+        5493,
+        5491,
+        5489,
+        5486,
+        5484,
         5482,
         5479,
         5474,
@@ -4711,13 +4734,13 @@
     {
       "login": "vpacher",
       "avatar_url": "https://github.com/vpacher.png?size=200",
-      "merged_prs": 188,
-      "issues_filed": 191,
+      "merged_prs": 194,
+      "issues_filed": 193,
       "today_prs": 6,
       "today_badge": "<span class=\"delta delta-up\" title=\"+6 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+6</span>",
-      "score": 188,
+      "score": 194,
       "first_contribution": "2026-10-15T10:25:47Z",
-      "last_contribution": "2026-11-22T23:01:21Z",
+      "last_contribution": "2026-11-23T14:42:01Z",
       "pr_numbers": [
         810,
         812,
@@ -4906,9 +4929,17 @@
         5460,
         5463,
         5473,
-        5477
+        5477,
+        5480,
+        5503,
+        5506,
+        5508,
+        5513,
+        5515
       ],
       "issue_numbers": [
+        5510,
+        5504,
         5478,
         5475,
         5471,
@@ -5495,6 +5526,26 @@
       "rank": 13
     },
     {
+      "login": "wesleyhawes",
+      "avatar_url": "https://github.com/wesleyhawes.png?size=200",
+      "merged_prs": 3,
+      "issues_filed": 1,
+      "today_prs": 1,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+1 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+1</span>",
+      "score": 3,
+      "first_contribution": "2026-11-14T23:07:07Z",
+      "last_contribution": "2026-11-23T13:36:23Z",
+      "pr_numbers": [
+        4849,
+        4851,
+        5142
+      ],
+      "issue_numbers": [
+        4850
+      ],
+      "rank": 14
+    },
+    {
       "login": "probonopd",
       "avatar_url": "https://github.com/probonopd.png?size=200",
       "merged_prs": 2,
@@ -5509,7 +5560,7 @@
         269
       ],
       "issue_numbers": [],
-      "rank": 14
+      "rank": 15
     },
     {
       "login": "Hermes Agent",
@@ -5526,25 +5577,6 @@
         3110
       ],
       "issue_numbers": [],
-      "rank": 15
-    },
-    {
-      "login": "wesleyhawes",
-      "avatar_url": "https://github.com/wesleyhawes.png?size=200",
-      "merged_prs": 2,
-      "issues_filed": 1,
-      "today_prs": 0,
-      "today_badge": "<span class=\"delta delta-none\" title=\"none since midnight Pacific\">&ndash;</span>",
-      "score": 2,
-      "first_contribution": "2026-11-14T23:07:07Z",
-      "last_contribution": "2026-11-16T19:42:45Z",
-      "pr_numbers": [
-        4849,
-        4851
-      ],
-      "issue_numbers": [
-        4850
-      ],
       "rank": 16
     },
     {

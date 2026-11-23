@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83622,
-      "libobs": 99461,
+      "libobs": 99764,
       "plugins": 148660,
       "shared": 15968
     },
-    "percent": 17.51,
-    "ported_lines": 60873,
-    "total_lines": 347711
+    "percent": 17.56,
+    "ported_lines": 61110,
+    "total_lines": 348014
   },
-  "commit": "a89799fa",
+  "commit": "15b15f2d",
   "date": "2026-11-23",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 52.04,
-          "ported_lines": 34932,
-          "total_lines": 67131
+          "percent": 52.15,
+          "ported_lines": 35169,
+          "total_lines": 67434
         },
         "graphics": {
           "percent": 72.14,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 963,
-      "hybrid_lines": 38588,
-      "percent": 61.2,
-      "ported_lines": 60873,
-      "total_lines": 99461
+      "files": 973,
+      "hybrid_lines": 38654,
+      "percent": 61.25,
+      "ported_lines": 61110,
+      "total_lines": 99764
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 54.04,
-            "ported_lines": 33579,
-            "total_lines": 62142
+            "percent": 54.15,
+            "ported_lines": 33816,
+            "total_lines": 62445
           },
           "graphics": {
             "percent": 72.66,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 928,
-        "hybrid_lines": 34269,
-        "percent": 62.32,
+        "files": 938,
+        "hybrid_lines": 34335,
+        "percent": 62.38,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -194,6 +194,7 @@
           "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
+          "obs-audio-monitoring-device.c.h",
           "obs-audio-render.c.h",
           "obs-audio.c.h",
           "obs-av1.c.h",
@@ -287,6 +288,7 @@
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
+          "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
@@ -435,6 +437,9 @@
           "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-raw-audio-remove.c.h",
+          "obs-reset-audio.c.h",
+          "obs-reset-audio2-reference-steps.c.h",
+          "obs-reset-audio2.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
           "obs-scene-audio-mix.c.h",
@@ -668,15 +673,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 56687,
-        "total_lines": 90956
+        "ported_lines": 56924,
+        "total_lines": 91259
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 53.37,
-            "ported_lines": 29979,
-            "total_lines": 56168
+            "percent": 53.51,
+            "ported_lines": 30216,
+            "total_lines": 56471
           },
           "graphics": {
             "percent": 72.66,
@@ -694,9 +699,9 @@
             "total_lines": 9978
           }
         },
-        "files": 906,
-        "hybrid_lines": 31895,
-        "percent": 62.43,
+        "files": 916,
+        "hybrid_lines": 31961,
+        "percent": 62.49,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -807,6 +812,7 @@
           "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
+          "obs-audio-monitoring-device.c.h",
           "obs-audio-render.c.h",
           "obs-audio.c.h",
           "obs-av1.c.h",
@@ -901,6 +907,7 @@
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
+          "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
@@ -1035,6 +1042,9 @@
           "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-raw-audio-remove.c.h",
+          "obs-reset-audio.c.h",
+          "obs-reset-audio2-reference-steps.c.h",
+          "obs-reset-audio2.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
           "obs-scene-audio-mix.c.h",
@@ -1266,15 +1276,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 53008,
-        "total_lines": 84903
+        "ported_lines": 53245,
+        "total_lines": 85206
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 53.5,
-            "ported_lines": 30920,
-            "total_lines": 57799
+            "percent": 53.62,
+            "ported_lines": 31157,
+            "total_lines": 58102
           },
           "graphics": {
             "percent": 72.21,
@@ -1292,9 +1302,9 @@
             "total_lines": 10704
           }
         },
-        "files": 917,
-        "hybrid_lines": 33253,
-        "percent": 61.97,
+        "files": 927,
+        "hybrid_lines": 33319,
+        "percent": 62.03,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1408,6 +1418,7 @@
           "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
+          "obs-audio-monitoring-device.c.h",
           "obs-audio-render.c.h",
           "obs-audio.c.h",
           "obs-av1.c.h",
@@ -1501,6 +1512,7 @@
           "obs-enum-contexts.c.h",
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
+          "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
@@ -1635,6 +1647,9 @@
           "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-raw-audio-remove.c.h",
+          "obs-reset-audio.c.h",
+          "obs-reset-audio2-reference-steps.c.h",
+          "obs-reset-audio2.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
           "obs-scene-audio-mix.c.h",
@@ -1871,12 +1886,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 54186,
-        "total_lines": 87439
+        "ported_lines": 54423,
+        "total_lines": 87742
       }
     }
   },
   "rust": {
-    "lines": 232539
+    "lines": 233570
   }
 }
