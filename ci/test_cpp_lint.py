@@ -82,6 +82,71 @@ class GroupsTest(unittest.TestCase):
         self.assertEqual(groups("libobs/obs.c", "frontend/data/locale/en-US.ini", "docs/features.md"), (set(), []))
 
 
+NINJA_DEPS = """\
+frontend/CMakeFiles/obs-studio.dir/build/frontend.widgets+.hpp.cpp.o: #deps 4, deps mtime 1 (VALID)
+    /w/src/frontend/build/frontend.widgets+.hpp.cpp
+    /w/src/frontend/widgets/OBSBasic.hpp
+    /w/src/frontend/utility/DockLayout.hpp
+    /usr/include/stdc-predef.h
+
+frontend/CMakeFiles/obs-studio.dir/build/frontend.docks+.hpp.cpp.o: #deps 2, deps mtime 1 (VALID)
+    /w/src/frontend/build/frontend.docks+.hpp.cpp
+    /w/src/frontend/docks/OBSDock.hpp
+
+frontend/CMakeFiles/obs-studio.dir/cmake_pch.hxx.gch: #deps 2, deps mtime 1 (VALID)
+    /w/build-tl/frontend/CMakeFiles/obs-studio.dir/cmake_pch.hxx.cxx
+    /w/src/frontend/OBSApp.hpp
+
+test/cmocka/CMakeFiles/test_dock_proportions.dir/__/__/frontend/build/frontend.dock-layout+.hpp.cpp.o: #deps 2, deps mtime 1 (VALID)
+    /w/src/frontend/build/frontend.dock-layout+.hpp.cpp
+    /w/src/frontend/utility/Other.hpp
+
+"""
+
+
+class DepsTest(unittest.TestCase):
+    """#5453 step 3: the build's own dependencies map a header to exactly the
+    groups that include it; the precompiled-header guess missed headers that
+    come through another header (DockLayout.hpp reaches widgets through
+    OBSBasic.hpp)."""
+
+    def test_ninja_deps_give_each_header_its_groups(self):
+        owners = c.parse_ninja_deps(NINJA_DEPS, Path("/w/src"))
+        self.assertEqual(owners["frontend/utility/DockLayout.hpp"], {"widgets"})
+        self.assertEqual(owners["frontend/widgets/OBSBasic.hpp"], {"widgets"})
+        self.assertEqual(owners["frontend/build/frontend.docks+.hpp.cpp"], {"docks"})
+        # The target's precompiled header goes into every group of obs-studio.
+        self.assertEqual(owners["frontend/OBSApp.hpp"], {"widgets", "docks"})
+        # Other targets' objects and files outside the tree are not owners.
+        self.assertNotIn("frontend/utility/Other.hpp", owners)
+        self.assertFalse(any(path.startswith("/") for path in owners))
+
+    def test_with_the_deps_a_header_runs_only_its_groups(self):
+        owners = c.parse_ninja_deps(NINJA_DEPS, Path("/w/src"))
+        self.assertEqual(c.groups_for(["frontend/utility/DockLayout.hpp"], list(TREE), TREE.get, owners),
+                         ({"widgets"}, []))
+        # A header no group includes runs nothing, not every group.
+        self.assertEqual(c.groups_for(["frontend/utility/unused.hpp"], list(TREE), TREE.get, owners), (set(), []))
+        # The config, the script and the baseline still run every group.
+        for path in (c.CONFIG, "ci/cpp_lint.py", c.BASELINE_PATH):
+            with self.subTest(path=path):
+                self.assertEqual(c.groups_for([path], list(TREE), TREE.get, owners), (GROUPS, []))
+
+    def test_ninja_is_asked_once_and_a_failure_falls_back(self):
+        calls = []
+
+        def runner(argv, timeout):
+            calls.append(argv)
+            return completed(argv, NINJA_DEPS)
+
+        self.assertEqual(c.ninja_owners(runner, Path("/b"), Path("/w/src"))["frontend/utility/DockLayout.hpp"],
+                         {"widgets"})
+        self.assertEqual(calls, [["ninja", "-C", "/b", "-t", "deps"]])
+        for broken in (lambda argv, timeout: completed(argv, "", 1),
+                       lambda argv, timeout: (_ for _ in ()).throw(FileNotFoundError("ninja"))):
+            self.assertIsNone(c.ninja_owners(broken, Path("/b"), Path("/w/src")))
+
+
 class FakeGit:
     def __init__(self, answers: dict[tuple[str, ...], str | None]) -> None:
         self.answers = answers
@@ -173,6 +238,29 @@ class ParseTest(unittest.TestCase):
         moved = c.Finding("frontend/a.hpp", 90, 1, "modernize-use-override", "annotate this")
         self.assertEqual(finding.key(), "frontend/a.hpp: modernize-use-override: annotate this")
         self.assertEqual(finding.key(), moved.key())
+
+    def test_a_key_does_not_change_with_an_edit_or_a_machine(self):
+        # Numbers that follow the code (complexity) and paths that follow the
+        # machine (the Qt prefix, the checkout) are not part of the key.
+        a = c.Finding("frontend/a.hpp", 40, 1, "readability-function-cognitive-complexity",
+                      "function 'X' has cognitive complexity of 31 (threshold 15)")
+        b = c.Finding("frontend/a.hpp", 41, 1, "readability-function-cognitive-complexity",
+                      "function 'X' has cognitive complexity of 27 (threshold 15)")
+        self.assertEqual(a.key(), b.key())
+        self.assertEqual(a.key(), "frontend/a.hpp: readability-function-cognitive-complexity: "
+                                  "function 'X' has cognitive complexity of N (threshold N)")
+        q1 = c.Finding("frontend/b.hpp", 69, 2, "clazy-overloaded-signal",
+                       "signal destroyed is overloaded (with /o/qt6/include/QtCore/qobject.h:105:1)")
+        q2 = c.Finding("frontend/b.hpp", 70, 2, "clazy-overloaded-signal",
+                       "signal destroyed is overloaded (with /home/runner/work/_temp/qt/include/QtCore/qobject.h:105:1)")
+        self.assertEqual(q1.key(), q2.key())
+        self.assertEqual(q1.key(), "frontend/b.hpp: clazy-overloaded-signal: signal destroyed is overloaded "
+                                   "(with qobject.h)")
+        # Digits inside a name stay: they are the name.
+        n = c.Finding("frontend/c.hpp", 1, 1, "bugprone-x", "use int64_t for 'v2'")
+        self.assertEqual(n.key(), "frontend/c.hpp: bugprone-x: use int64_t for 'v2'")
+        cxx = c.Finding("frontend/c.hpp", 1, 1, "clazy-range-loop-detach", "c++11 range-loop might detach")
+        self.assertEqual(cxx.key(), "frontend/c.hpp: clazy-range-loop-detach: c++11 range-loop might detach")
 
     def test_lizard_csv(self):
         text = (
@@ -329,6 +417,8 @@ class LintTest(unittest.TestCase):
         def broken(argv: list[str], timeout: float) -> subprocess.CompletedProcess[str]:
             if argv[0] == "uvx":
                 return completed(argv, "", 2)
+            if argv[0] == "ninja":
+                return completed(argv, "", 1)  # no deps: the precompiled-header rule
             raise AssertionError("no tool may run without uvx")
 
         lines = self.lint("frontend/utility/DockLayout.cpp.hpp\0", runner=broken)
@@ -367,6 +457,111 @@ class LintTest(unittest.TestCase):
             self.assertEqual(c.main(["--build", str(self.build)]), 0)
         self.assertIn("a finding", summary.read_text(encoding="utf-8"))
         self.assertIn("report only", summary.read_text(encoding="utf-8"))
+
+
+def finding(path, check, message, line=1):
+    return c.Finding(path, line, 1, check, message)
+
+
+VERSIONS = {"clang-tidy": "22.1.8", "clazy": "Ubuntu LLVM version 21.1.8"}
+
+
+class BaselineTest(unittest.TestCase):
+    """#5453 step 3: the baseline is one sorted line per key with a count,
+    and the versions it was made with."""
+
+    def test_the_baseline_round_trips_sorted_with_counts(self):
+        findings = [finding("frontend/b.hpp", "clazy-qstring-arg", "use multi-arg", 3),
+                    finding("frontend/b.hpp", "clazy-qstring-arg", "use multi-arg", 9),
+                    finding("frontend/a.hpp", "modernize-use-override", "annotate this")]
+        text = c.render_baseline(findings, VERSIONS)
+        lines = [line for line in text.splitlines() if line and not line.startswith("#")]
+        self.assertEqual(lines, ["frontend/a.hpp: modernize-use-override: annotate this\t1",
+                                 "frontend/b.hpp: clazy-qstring-arg: use multi-arg\t2"])
+        self.assertIn("# clang-tidy 22.1.8", text)
+        self.assertIn("# clazy Ubuntu LLVM version 21.1.8", text)
+        counts, versions = c.parse_baseline(text)
+        self.assertEqual(versions, VERSIONS)
+        self.assertEqual(counts, {"frontend/a.hpp: modernize-use-override: annotate this": 1,
+                                  "frontend/b.hpp: clazy-qstring-arg: use multi-arg": 2})
+
+    def test_the_repository_baseline_parses_with_the_pinned_clang_tidy(self):
+        counts, versions = c.parse_baseline((c.ROOT / c.BASELINE_PATH).read_text(encoding="utf-8"))
+        self.assertEqual(versions["clang-tidy"], c.CLANG_TIDY.split("==")[1])
+        self.assertIn("clazy", versions)
+        self.assertGreater(len(counts), 0)
+        self.assertTrue(all(key.startswith("frontend/") for key in counts))
+
+
+def result(tool, findings, version=None, judged=True, reason=""):
+    return c.ToolResult(tool, version or VERSIONS[tool], findings, judged, reason)
+
+
+class GateTest(unittest.TestCase):
+    base = ("# clang-tidy 22.1.8\n# clazy Ubuntu LLVM version 21.1.8\n"
+            "frontend/a.hpp: modernize-use-override: annotate this\t1\n"
+            "frontend/b.hpp: clazy-qstring-arg: use multi-arg\t2\n")
+
+    def judge(self, results, changed=("frontend/a.hpp",)):
+        return c.judge(results, *c.parse_baseline(self.base), set(changed))
+
+    def test_a_new_finding_is_named_with_the_baseline_line_to_add(self):
+        verdict = self.judge([result("clang-tidy", [
+            finding("frontend/a.hpp", "modernize-use-override", "annotate this"),
+            finding("frontend/a.hpp", "modernize-use-override", "annotate this", 7),
+            finding("frontend/a.hpp", "bugprone-new", "new thing")])])
+        self.assertEqual(verdict.new, ["frontend/a.hpp: bugprone-new: new thing\t1",
+                                       "frontend/a.hpp: modernize-use-override: annotate this\t2"])
+
+    def test_known_findings_and_moved_code_pass(self):
+        verdict = self.judge([result("clang-tidy", [
+            finding("frontend/a.hpp", "modernize-use-override", "annotate this", 99)])])
+        self.assertEqual(verdict.new, [])
+        self.assertEqual(verdict.removed, [])
+
+    def test_a_removed_finding_in_a_changed_file_is_listed_not_failed(self):
+        verdict = self.judge([result("clang-tidy", []), result("clazy", [])], changed=["frontend/a.hpp"])
+        self.assertEqual(verdict.new, [])
+        # Only for changed files: an unchanged file's findings need not show up.
+        self.assertEqual(verdict.removed, ["frontend/a.hpp: modernize-use-override: annotate this\t1"])
+
+    def test_a_tool_that_did_not_judge_everything_judges_nothing(self):
+        new = [finding("frontend/a.hpp", "bugprone-new", "new thing")]
+        verdict = self.judge([result("clang-tidy", new, judged=False, reason="dock-layout: timed out")])
+        self.assertEqual(verdict.new, [])
+        self.assertEqual(verdict.removed, [])
+        self.assertIn("clang-tidy: not judged (dock-layout: timed out)", verdict.notes)
+
+    def test_another_tool_version_is_not_judged(self):
+        new = [finding("frontend/b.hpp", "clazy-new", "new")]
+        verdict = self.judge([result("clazy", new, version="Ubuntu LLVM version 22.1.0")])
+        self.assertEqual(verdict.new, [])
+        self.assertTrue(any("baseline has Ubuntu LLVM version 21.1.8" in note for note in verdict.notes),
+                        verdict.notes)
+
+
+class GateExitTest(unittest.TestCase):
+    """Only one thing fails the lane: a new finding in a PR or merge group."""
+
+    def run_main(self, new, event, args=("--gate",)):
+        report = c.Report()
+        report.verdict = c.Verdict(new=list(new), removed=[], notes=[])
+        with redirect_stdout(io.StringIO()) as out, \
+                mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": event, "GITHUB_STEP_SUMMARY": ""}), \
+                mock.patch.object(c, "lint", return_value=report):
+            code = c.main(["--build", "/b", *args])
+        return code, out.getvalue()
+
+    def test_new_findings_exit_with_the_gate_code_only_for_prs_and_merge_groups(self):
+        line = "frontend/a.hpp: bugprone-new: new thing\t1"
+        for event in ("pull_request", "merge_group"):
+            with self.subTest(event=event):
+                code, out = self.run_main([line], event)
+                self.assertEqual(code, c.GATE_FAILED)
+                self.assertIn(line, out)
+        self.assertEqual(self.run_main([line], "push")[0], 0)
+        self.assertEqual(self.run_main([line], "pull_request", args=())[0], 0)
+        self.assertEqual(self.run_main([], "pull_request")[0], 0)
 
 
 class ConfigTest(unittest.TestCase):
