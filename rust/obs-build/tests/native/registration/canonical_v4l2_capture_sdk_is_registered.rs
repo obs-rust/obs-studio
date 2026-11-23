@@ -164,9 +164,10 @@ const EXPECTED: &str = r#"{
 #[test]
 fn canonical_v4l2_capture_sdk_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let expected: serde_json::Value = serde_json::from_str(EXPECTED).unwrap();
     for name in CASES {
         assert_eq!(raw["targets"][name], expected[name], "{name}");
@@ -230,16 +231,17 @@ fn canonical_v4l2_capture_sdk_guards() {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "v4l2_capture_sdk_runtime.rs"]
+#[path = "support/v4l2_capture_sdk_runtime.rs"]
 mod runtime;
 
 #[test]
 fn canonical_v4l2_capture_sdk_absent_configures() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
         for name in CASES {

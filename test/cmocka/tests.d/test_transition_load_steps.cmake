@@ -14,7 +14,7 @@
 # test_transition_load_release, test_transition_scale_type,
 # test_transition_swap, test_transition_swap_active and
 # test_transition_swap_cycle cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the six hidden load functions and the start port's
@@ -23,4 +23,4 @@
 # directories), so it links the archive alone: its obs-source member needs
 # nothing from libobs or the other crates. Linking the archive directly avoids
 # exporting private symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

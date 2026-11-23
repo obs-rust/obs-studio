@@ -11,4 +11,4 @@
 # does not link on its own, as test_portal_shortcut_sets. The Tier 3 parity
 # tests in rust/obs-hotkey compare the shims with this C instead, and
 # test_x11_hotkey_layout covers the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

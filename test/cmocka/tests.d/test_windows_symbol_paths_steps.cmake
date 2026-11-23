@@ -6,7 +6,7 @@
 # and links libobs for dstr, so it runs on every platform. The functions are
 # hidden in libobs, so this characterizes that C source; the test calls only
 # them.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # No _rust variant, as for test_windows_system_info_steps and
 # test_win_crash_report_steps: the shims' archive member (an obs_core codegen

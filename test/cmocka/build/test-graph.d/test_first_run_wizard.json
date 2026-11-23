@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_first_run_wizard": {
+      "sources": [
+        "frontend/tests/test_first_run_wizard.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/FirstRunWizard.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_first_run_wizard": {
+      "target": "test_first_run_wizard",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

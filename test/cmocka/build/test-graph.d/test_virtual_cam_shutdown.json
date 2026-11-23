@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_virtual_cam_shutdown": {
+      "sources": [
+        "frontend/tests/test_virtual_cam_shutdown.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/widgets/VirtualCamShutdown.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_virtual_cam_shutdown": {
+      "target": "test_virtual_cam_shutdown",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    }
+  }
+}

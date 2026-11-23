@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_utf8_insize0": {
+      "sources": [
+        "test/cmocka/test_utf8_insize0.c",
+        "libobs/util/utf8.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "MSVC"
+      },
+      "sanitizers": "address,undefined",
+      "includes": [
+        "libobs"
+      ]
+    }
+  },
+  "tests": {
+    "test_utf8_insize0": {
+      "target": "test_utf8_insize0",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

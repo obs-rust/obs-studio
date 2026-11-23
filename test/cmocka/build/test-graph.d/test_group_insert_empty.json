@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_group_insert_empty": {
+      "sources": [
+        "test/cmocka/test_group_insert_empty.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_group_insert_empty": {
+      "target": "test_group_insert_empty",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

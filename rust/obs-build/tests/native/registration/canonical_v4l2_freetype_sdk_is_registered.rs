@@ -5,9 +5,10 @@ use obs_build::validation::graph::Graph;
 fn canonical_v4l2_freetype_sdk_absent_configures() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
         for name in CASES {
@@ -76,7 +77,7 @@ endif()
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "v4l2_freetype_sdk_runtime.rs"]
+#[path = "support/v4l2_freetype_sdk_runtime.rs"]
 mod runtime;
 
 const CASES: [&str; 3] = [
@@ -131,9 +132,10 @@ fn expected_target(name: &str) -> serde_json::Value {
 #[test]
 fn canonical_v4l2_freetype_sdk_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for name in CASES {
         assert_eq!(raw["targets"][name], expected_target(name), "{name}");
         let mut test = serde_json::json!({"target": name, "requires": requirement(name)});
@@ -151,7 +153,7 @@ fn canonical_v4l2_freetype_sdk_is_registered() {
 #[test]
 fn canonical_v4l2_freetype_sdk_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph
         .targets
         .retain(|name, _| CASES.contains(&name.as_str()));

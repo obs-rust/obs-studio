@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_replay_buffer_estimate": {
+      "cpp_standard": "17",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_WIDGETS"
+        ]
+      },
+      "sources": [
+        "test/cmocka/test_replay_buffer_estimate.cpp",
+        "frontend/utility/replay-buffer-estimate.cpp.hpp"
+      ],
+      "watch_inputs": [
+        "frontend/utility/replay-buffer-estimate.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_replay_buffer_estimate": {
+      "qt_runtime": "Qt6::Core",
+      "suite": "qt",
+      "target": "test_replay_buffer_estimate"
+    }
+  }
+}

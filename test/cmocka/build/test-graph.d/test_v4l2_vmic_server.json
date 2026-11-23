@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_v4l2_vmic_server": {
+      "sources": [
+        "test/cmocka/test_v4l2_vmic_server.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_V4L2_VMIC_TEST_OWNER"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ]
+    }
+  },
+  "tests": {
+    "test_v4l2_vmic_server": {
+      "target": "test_v4l2_vmic_server",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_V4L2_VMIC_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120
+    }
+  }
+}

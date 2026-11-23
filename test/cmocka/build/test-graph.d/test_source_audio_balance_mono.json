@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_audio_balance_mono": {
+      "sources": [
+        "test/cmocka/test_source_audio_balance_mono.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "m",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_source_audio_balance_mono": {
+      "target": "test_source_audio_balance_mono",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

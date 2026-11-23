@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nix_wayland_keys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_keys_steps.c",
+        "libobs/obs-nix-wayland-keys.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_nix_wayland_keys_steps": {
+      "target": "test_nix_wayland_keys_steps",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
+    }
+  }
+}

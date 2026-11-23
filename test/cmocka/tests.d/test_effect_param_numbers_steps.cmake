@@ -11,4 +11,4 @@
 # (rust/obs-graphics/tests/shader/effect_param_numbers_parity.rs) compare the
 # shims with this C on every value inside int range, the Tier 1 tests mirror
 # this file's cases, and test_effect_number_defaults covers the callers through
-# the real libobs. Target and test are declared in ../build/test-graph.json.
+# the real libobs. Target and test are declared in ../build/test-graph.d.

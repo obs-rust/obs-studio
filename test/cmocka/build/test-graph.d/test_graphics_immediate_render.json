@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_immediate_render": {
+      "sources": [
+        "test/cmocka/test_graphics_immediate_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_graphics_immediate_render": {
+      "target": "test_graphics_immediate_render",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_outputs": {
+      "sources": [
+        "test/cmocka/test_encoder_outputs.c",
+        "libobs/obs-encoder-outputs.c.h"
+      ],
+      "definitions": [
+        "pthread_mutex_lock=encoder_outputs_lock",
+        "pthread_mutex_unlock=encoder_outputs_unlock"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_outputs": {
+      "target": "test_encoder_outputs",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_multitrack_encoder_override": {
+      "sources": [
+        "test/cmocka/test_multitrack_encoder_override.c",
+        "frontend/utility/multitrack-encoder-override.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_multitrack_encoder_override": {
+      "target": "test_multitrack_encoder_override"
+    }
+  }
+}

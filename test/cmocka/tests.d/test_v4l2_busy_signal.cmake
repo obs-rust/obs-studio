@@ -5,4 +5,4 @@
 if(OS_LINUX AND TARGET OBS::v4l2)
   find_package(Libv4l2 REQUIRED)
 endif()
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

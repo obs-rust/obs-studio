@@ -8,7 +8,7 @@ fn expected() -> Graph {
 #[test]
 fn canonical_portal_output_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let actual = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let actual = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let expected = expected();
     for (name, target) in &expected.targets {
         assert_eq!(
@@ -44,7 +44,7 @@ fn canonical_portal_output_is_registered() {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "portal_output_runtime.rs"]
+#[path = "support/portal_output_runtime.rs"]
 mod runtime;
 
 #[test]

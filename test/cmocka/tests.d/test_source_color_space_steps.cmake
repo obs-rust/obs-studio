@@ -9,11 +9,11 @@
 # functions are hidden in libobs, so this characterizes that C source; the test
 # calls only them. test_filter_color_space covers the caller through the real
 # libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the two hidden functions and includes only their header and
 # graphics/graphics.h (for enum gs_color_space), so it links the archive alone:
 # its obs-source member needs nothing from libobs or the other crates. Linking
 # the archive directly avoids exporting private symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

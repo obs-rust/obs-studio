@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_x11_keymap": {
+      "sources": [
+        "test/cmocka/test_x11_keymap.c"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-x11-keymap.h"
+      ],
+      "header_packages": [
+        "xcb"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_x11_keymap": {
+      "target": "test_x11_keymap",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
+    }
+  }
+}

@@ -18,4 +18,4 @@ set_target_properties(
     PREFIX ""
     SUFFIX ".preload"
 )
-# Executable/CTest registration is shared with Cargo in ../build/test-graph.json.
+# Executable/CTest registration is shared with Cargo in ../build/test-graph.d.

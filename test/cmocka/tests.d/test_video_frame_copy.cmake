@@ -6,4 +6,4 @@
 # off, at a size where the rows match and one where they don't, through the
 # real libobs. Core video needs a graphics module, so it builds on Linux only
 # and runs under xvfb-run; without a display the cases skip.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_core_module_manifest": {
+      "sources": [
+        "test/cmocka/test_core_module_manifest.c"
+      ],
+      "requires": "ENABLE_CORE_MODULES",
+      "libraries": [
+        "OBS::libobs-core-modules",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_core_module_manifest": {
+      "target": "test_core_module_manifest",
+      "requires": "ENABLE_CORE_MODULES",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

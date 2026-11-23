@@ -1,4 +1,4 @@
-# Unchanged headless cases live in build/test-graph.json (#1390).
+# Unchanged headless cases live in build/test-graph.d (#1390).
 # The production PCH needs these SDK headers even without device access.
 set(HAVE_FREETYPE_PLATFORM_SDK FALSE)
 if((OS_LINUX OR OS_FREEBSD OR OS_OPENBSD))

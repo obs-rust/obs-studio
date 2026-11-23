@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_distribution_info": {
+      "sources": [
+        "test/cmocka/test_distribution_info.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "libobs/obs-nix-os-release.h",
+        "libobs/build/libobs-ported-nix-system-info.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_distribution_info": {
+      "target": "test_distribution_info"
+    }
+  }
+}

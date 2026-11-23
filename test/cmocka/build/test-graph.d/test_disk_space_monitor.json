@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_disk_space_monitor": {
+      "sources": [
+        "test/cmocka/test_disk_space_monitor.cpp",
+        "frontend/utility/disk-space-monitor.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility",
+        "frontend/build/frontend-utility-disk-space-monitor.pch.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Threads::Threads",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_disk_space_monitor": {
+      "target": "test_disk_space_monitor",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

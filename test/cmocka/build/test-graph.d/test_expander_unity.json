@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_expander_unity": {
+      "sources": [
+        "test/cmocka/test_expander_unity.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-filters"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/fp:strict",
+          "requires": "MSVC"
+        },
+        {
+          "name": "-fno-fast-math",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "-ffp-contract=off",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_expander_unity": {
+      "target": "test_expander_unity",
+      "requires": true
+    }
+  }
+}

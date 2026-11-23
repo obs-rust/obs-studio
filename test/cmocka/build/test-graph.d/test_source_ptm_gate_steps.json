@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_ptm_gate_steps": {
+      "sources": [
+        "test/cmocka/test_source_ptm_gate_steps.c",
+        "libobs/obs-source-ptm-gate.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_ptm_gate_steps": {
+      "target": "test_source_ptm_gate_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

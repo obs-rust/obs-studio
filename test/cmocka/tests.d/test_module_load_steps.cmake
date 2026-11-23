@@ -8,10 +8,10 @@
 # callers run against the C backend, the hybrid libobs and
 # libobs-c-reference. obs_startup() needs a display on Linux, so the test
 # runs under xvfb-run there.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # The moved file is compiled into the test with ASan and UBSan (the
-# "sanitizers" entry in test-graph.json). No _rust variant, as for
+# "sanitizers" entry in test-graph.d). No _rust variant, as for
 # test_canvas_rules_steps and test_module_type_rules_steps: the shims' archive
 # member (an obs_core codegen unit) also holds the other obs-core ports, which
 # need libobs and obs-util's platform code, so it does not link on its own

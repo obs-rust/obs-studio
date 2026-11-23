@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_counter_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_counter_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_counter_getters": {
+      "target": "test_encoder_counter_getters"
+    }
+  }
+}

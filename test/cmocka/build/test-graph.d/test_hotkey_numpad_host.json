@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_numpad_host": {
+      "sources": [
+        "test/cmocka/test_hotkey_numpad_host.c"
+      ],
+      "requires": {
+        "not": "OS_MACOS"
+      },
+      "watch_inputs": [
+        "libobs/obs-hotkey-translations-macos.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_numpad_host": {
+      "target": "test_hotkey_numpad_host"
+    }
+  }
+}

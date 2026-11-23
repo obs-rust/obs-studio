@@ -4,7 +4,7 @@ use super::*;
 fn canonical_module_name_lookups_is_registered() {
     use obs_build::validation::graph::{Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let name = "test_module_name_lookups";
     let target = &graph.targets[name];
     assert_eq!(target.sources.len(), 1);

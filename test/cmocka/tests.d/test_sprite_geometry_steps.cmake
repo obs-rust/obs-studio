@@ -12,7 +12,7 @@
 # test calls only them. test_texture_render, test_image_size_precheck, the
 # test_graphics_alias_* tests and the scene render tests cover the callers
 # through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims, built and
 # run only with the hybrid backend (OBS_LIBOBS_BACKEND=C has no Rust target).
@@ -24,4 +24,4 @@
 # libobs links those
 # but does not export them, so this executable compiles its own copies, as
 # test_effect_parser_lifecycle_rust does. graphics-sprite.c is not compiled in.
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

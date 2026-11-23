@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_ffmpeg_net_host": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_net_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "plugins/obs-ffmpeg/hosts/posix"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/hosts/posix/obs-ffmpeg-net-host.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_ffmpeg_net_host": {
+      "target": "test_obs_ffmpeg_net_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    }
+  }
+}

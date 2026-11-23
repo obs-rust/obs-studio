@@ -10,4 +10,4 @@
 # not link on its own. The Tier 3 parity tests in rust/obs-output compare the
 # shim with this C instead. test_output_protocols covers the caller through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

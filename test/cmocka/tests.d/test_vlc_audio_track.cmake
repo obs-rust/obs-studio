@@ -4,4 +4,4 @@
 # the test then exits with 77 and ctest reports it as skipped.
 # A disabled module (ENABLE_VLC=OFF) still leaves a dummy custom target named
 # vlc-video behind, which has no file, so check the target type too.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

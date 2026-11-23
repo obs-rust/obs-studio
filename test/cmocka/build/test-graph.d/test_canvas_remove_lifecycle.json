@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_canvas_remove_lifecycle": {
+      "sources": [
+        "test/cmocka/test_canvas_remove_lifecycle.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_canvas_remove_lifecycle": {
+      "target": "test_canvas_remove_lifecycle",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_caption_queue": {
+      "sources": [
+        "test/cmocka/test_output_caption_queue.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_caption_queue": {
+      "target": "test_output_caption_queue",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

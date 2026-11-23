@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_capture_mnemonic": {
+      "sources": [
+        "test/cmocka/test_hotkey_capture_mnemonic.cpp",
+        "frontend/settings/OBSHotkeyCapture.cpp.hpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_WIDGETS",
+          "HAVE_QT6_TEST"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/settings/OBSHotkeyCapture.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_capture_mnemonic": {
+      "target": "test_hotkey_capture_mnemonic",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core",
+      "resource_locks": [
+        "timing"
+      ]
+    }
+  }
+}

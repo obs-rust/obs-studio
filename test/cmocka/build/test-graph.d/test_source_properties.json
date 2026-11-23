@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_properties": {
+      "sources": [
+        "test/cmocka/test_source_properties.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_properties": {
+      "target": "test_source_properties",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

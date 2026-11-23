@@ -4,4 +4,4 @@
 # widgets (settings-ui-stubs/) and lays it out on Qt's offscreen platform:
 # needs Qt Widgets only, no display, no frontend build and no libobs.
 find_package(Qt6 QUIET COMPONENTS Widgets)
-# Target, UI generation and runtime contract: ../build/test-graph.json (canonical).
+# Target, UI generation and runtime contract: ../build/test-graph.d (canonical).

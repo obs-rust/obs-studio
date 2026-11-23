@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_mux_helper_host": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_mux_helper_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/ffmpeg-mux/ffmpeg-mux-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_ffmpeg_mux_helper_host": {
+      "target": "test_ffmpeg_mux_helper_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  }
+}

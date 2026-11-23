@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_controls": {
+      "sources": [
+        "test/cmocka/test_audio_controls.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_audio_controls": {
+      "target": "test_audio_controls",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipe_wait_error": {
+      "sources": [
+        "test/cmocka/test_pipe_wait_error.c",
+        "libobs/util/pipe-posix.c.h"
+      ],
+      "requires": "OS_LINUX",
+      "libraries": [
+        "OBS::libobs"
+      ],
+      "link_options": [
+        "-Wl,--wrap=waitpid"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-posix.pch.h"
+      ],
+      "compile_options_if_supported": [
+        "-fvisibility=default"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipe_wait_error": {
+      "target": "test_pipe_wait_error",
+      "timeout_seconds": 30
+    }
+  }
+}

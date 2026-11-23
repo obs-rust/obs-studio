@@ -1,4 +1,4 @@
-# Registered once in ../build/test-graph.json for both native consumers.
+# Registered once in ../build/test-graph.d for both native consumers.
 # Preserve the original optional MbedTLS send-result cases on every host.
 set(HAVE_MBEDTLS_TEST_SDK FALSE)
 if(TARGET MbedTLS::mbedtls)

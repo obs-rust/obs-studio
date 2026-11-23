@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_core_private_data": {
+      "sources": [
+        "test/cmocka/test_core_private_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_core_private_data": {
+      "target": "test_core_private_data",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

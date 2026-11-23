@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_python_stdio": {
+      "sources": [
+        "test/cmocka/test_python_stdio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Python::Python",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "shared/obs-scripting"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_PYTHON_EMBED_TEST_SDK"
+        ]
+      },
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-startup.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_python_stdio": {
+      "target": "test_python_stdio"
+    }
+  }
+}

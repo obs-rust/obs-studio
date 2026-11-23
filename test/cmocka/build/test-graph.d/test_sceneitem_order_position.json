@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_sceneitem_order_position": {
+      "sources": [
+        "test/cmocka/test_sceneitem_order_position.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-item-order-position.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_sceneitem_order_position": {
+      "target": "test_sceneitem_order_position",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    }
+  }
+}

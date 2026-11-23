@@ -77,7 +77,7 @@ class AffectedTest(unittest.TestCase):
             "obs-build": ("rust/obs-build", set()),
             "obs-studio-rust": ("rust/obs-studio-rust", {"obs-build"}),
         }
-        for f in ("test/cmocka/build/test-graph.json", "test/cmocka/test_qsv_probe.c"):
+        for f in ("test/cmocka/build/test-graph.d", "test/cmocka/test_qsv_probe.c"):
             self.assertEqual(affected([f], crates), ("packages", ["obs-build", "obs-studio-rust"]), f)
 
     def test_unrelated_files_skip(self):

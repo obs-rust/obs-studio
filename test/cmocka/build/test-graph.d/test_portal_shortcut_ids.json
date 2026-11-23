@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_portal_shortcut_ids": {
+      "sources": [
+        "test/cmocka/test_portal_shortcut_ids.c",
+        "libobs/obs-nix-portal-shortcut-ids.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_portal_shortcut_ids": {
+      "target": "test_portal_shortcut_ids"
+    }
+  }
+}

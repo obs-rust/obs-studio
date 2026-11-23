@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_shutdown_leaked_scenes": {
+      "sources": [
+        "test/cmocka/test_shutdown_leaked_scenes.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        {
+          "name": "/std:c11",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/experimental:c11atomics",
+          "requires": "MSVC"
+        }
+      ],
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_shutdown_leaked_scenes": {
+      "target": "test_shutdown_leaked_scenes",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

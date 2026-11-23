@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_profile_import": {
+      "sources": [
+        "test/cmocka/test_profile_import.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT6_WIDGETS",
+      "libraries": [
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/profile-import.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_profile_import": {
+      "target": "test_profile_import",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core"
+    }
+  }
+}

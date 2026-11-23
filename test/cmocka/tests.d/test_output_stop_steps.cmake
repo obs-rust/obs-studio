@@ -32,4 +32,4 @@
 # test_replay_buffer_pause_stop, test_output_delay_e2e,
 # test_output_failed_start_encoders, test_recording_shutdown and
 # test_pthread_init_failures cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

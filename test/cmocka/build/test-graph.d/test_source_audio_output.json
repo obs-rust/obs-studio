@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_audio_output": {
+      "sources": [
+        "test/cmocka/test_source_audio_output.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_source_audio_output": {
+      "target": "test_source_audio_output",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

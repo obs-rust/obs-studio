@@ -13,10 +13,11 @@ const CASES: [&str; 6] = [
 #[test]
 fn canonical_pipewire_cameras_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let wanted = expected();
     for section in ["targets", "tests"] {
         for name in CASES {
@@ -31,7 +32,7 @@ fn canonical_pipewire_cameras_is_registered() {
         assert!(graph.tests.contains_key(name), "missing test {name}");
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(fragment.contains("test-graph.json"), "{name}");
+        assert!(fragment.contains("test-graph.d"), "{name}");
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
     }
@@ -132,5 +133,5 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "pipewire_cameras_runtime.rs"]
+#[path = "support/pipewire_cameras_runtime.rs"]
 mod runtime;

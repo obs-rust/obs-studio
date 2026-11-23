@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_service_find": {
+      "sources": [
+        "test/cmocka/test_service_find.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_service_find": {
+      "target": "test_service_find",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

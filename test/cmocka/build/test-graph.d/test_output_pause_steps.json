@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_pause_steps": {
+      "sources": [
+        "test/cmocka/test_output_pause_steps.c",
+        "libobs/obs-output-pause.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-pause.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_output_pause_steps": {
+      "target": "test_output_pause_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

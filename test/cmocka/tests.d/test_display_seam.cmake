@@ -4,4 +4,4 @@
 # the draw callback calls against the da_* calls they copy, and the display
 # list links. The accessors are hidden in libobs, so the test builds the seam
 # into itself, over a stand-in core and stand-in displays.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

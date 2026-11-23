@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_samplerstate_lifecycle": {
+      "sources": [
+        "test/cmocka/test_samplerstate_lifecycle.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_samplerstate_lifecycle": {
+      "target": "test_samplerstate_lifecycle",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

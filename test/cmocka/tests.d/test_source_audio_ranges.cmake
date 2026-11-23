@@ -5,4 +5,4 @@
 # 0.5), and the volume is 0 or more (NaN is 1, +inf is 20), with the valid
 # values unchanged. Starts libobs core audio; like the other core audio tests
 # it runs on Linux only.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

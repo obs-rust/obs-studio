@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_task": {
+      "sources": [
+        "test/cmocka/test_task.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_task": {
+      "target": "test_task"
+    }
+  }
+}

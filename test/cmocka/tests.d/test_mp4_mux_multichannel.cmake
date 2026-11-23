@@ -3,4 +3,4 @@
 # mp4-mux.c into the test and muxes stub encoder packets into memory;
 # obs_startup needs a display, so it runs (under xvfb-run) on Linux and
 # skips without one.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

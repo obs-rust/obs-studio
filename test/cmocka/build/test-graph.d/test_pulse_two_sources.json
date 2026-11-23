@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_two_sources": {
+      "sources": [
+        "test/cmocka/test_pulse_two_sources.c",
+        "plugins/linux-pulseaudio/pulse-input.c.h",
+        "plugins/linux-pulseaudio/pulse-reconnect.c.h",
+        "plugins/linux-pulseaudio/pulse-timing.c.h",
+        "plugins/linux-pulseaudio/pulse-wrapper.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PRIVATE_DAEMON_TEST_OWNER"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "PulseAudio::PulseAudio"
+      ],
+      "includes": [
+        "plugins/linux-pulseaudio"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_name",
+        "-Wl,--wrap=obs_source_output_audio",
+        "-Wl,--wrap=obs_source_set_async_compensation",
+        "-Wl,--wrap=obs_source_audio_output_capture_device_changed",
+        "-Wl,--wrap=obs_source_get_weak_source",
+        "-Wl,--wrap=obs_weak_source_addref",
+        "-Wl,--wrap=obs_weak_source_release",
+        "-Wl,--wrap=obs_weak_source_get_source",
+        "-Wl,--wrap=obs_source_release",
+        "-Wl,--wrap=obs_obj_get_data",
+        "-Wl,--wrap=obs_queue_task"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pulse_monitor_device.py"
+      ]
+    }
+  },
+  "tests": {
+    "test_pulse_two_sources": {
+      "target": "test_pulse_two_sources",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PRIVATE_DAEMON_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    }
+  }
+}

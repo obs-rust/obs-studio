@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_remux": {
+      "sources": [
+        "test/cmocka/test_media_remux.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_media_remux": {
+      "target": "test_media_remux",
+      "suite": "core",
+      "timeout_seconds": 60
+    }
+  }
+}

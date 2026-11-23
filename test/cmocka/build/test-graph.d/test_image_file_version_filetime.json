@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_image_file_version_filetime": {
+      "sources": [
+        "test/cmocka/test_image_file_version_filetime.c",
+        "plugins/image-source/image-file-version.c.h",
+        {
+          "path": "plugins/image-source/image-file-version-win32.c.h",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.macos+.h.c",
+          "requires": "OS_MACOS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.posix+.h.c",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          }
+        },
+        {
+          "path": "plugins/image-source/image-source-host-windows.c.h",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "plugins/image-source"
+      ]
+    }
+  },
+  "tests": {
+    "test_image_file_version_filetime": {
+      "target": "test_image_file_version_filetime",
+      "suite": "core"
+    }
+  }
+}

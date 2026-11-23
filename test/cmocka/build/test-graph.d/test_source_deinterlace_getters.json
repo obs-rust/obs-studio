@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_deinterlace_getters": {
+      "sources": [
+        "test/cmocka/test_source_deinterlace_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_deinterlace_getters": {
+      "target": "test_source_deinterlace_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    }
+  }
+}

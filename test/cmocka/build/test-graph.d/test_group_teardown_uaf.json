@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_group_teardown_uaf": {
+      "sources": [
+        "test/cmocka/test_group_teardown_uaf.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_group_teardown_uaf": {
+      "target": "test_group_teardown_uaf",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

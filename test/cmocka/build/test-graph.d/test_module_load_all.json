@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_load_all": {
+      "sources": [
+        "test/cmocka/test_module_load_all.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-load-all.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_module_load_all": {
+      "target": "test_module_load_all",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_outputs_net_if_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_net_if_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        ".",
+        "plugins/obs-outputs/hosts/posix"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-outputs/build/obs-outputs-net-if-host-posix.pch.h",
+        "plugins/obs-outputs/build/obs-outputs-net-if.pch.h",
+        "plugins/obs-outputs/hosts/posix/net-if-os.h",
+        "plugins/obs-outputs/net-if-host-posix.c.h",
+        "plugins/obs-outputs/net-if-host.h",
+        "plugins/obs-outputs/net-if.c.h",
+        "plugins/obs-outputs/net-if.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_outputs_net_if_host": {
+      "target": "test_obs_outputs_net_if_host",
+      "suite": "core",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  }
+}

@@ -5,4 +5,4 @@ endif()
 if(NOT TARGET Qt6::Core)
   find_package(Qt6 QUIET COMPONENTS Core)
 endif()
-# Registration lives in build/test-graph.json, consumed once by CMakeLists.txt.
+# Registration lives in build/test-graph.d, consumed once by CMakeLists.txt.

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_inhibit_portal": {
+      "sources": [
+        "test/cmocka/test_inhibit_portal.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "gio::gio",
+        "PkgConfig::PORTAL_TEST_GLIB",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    }
+  },
+  "tests": {
+    "test_inhibit_portal": {
+      "target": "test_inhibit_portal",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "timeout_seconds": 30
+    }
+  }
+}

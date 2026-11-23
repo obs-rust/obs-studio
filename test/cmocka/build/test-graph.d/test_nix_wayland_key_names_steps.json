@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nix_wayland_key_names_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_key_names_steps.c",
+        "libobs/obs-nix-wayland-key-names.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-wayland-key-names.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_nix_wayland_key_names_steps": {
+      "target": "test_nix_wayland_key_names_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

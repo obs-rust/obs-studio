@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_texture_render": {
+      "sources": [
+        "test/cmocka/test_texture_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_texture_render": {
+      "target": "test_texture_render",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

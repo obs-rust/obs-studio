@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_whip_rtp_timestamp": {
+      "sources": [
+        "test/cmocka/test_whip_rtp_timestamp.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "includes": [
+        "plugins/obs-webrtc"
+      ],
+      "watch_inputs": [
+        "test/cmocka",
+        "plugins/obs-webrtc"
+      ]
+    }
+  },
+  "tests": {
+    "test_whip_rtp_timestamp": {
+      "target": "test_whip_rtp_timestamp",
+      "command": [
+        "${target}"
+      ],
+      "suite": "webrtc"
+    }
+  }
+}

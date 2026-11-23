@@ -1,1 +1,1 @@
-# Actual-library metadata getter characterization. Defined in build/test-graph.json.
+# Actual-library metadata getter characterization. Defined in build/test-graph.d.

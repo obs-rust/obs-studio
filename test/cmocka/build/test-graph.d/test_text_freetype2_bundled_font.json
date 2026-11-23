@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_text_freetype2_bundled_font": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_bundled_font.c",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "plugins/text-freetype2/find-font.h",
+        "plugins/text-freetype2/text-freetype2.h",
+        "plugins/text-freetype2/text-freetype2-host.h",
+        "plugins/text-freetype2/data/fonts"
+      ],
+      "definitions": [
+        "BUNDLED_FONT_DIR=\"${source}/plugins/text-freetype2/data/fonts\"",
+        "ISOLATED_FONTCONFIG=\"${build}/ft2-isolated-fonts.conf\""
+      ]
+    }
+  },
+  "tests": {
+    "test_text_freetype2_bundled_font": {
+      "target": "test_text_freetype2_bundled_font",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_text_freetype2_bundled_font_host_font": {
+      "target": "test_text_freetype2_bundled_font",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "FONTCONFIG_FILE": "${build}/ft2-host-fonts.conf"
+      }
+    }
+  }
+}

@@ -9,7 +9,7 @@
 # platform. The functions are hidden in libobs, so this characterizes that C
 # source; the test calls only them. The real-libobs scene and group tests
 # cover the caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the ten hidden functions, in the archive's obs-scene member,
@@ -18,4 +18,4 @@
 # supplies obs.h's include
 # directories), as test_scene_item_names_steps_rust does. Linking the archive
 # directly avoids exporting private symbols just for a test.
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

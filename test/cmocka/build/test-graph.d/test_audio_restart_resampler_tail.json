@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_restart_resampler_tail": {
+      "sources": [
+        "test/cmocka/test_audio_restart_resampler_tail.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "m",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_audio_restart_resampler_tail": {
+      "target": "test_audio_restart_resampler_tail",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

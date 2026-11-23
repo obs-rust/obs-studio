@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_qsv_probe": {
+      "sources": [
+        "test/cmocka/test_qsv_probe.c",
+        "plugins/obs-qsv11/qsv-probe.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/obs-qsv11",
+        "test/cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11",
+        "test/cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_qsv_probe": {
+      "target": "test_qsv_probe",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

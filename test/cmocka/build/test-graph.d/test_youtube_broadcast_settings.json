@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_youtube_broadcast_settings": {
+      "sources": [
+        "test/cmocka/test_youtube_broadcast_settings.c",
+        "frontend/utility/youtube-broadcast-settings.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_youtube_broadcast_settings": {
+      "target": "test_youtube_broadcast_settings",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

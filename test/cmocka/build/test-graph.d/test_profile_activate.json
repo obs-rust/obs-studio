@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_profile_activate": {
+      "sources": [
+        "test/cmocka/test_profile_activate.c",
+        "frontend/utility/profile-activate.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_profile_activate": {
+      "target": "test_profile_activate",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

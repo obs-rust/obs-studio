@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_text_file": {
+      "sources": [
+        "test/cmocka/test_text_file.c",
+        "plugins/text-freetype2/text-file.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2.pch.h"
+      ],
+      "header_libraries": [
+        "Freetype::Freetype"
+      ]
+    }
+  },
+  "tests": {
+    "test_text_file": {
+      "target": "test_text_file",
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

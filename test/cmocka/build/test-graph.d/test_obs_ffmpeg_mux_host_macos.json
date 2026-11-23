@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_ffmpeg_mux_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_mux_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "OBS_FFMPEG_MUX_HOST_SOURCE=\"plugins/obs-ffmpeg/obs-ffmpeg-mux-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-mux-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_obs_ffmpeg_mux_host_macos": {
+      "target": "test_obs_ffmpeg_mux_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  }
+}

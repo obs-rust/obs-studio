@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_rescale": {
+      "sources": [
+        "test/cmocka/test_output_rescale.c",
+        "frontend/utility/output-rescale.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_rescale": {
+      "target": "test_output_rescale",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

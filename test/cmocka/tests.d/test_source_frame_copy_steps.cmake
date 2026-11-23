@@ -12,7 +12,7 @@
 # test calls only them. test_video_frame, the media restart tests, the v4l2
 # and PipeWire camera tests and the deinterlace tests cover the callers
 # through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the six hidden functions and includes only their header and
@@ -20,4 +20,4 @@
 # obsconfig.h), so it links the archive alone: its obs-source member needs
 # nothing from libobs or the other crates. Linking the archive directly avoids
 # exporting private symbols just for a test.
-# The Rust-static target and test are also declared in ../build/test-graph.json.
+# The Rust-static target and test are also declared in ../build/test-graph.d.

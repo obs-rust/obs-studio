@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_delay_e2e": {
+      "sources": [
+        "test/cmocka/test_output_delay_e2e.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_delay_e2e": {
+      "target": "test_output_delay_e2e",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "timeout_seconds": 120
+    }
+  }
+}

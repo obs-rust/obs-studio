@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_restart_close": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_restart_close.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_module_text",
+        "-Wl,--wrap=obs_source_get_name",
+        "-Wl,--wrap=obs_source_showing",
+        "-Wl,--wrap=obs_source_active",
+        "-Wl,--wrap=obs_source_media_ended",
+        "-Wl,--wrap=obs_source_media_started",
+        "-Wl,--wrap=obs_source_output_video",
+        "-Wl,--wrap=media_playback_create",
+        "-Wl,--wrap=media_playback_play",
+        "-Wl,--wrap=media_playback_has_video",
+        "-Wl,--wrap=media_playback_destroy"
+      ]
+    }
+  },
+  "tests": {
+    "test_ffmpeg_restart_close": {
+      "target": "test_ffmpeg_restart_close",
+      "timeout_seconds": 30
+    }
+  }
+}

@@ -4,4 +4,4 @@
 # buffered and an unbuffered 2x source and after a time jump, the texture
 # update after a render, and the render skip with no frame. Linux only, under
 # xvfb-run; it skips without a display. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_mux_helper": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_mux_helper.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/ffmpeg-mux/ffmpeg-mux.c.h",
+        "plugins/obs-ffmpeg/ffmpeg-mux/build/ffmpeg-mux.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_ffmpeg_mux_helper": {
+      "target": "test_ffmpeg_mux_helper",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 60
+    }
+  }
+}

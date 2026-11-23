@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_transform_update_steps": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_steps.c",
+        "libobs/obs-scene-transform-update.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-transform-update.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_scene_transform_update_steps": {
+      "target": "test_scene_transform_update_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

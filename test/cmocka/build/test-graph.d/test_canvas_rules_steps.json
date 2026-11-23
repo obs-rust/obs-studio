@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_canvas_rules_steps": {
+      "sources": [
+        "test/cmocka/test_canvas_rules_steps.c",
+        "libobs/obs-canvas-rules.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-canvas-rules.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_canvas_rules_steps": {
+      "target": "test_canvas_rules_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

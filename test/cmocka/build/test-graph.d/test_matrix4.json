@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_matrix4": {
+      "sources": [
+        "test/cmocka/test_matrix4.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_matrix4": {
+      "target": "test_matrix4",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

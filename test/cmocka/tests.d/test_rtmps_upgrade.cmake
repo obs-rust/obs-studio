@@ -7,4 +7,4 @@ set(HAVE_RTMP_SERVICES_MODULE FALSE)
 if(OS_LINUX AND TARGET rtmp-services)
   set(HAVE_RTMP_SERVICES_MODULE TRUE)
 endif()
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

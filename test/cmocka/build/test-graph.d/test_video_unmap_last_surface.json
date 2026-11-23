@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_unmap_last_surface": {
+      "sources": [
+        "test/cmocka/test_video_unmap_last_surface.c",
+        "libobs/obs-video-unmap-last-surface-reference.c.h"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_video_unmap_last_surface": {
+      "target": "test_video_unmap_last_surface",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

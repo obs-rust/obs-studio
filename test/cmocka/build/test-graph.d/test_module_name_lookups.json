@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_name_lookups": {
+      "sources": [
+        "test/cmocka/test_module_name_lookups.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_module_name_lookups": {
+      "target": "test_module_name_lookups",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

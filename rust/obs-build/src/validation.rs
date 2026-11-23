@@ -69,7 +69,7 @@ impl Default for Options {
 }
 
 fn load_suite(root: &Path, suite: &str) -> Result<graph::Graph, String> {
-    let path = root.join("test/cmocka/build/test-graph.json");
+    let path = root.join("test/cmocka/build/test-graph.d");
     println!("cargo:rerun-if-changed={}", path.display());
     let mut graph = graph::Graph::load(&path)?;
     graph.retain_suite(suite);

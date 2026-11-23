@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_metadata": {
+      "sources": [
+        "test/cmocka/test_module_metadata.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    }
+  },
+  "tests": {
+    "test_module_metadata": {
+      "target": "test_module_metadata",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    }
+  }
+}

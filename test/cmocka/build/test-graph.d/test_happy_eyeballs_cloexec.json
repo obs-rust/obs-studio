@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_happy_eyeballs_cloexec": {
+      "sources": [
+        "test/cmocka/test_happy_eyeballs_cloexec.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_OBS_OUTPUTS",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "shared/happy-eyeballs"
+      ]
+    }
+  },
+  "tests": {
+    "test_happy_eyeballs_cloexec": {
+      "target": "test_happy_eyeballs_cloexec",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

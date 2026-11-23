@@ -1,2 +1,2 @@
 # plane test (graphics/plane.c)
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

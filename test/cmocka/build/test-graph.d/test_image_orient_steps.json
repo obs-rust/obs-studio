@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_image_orient_steps": {
+      "sources": [
+        "test/cmocka/test_image_orient_steps.c",
+        "libobs/graphics/graphics-ffmpeg-orient.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-ffmpeg-orient.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_image_orient_steps": {
+      "target": "test_image_orient_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

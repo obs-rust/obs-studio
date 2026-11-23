@@ -4,4 +4,4 @@
 # test and wraps two libavcodec calls with the GNU linker's --wrap. Needs
 # core video, so it runs (under xvfb-run) on Linux and skips without a
 # display.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

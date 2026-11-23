@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_frame": {
+      "sources": [
+        "test/cmocka/test_video_frame.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_video_frame": {
+      "target": "test_video_frame"
+    }
+  }
+}

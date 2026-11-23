@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vaapi_device_select": {
+      "sources": [
+        "test/cmocka/test_vaapi_device_select.c",
+        "plugins/obs-ffmpeg/vaapi-device-select.c.h"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      },
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_vaapi_device_select": {
+      "target": "test_vaapi_device_select",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
+    }
+  }
+}

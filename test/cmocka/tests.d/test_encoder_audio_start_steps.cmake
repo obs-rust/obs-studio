@@ -23,4 +23,4 @@
 # test_encoder_error_stop, test_encoding_lag_rescale, test_encoder_video_reset
 # and test_multitrack_encoder_override cover the callers through the real
 # libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

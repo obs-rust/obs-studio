@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_config_double_window": {
+      "sources": [
+        "test/cmocka/test_config_double_window.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_config_double_window": {
+      "target": "test_config_double_window",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 20
+    }
+  }
+}

@@ -4,9 +4,10 @@ use super::*;
 #[test]
 fn canonical_capture_planes_and_parser_lifecycle_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for (name, source, includes, requires, libraries) in [
         (
             "test_avcapture_audio_planes",

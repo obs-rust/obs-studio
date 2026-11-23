@@ -11,4 +11,4 @@
 # The function is hidden in libobs, so this characterizes that C source; the
 # test calls only it. test_image_file and the other image tests cover the
 # caller through the real libobs, with no 16-bit fixture. Target and test are
-# declared in ../build/test-graph.json.
+# declared in ../build/test-graph.d.

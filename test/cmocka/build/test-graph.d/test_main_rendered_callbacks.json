@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_main_rendered_callbacks": {
+      "sources": [
+        "test/cmocka/test_main_rendered_callbacks.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-main-rendered-callbacks.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_main_rendered_callbacks": {
+      "target": "test_main_rendered_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    }
+  }
+}

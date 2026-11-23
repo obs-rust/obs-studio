@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_rtmps_fallback_warning": {
+      "sources": [
+        "test/cmocka/test_rtmps_fallback_warning.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility",
+        "frontend/api"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "FRONTEND_LOCALE=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/utility/RtmpsFallback.hpp",
+        "frontend/data/locale/en-US.ini"
+      ]
+    }
+  },
+  "tests": {
+    "test_rtmps_fallback_warning": {
+      "target": "test_rtmps_fallback_warning",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 30
+    }
+  }
+}

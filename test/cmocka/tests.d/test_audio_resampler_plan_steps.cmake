@@ -10,4 +10,4 @@
 # not link on its own); the Tier 3 parity tests in rust/obs-media-io compare
 # the shims with this C instead. test_audio_clock_drift and
 # test_audio_restart_resampler_tail cover the caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

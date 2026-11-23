@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_win_crash_report_steps": {
+      "sources": [
+        "test/cmocka/test_win_crash_report_steps.c",
+        "libobs/obs-win-crash-report.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-win-crash-report.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_win_crash_report_steps": {
+      "target": "test_win_crash_report_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

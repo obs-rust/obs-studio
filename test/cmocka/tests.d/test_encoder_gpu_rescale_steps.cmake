@@ -10,4 +10,4 @@
 # every platform. The functions are hidden in libobs, so this characterizes
 # that C source; the test calls only them. test_encoding_lag_rescale and
 # test_output_rescale cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_plugin_getter_xshm": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_XSHM",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/build/linux-capture.nix+.h.c",
+        "plugins/linux-capture/build/linux-capture-nix.pch.h",
+        "plugins/linux-capture/xshm-input.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_plugin_getter_xshm": {
+      "target": "test_plugin_getter_xshm",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

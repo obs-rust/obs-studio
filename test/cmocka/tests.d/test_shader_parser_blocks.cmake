@@ -3,4 +3,4 @@
 # samplers, structs and params it kept and the parse errors, written out and
 # compared whole, for well-formed blocks, malformed ones and text cut short
 # inside each block. No display and no graphics context, so it runs on every
-# platform. Target and test are declared in ../build/test-graph.json.
+# platform. Target and test are declared in ../build/test-graph.d.

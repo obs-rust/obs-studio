@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_studio_mode_swap": {
+      "sources": [
+        "test/cmocka/test_studio_mode_swap.c",
+        "frontend/utility/studio-mode-swap.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_studio_mode_swap": {
+      "target": "test_studio_mode_swap",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -14,7 +14,7 @@
 # them. test_source_audio_ranges, test_source_volume_mix,
 # test_audio_capture_mix_race and the scene item audio action tests cover the
 # callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the eight hidden functions of obs-source-volume.c and
@@ -22,4 +22,4 @@
 # archive alone: its obs-source member needs nothing from libobs or the other
 # crates. Linking the archive directly avoids exporting private symbols just
 # for a test.
-# The Rust-static target and test are also declared in ../build/test-graph.json.
+# The Rust-static target and test are also declared in ../build/test-graph.d.

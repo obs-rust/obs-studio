@@ -9,10 +9,10 @@
 # real libobs through the public API, so the callers run against the C
 # backend, the hybrid libobs and libobs-c-reference. obs_startup() needs a
 # display on Linux, so the test runs under xvfb-run there.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # The moved file is compiled into the test with ASan and UBSan (the
-# "sanitizers" entry in test-graph.json). No _rust variant, as for the other
+# "sanitizers" entry in test-graph.d). No _rust variant, as for the other
 # obs-core step tests: the shims' archive member (an obs_core codegen unit)
 # also holds the other obs-core ports, which need libobs and obs-util's
 # platform code, so it does not link on its own, and beside libobs it would

@@ -9,4 +9,4 @@
 # freed type data), so the callers run against the C backend, the hybrid
 # libobs and libobs-c-reference. obs_startup() needs a display on Linux, so
 # the test runs under xvfb-run there.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

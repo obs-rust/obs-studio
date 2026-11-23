@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_stop_requested": {
+      "sources": [
+        "test/cmocka/test_video_stop_requested.c",
+        "libobs/obs-video-stop-requested-reference.c.h"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_video_stop_requested": {
+      "target": "test_video_stop_requested",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_config_close_fault": {
+      "sources": [
+        "test/cmocka/test_config_close_fault.c"
+      ],
+      "requires": "UNIX",
+      "libraries": [
+        "config_close_fault",
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_config_close_fault": {
+      "target": "test_config_close_fault",
+      "requires": "UNIX",
+      "command": [
+        "cmake",
+        "-DFAULT_SHIM=${build}/config_close_fault/config_close_fault.preload",
+        "-DFAULT_TEST=${target}",
+        "-P",
+        "${source}/test/cmocka/config-close-fault-run.cmake"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

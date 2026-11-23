@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkeys_background_status_changed": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_hotkeys_background_status_changed.c"
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkeys_background_status_changed": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_hotkeys_background_status_changed"
+    }
+  }
+}

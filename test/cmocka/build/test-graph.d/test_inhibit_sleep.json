@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_inhibit_sleep": {
+      "sources": [
+        "test/cmocka/test_inhibit_sleep.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_inhibit_sleep": {
+      "target": "test_inhibit_sleep",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

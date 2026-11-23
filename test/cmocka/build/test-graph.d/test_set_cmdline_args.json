@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_set_cmdline_args": {
+      "sources": [
+        "test/cmocka/test_set_cmdline_args.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_set_cmdline_args": {
+      "target": "test_set_cmdline_args",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

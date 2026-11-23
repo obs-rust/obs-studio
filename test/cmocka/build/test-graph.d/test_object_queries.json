@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_object_queries": {
+      "sources": [
+        "test/cmocka/test_object_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_object_queries": {
+      "target": "test_object_queries",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -5,4 +5,4 @@
 # libobs. Linux and FreeBSD only: there obs_key_to_str shows the stored name
 # of every key the translations name.
 # obs_startup needs an X display on Linux.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

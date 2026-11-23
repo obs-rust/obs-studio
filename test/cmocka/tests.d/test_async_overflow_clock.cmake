@@ -1,1 +1,1 @@
-# Registered by the canonical native test graph (build/test-graph.json).
+# Registered by the canonical native test graph (build/test-graph.d).

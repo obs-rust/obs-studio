@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_transition_start_steps": {
+      "sources": [
+        "test/cmocka/test_transition_start_steps.c",
+        "libobs/obs-source-transition-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-start.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_transition_start_steps": {
+      "target": "test_transition_start_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

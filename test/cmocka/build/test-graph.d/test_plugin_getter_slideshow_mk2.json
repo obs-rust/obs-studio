@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_plugin_getter_slideshow_mk2": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c",
+        "plugins/image-source/build/image-source.slideshow+.h.c",
+        "plugins/image-source/build/image-source.posix+.h.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_SLIDESHOW_MK2",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/image-source/build/image-source.core+.h.c",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/build/image-source-posix.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_plugin_getter_slideshow_mk2": {
+      "target": "test_plugin_getter_slideshow_mk2",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

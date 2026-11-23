@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_preferred_color_space": {
+      "sources": [
+        "test/cmocka/test_encoder_preferred_color_space.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_preferred_color_space": {
+      "target": "test_encoder_preferred_color_space"
+    }
+  }
+}

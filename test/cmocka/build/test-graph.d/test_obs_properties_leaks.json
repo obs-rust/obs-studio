@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_properties_leaks": {
+      "sources": [
+        "test/cmocka/test_obs_properties_leaks.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address"
+    }
+  },
+  "tests": {
+    "test_obs_properties_leaks": {
+      "target": "test_obs_properties_leaks",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

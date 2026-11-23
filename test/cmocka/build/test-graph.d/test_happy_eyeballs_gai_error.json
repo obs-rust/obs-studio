@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_happy_eyeballs_gai_error": {
+      "sources": [
+        "test/cmocka/test_happy_eyeballs_gai_error.c"
+      ],
+      "requires": "HAVE_HAPPY_EYEBALLS",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "shared/happy-eyeballs"
+      ]
+    }
+  },
+  "tests": {
+    "test_happy_eyeballs_gai_error": {
+      "target": "test_happy_eyeballs_gai_error",
+      "suite": "core",
+      "requires": "HAVE_HAPPY_EYEBALLS"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_filter_color_space": {
+      "sources": [
+        "test/cmocka/test_filter_color_space.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_filter_color_space": {
+      "target": "test_filter_color_space"
+    }
+  }
+}
