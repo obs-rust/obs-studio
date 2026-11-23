@@ -72,6 +72,7 @@ class AptInstallTest(unittest.TestCase):
                 runtime.install_packages('container', 'prepared', '', self.packages)
             finally:
                 self.calls = [c for c in calls if 'apt-get' in c]
+                self.all_calls = [c for c in calls if 'apt-get' in c or 'dpkg' in c]
 
     def test_delta_commands_use_native_acquire_bounds_and_timeout(self):
         self.install()
@@ -95,12 +96,40 @@ class AptInstallTest(unittest.TestCase):
     def test_other_failures_do_not_refresh(self):
         for failures, count in (([(100, 'archive unavailable')], 1),
                                 ([None, (100, 'dependency conflict')], 2),
-                                ([None, (124, 'timed out')], 2),
-                                ([None, (137, 'killed')], 2)):
+                                ([(124, 'update timed out')], 1)):
             with self.subTest(failures=failures), self.assertRaises(RuntimeError) as error:
                 self.install(failures)
             self.assertEqual(len(self.calls), count)
             self.assertIn(self.packages[0], str(error.exception))
+
+    recover = ('docker', 'exec', 'container', 'timeout', '--kill-after=10s', '180s',
+               'env', 'LC_ALL=C', 'dpkg', '--configure', '-a')
+
+    def test_a_timed_out_install_recovers_dpkg_and_retries_once(self):
+        # #5504, run 45113911635 attempt 4: a slow mirror let the 180 s bound
+        # stop the install (exit 124). The .debs downloaded so far stay in the
+        # archive mount, so one more attempt finishes; a timeout in the unpack
+        # leaves dpkg interrupted, so recover it first.
+        install = (*self.prefix, 'install', '-y', '--no-install-recommends', *self.packages)
+        for code in (124, 137):
+            with self.subTest(code=code):
+                self.install([None, (code, 'timed out')])
+                self.assertEqual(self.all_calls, [(*self.prefix, 'update', '-qq'), install,
+                                                  self.recover, install])
+
+    def test_a_second_timeout_fails_with_the_delta_packages(self):
+        with self.assertRaises(RuntimeError) as error:
+            self.install([None, (124, 'timed out'), (124, 'timed out again')])
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(self.all_calls.count(self.recover), 1)
+        self.assertIn('exit 124', str(error.exception))
+        self.assertIn(self.packages[0], str(error.exception))
+
+    def test_other_install_failures_do_not_recover_or_retry(self):
+        with self.assertRaises(RuntimeError):
+            self.install([None, (100, 'dependency conflict')])
+        self.assertNotIn(self.recover, self.all_calls)
+        self.assertEqual(len(self.calls), 2)
 
     def test_refresh_failure_stops_before_second_install(self):
         with self.assertRaises(RuntimeError):
