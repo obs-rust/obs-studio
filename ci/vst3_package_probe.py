@@ -6,9 +6,10 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tarfile
 from tempfile import TemporaryDirectory
+
+import host_platform
 
 
 # These are the two effect class IDs in the example bundle.
@@ -28,7 +29,7 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
 
     env = os.environ.copy()
     home = work / "home"
-    if sys.platform == "win32":
+    if host_platform.is_windows():
         env.update(
             LOCALAPPDATA=str(home),
             PROGRAMFILES=str(work / "program-files"),
@@ -41,7 +42,7 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
         module = app.parents[2] / "core/obs-vst3/obs-vst3.dll"
         resources = module.parent / "data"
         vst3_dir = home / "Programs/Common Files/VST3"
-    elif sys.platform == "darwin":
+    elif host_platform.is_macos():
         contents = app.parent.parent
         env.update(
             HOME=str(home),
@@ -57,7 +58,7 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
         # Match the installed Mach-O @executable_path/../Frameworks runpaths.
         (work / "Frameworks").symlink_to(contents / "Frameworks", target_is_directory=True)
     else:
-        raise RuntimeError(f"unsupported desktop package: {sys.platform}")
+        raise RuntimeError("the VST3 package probe requires Windows or macOS")
 
     stage = work / "bin"
     stage.mkdir()
