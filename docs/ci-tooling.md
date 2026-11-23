@@ -1685,7 +1685,10 @@ Prepared-runtime delta installs use APT's native `Acquire::Retries=3` with
 15-second HTTP/HTTPS connection and data timeouts. Each update/install runs
 under `timeout --kill-after=10s 180s`, allowing four times the observed roughly
 45-second normal setup. An unavailable pinned version triggers one index
-refresh and one exact-version install retry; persistent failures report the
+refresh and one exact-version install retry. An install that the bound stops
+(exit 124 or 137, for example on a slow mirror) runs `dpkg --configure -a` and
+is retried once; the downloaded `.deb` files stay in the archive mount (#5504).
+An update timeout and other errors fail at once. Persistent failures report the
 delta packages and fail the job.
 
 The separate prepared release runtime is refreshed manually. Its producer is
