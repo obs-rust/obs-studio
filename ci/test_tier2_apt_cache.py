@@ -453,8 +453,14 @@ esac
             j = job(name)
             updates = re.findall(r"^\s+(?:timeout --kill-after=10s \d+ )?(?:sudo )?apt-get update[^\n]*", j, re.M)
             if name.endswith("-build"):
-                self.assertEqual(len(updates), 1, name)
+                # A package retry on another mirror fetches that mirror's
+                # index (#5518); test_tier2_install_uses_the_next_mirror_on_each_retry
+                # checks that only a retry does.
+                self.assertEqual(len(updates), 2, name)
                 self.assertLess(j.index(updates[0].strip()), j.index("actions/checkout@"), name)
+                packages = j.index("name: Install Tier 2 Packages")
+                self.assertLess(packages, j.index(updates[1].strip()), name)
+                self.assertLess(j.index(updates[1].strip()), j.index("\n      - ", packages), name)
             else:
                 helper = (WORKFLOW.parents[2]/"rust/tools/linux-validate/ci-runtime.py").read_text()
                 self.assertEqual(helper.count("'apt-get', 'update'"), 1)

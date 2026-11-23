@@ -2807,6 +2807,9 @@ jobs:
           rotate=true
           grep -qx 'URIs: http://security.ubuntu.com/ubuntu/' "$src" ||
             { echo "no security stanza in $src; keeping its sources"; rotate=false; }
+          # The package step moves on from the mirror this step ends on when
+          # it has to retry (#5518), so keep the order for it.
+          [ "$rotate" = true ] && printf '%s\n' $mirrors > /etc/apt/ci-tier2-mirrors
           # A stale index 404s a just-superseded .deb and an archive host can
           # refuse a connection (run 42755735949): refetch the index and retry.
           # A timeout that stops the install in the unpack leaves dpkg
@@ -2932,8 +2935,26 @@ jobs:
           # Recover inside each attempt. Configure may fail on missing
           # dependencies; let apt's repair install fix them. Hosted jobs keep
           # their original job-local archive and need no separate download pass.
+          # A mirror can answer Install Git and then serve the ~400 packages
+          # too slowly for the 300 s bound (runs 45187119925, 45194364427), so
+          # each retry points the main source at the next mirror in Install
+          # Git's order and refetches its index (#5518). The .debs already
+          # downloaded stay in the archive directory for the next attempt.
+          export TIER2_APT_ATTEMPTS="$RUNNER_TEMP/tier2-apt-attempts"
+          : > "$TIER2_APT_ATTEMPTS"
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
             xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" bash -ec '
+                echo >> "$TIER2_APT_ATTEMPTS"
+                order=/etc/apt/ci-tier2-mirrors
+                src=/etc/apt/sources.list.d/ubuntu.sources
+                if [ "$(wc -l < "$TIER2_APT_ATTEMPTS")" -gt 1 ] && [ -s "$order" ]; then
+                  current=$(grep "^URIs: " "$src" | grep -v -m 1 "security\.ubuntu\.com" | cut -d" " -f2)
+                  next=$(grep -A 1 -x -F "$current" "$order" | sed -n 2p)
+                  [ -n "$next" ] || next=$(head -n 1 "$order")
+                  sudo sed -i "/security\.ubuntu\.com/!s|^URIs: .*|URIs: $next|" "$src"
+                  echo "apt retry: $next"
+                  timeout --kill-after=10s 180 sudo apt-get update -qq
+                fi
                 sudo eatmydata dpkg --configure -a || true
                 timeout --kill-after=10s 300 sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES"
                 timeout --kill-after=10s 300 sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES" -y --no-install-recommends "$@"
