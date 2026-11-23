@@ -54,12 +54,13 @@ REAL_QT_TESTS = [
     "ci.test_vst_platform_facade.VstPlatformFacadeTest.test_real_qt_policy",
     "ci.test_widget_platform_facade.WidgetPlatformFacadeTest.test_live_x11_wayland_window_handles",
 ]
-# The two forms `ninja -t targets all` gives a built executable: phony (from
-# the cmocka test fragment) and the linker rule.
 # The C++ lint report (#5453): report only, so its exit code and a timeout
 # are printed, never raised. It has its own time budget; this is the stop.
+# clazy is installed with apt only when there are groups to lint.
 CPP_LINT = ["uv", "run", "--no-project", "ci/cpp_lint.py", "--build"]
 CPP_LINT_TIMEOUT = 600
+# The two forms `ninja -t targets all` gives a built executable: phony (from
+# the cmocka test fragment) and the linker rule.
 TARGET = re.compile(r"^([A-Za-z0-9_]*): phony$|^([A-Za-z0-9_]*): CXX_EXECUTABLE_LINKER")
 
 
@@ -209,7 +210,7 @@ def run(qt: Path, ff: Path, build: Path) -> None:
 def cpp_lint(build: Path) -> None:
     """The C++ lint report (#5453). Report only: it never fails the job."""
     try:
-        result = subprocess.run([*CPP_LINT, str(build)], cwd=SRC, timeout=CPP_LINT_TIMEOUT)
+        result = subprocess.run([*CPP_LINT, str(build), "--install-clazy"], cwd=SRC, timeout=CPP_LINT_TIMEOUT)
     except (OSError, subprocess.SubprocessError) as error:
         print(f"== C++ lint report did not run: {error}", flush=True)
         return

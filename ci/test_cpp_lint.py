@@ -15,6 +15,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
@@ -191,8 +192,8 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(c.complexity_rows([same, new, grown], [same, old_grown]), [(grown, old_grown), (new, None)])
 
 
-def completed(argv: list[str], stdout: str = "", code: int = 0) -> subprocess.CompletedProcess[str]:
-    return subprocess.CompletedProcess(argv, code, stdout, "")
+def completed(argv: list[str], stdout: str = "", code: int = 0, stderr: str = "") -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(argv, code, stdout, stderr)
 
 
 class LintTest(unittest.TestCase):
@@ -210,20 +211,93 @@ class LintTest(unittest.TestCase):
         self.calls: list[list[str]] = []
         self.tidy_out = f"{src}/frontend/utility/DockLayout.cpp.hpp:5:1: warning: m [modernize-use-override]\n"
 
+        self.clazy_out = (
+            f"{src}/frontend/utility/DockLayout.cpp.hpp:9:5: warning: c++11 range-loop might detach Qt container "
+            "(QList) [-Wclazy-range-loop-detach]\n"
+            f"{src}/frontend/utility/DockLayout.cpp.hpp:12:3: warning: implicit conversion [-Wconversion]\n")
+        self.installed: set[str] = set()
+
     def runner(self, argv: list[str], timeout: float) -> subprocess.CompletedProcess[str]:
         self.calls.append(argv)
         if argv[0] == "uvx":
             return completed(argv, f"/bin/{argv[2].split('==')[0]}\n")
         if argv[0] == "/bin/clang-tidy":
             return completed(argv, self.tidy_out)
+        if argv[0] == "/bin/clazy-standalone":
+            if "--version" in argv:
+                return completed(argv, "Ubuntu LLVM version 21.1.8\n")
+            # Like clang, clazy prints its diagnostics on stderr.
+            return completed(argv, "", stderr=self.clazy_out)
+        if argv[:2] == ["sudo", "-n"]:
+            self.installed.add("clazy-standalone")
+            return completed(argv, "")
         return completed(argv, "")
+
+    def which(self, name: str) -> str | None:
+        return f"/bin/{name}" if name in self.installed else None
 
     def lint(self, changed: str, **kw) -> list[str]:
         fake = FakeGit({diff(BASE): changed, ("ls-files", "-z", "--", "frontend/build"): "\0".join(
             ["frontend/build/frontend.dock-layout+.hpp.cpp"])})
         with redirect_stdout(io.StringIO()):
-            report = c.lint(self.build, BASE, git=fake, runner=kw.pop("runner", self.runner), env={})
+            report = c.lint(self.build, BASE, git=fake, runner=kw.pop("runner", self.runner), env={},
+                            which=kw.pop("which", self.which), install_clazy=kw.pop("install_clazy", False))
         return report.lines
+
+    CHANGE = "frontend/build/frontend.dock-layout+.hpp.cpp\0frontend/utility/DockLayout.cpp.hpp\0"
+
+    def test_clazy_runs_on_the_same_groups_and_reports_its_own_checks_only(self):
+        # #5453 step 2: level 0 and 1 without the two upstream Designer
+        # patterns; -Wno-error and -ferror-limit=0 or the build's -Werror
+        # stops clang at the first 20 findings.
+        self.installed.add("clazy-standalone")
+        lines = self.lint(self.CHANGE)
+        runs = [argv for argv in self.calls if argv[0] == "/bin/clazy-standalone" and "--version" not in argv]
+        self.assertEqual(len(runs), 1)
+        argv = runs[0]
+        self.assertEqual(argv[-1], self.tu)
+        self.assertIn("-checks=level0,level1,no-connect-by-name,no-qproperty-without-notify", argv)
+        for arg in ("-extra-arg=-Wno-error", "-extra-arg=-ferror-limit=0", "-extra-arg=-Wno-ignored-gch"):
+            self.assertIn(arg, argv)
+        self.assertTrue(any(a.startswith("-header-filter=^") and a.endswith("/frontend/") for a in argv), argv)
+        self.assertIn("frontend/utility/DockLayout.cpp.hpp:9:5: clazy-range-loop-detach: "
+                      "c++11 range-loop might detach Qt container (QList)", lines)
+        # A compiler warning clazy passes through is not a clazy finding.
+        self.assertFalse(any("conversion" in line for line in lines), lines)
+        self.assertIn("clazy: 1 finding(s) in these groups, 1 in the changed files", lines)
+        self.assertTrue(any(line.startswith("clazy (Ubuntu LLVM version 21.1.8): 1 group(s)") for line in lines),
+                        lines)
+
+    def test_clazy_is_installed_only_when_asked_and_only_with_groups(self):
+        lines = self.lint(self.CHANGE)
+        self.assertIn("clazy: clazy-standalone is not installed; skipped", lines)
+        self.assertFalse(any(argv[:2] == ["sudo", "-n"] for argv in self.calls))
+        lines = self.lint("libobs/obs.c\0", install_clazy=True)
+        self.assertFalse(any(argv[:2] == ["sudo", "-n"] for argv in self.calls))
+        lines = self.lint(self.CHANGE, install_clazy=True)
+        installs = [argv for argv in self.calls if argv[:2] == ["sudo", "-n"]]
+        self.assertEqual(installs, [["sudo", "-n", "apt-get", "install", "-y", "--no-install-recommends", "clazy"]])
+        self.assertTrue(any(argv[0] == "/bin/clazy-standalone" for argv in self.calls))
+
+    def test_a_failed_clazy_install_is_a_skip_line(self):
+        def broken(argv: list[str], timeout: float) -> subprocess.CompletedProcess[str]:
+            if argv[:2] == ["sudo", "-n"]:
+                return completed(argv, "", 100)
+            return self.runner(argv, timeout)
+
+        lines = self.lint(self.CHANGE, install_clazy=True, runner=broken)
+        self.assertIn("clazy: apt-get install clazy failed (exit 100); skipped", lines)
+        self.assertTrue(any(line.startswith("clang-tidy: 1 finding(s)") for line in lines), lines)
+
+    def test_the_tools_share_one_time_budget(self):
+        # The lane stops the report after 600 s: clang-tidy, the clazy
+        # install and clazy together get BUDGET, not BUDGET each.
+        self.installed.add("clazy-standalone")
+        clock = iter([0.0] + [c.BUDGET + 1.0] * 50)
+        with patch.object(c.time, "monotonic", side_effect=lambda: next(clock)):
+            lines = self.lint(self.CHANGE)
+        self.assertIn("  dock-layout: not run: over the time budget", lines)
+        self.assertFalse(any(argv[0] == "/bin/clazy-standalone" and "--version" not in argv for argv in self.calls))
 
     def test_a_change_in_a_group_runs_clang_tidy_on_it_and_prints_the_findings(self):
         lines = self.lint("frontend/build/frontend.dock-layout+.hpp.cpp\0frontend/utility/DockLayout.cpp.hpp\0")
@@ -282,7 +356,7 @@ class LintTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()) as out, \
                 mock.patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}), \
                 mock.patch.object(c, "lint", side_effect=RuntimeError("boom")):
-            self.assertEqual(c.main(["--build", str(self.build)]), 0)
+            self.assertEqual(c.main(["--build", str(self.build), "--install-clazy"]), 0)
         self.assertIn("cpp-lint: report failed: RuntimeError('boom')", out.getvalue())
         report = c.Report()
         with redirect_stdout(io.StringIO()):

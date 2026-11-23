@@ -1008,6 +1008,11 @@ The Qt frontend has a C++ lint report (#5453), `ci/cpp_lint.py`:
   changed implementation file runs its group. A changed header runs the groups
   whose precompiled header includes it. A header that no precompiled header
   includes, or a change to the config or the script, runs every group.
+- clazy (Ubuntu's `clazy` package, `clazy-standalone`): level 0 and 1 without
+  `connect-by-name` and `qproperty-without-notify` (upstream's Designer
+  patterns), on the same groups and in the same time budget as clang-tidy.
+  The Qt lane installs it with `apt-get` only when there are groups to lint
+  (about 80 MB with its LLVM); `./lint` uses it when it is on `PATH`.
 - lizard (`lizard==1.26.1`): the cyclomatic complexity (CCN) and length (NLOC)
   of every new or changed function in the changed frontend files, with the
   values before the change.

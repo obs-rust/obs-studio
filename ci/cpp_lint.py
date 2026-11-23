@@ -1,13 +1,16 @@
 #!/usr/bin/env -S uv run --script
-"""C++ lint report for the Qt frontend (#5453): clang-tidy on the unity
-groups a change touches, and a lizard complexity table of the changed files.
+"""C++ lint report for the Qt frontend (#5453): clang-tidy and clazy on the
+unity groups a change touches, and a lizard complexity table of the changed
+files.
 
     uv run --no-project ci/cpp_lint.py --build BUILD_DIR [--base REV]
 
 BUILD_DIR is a configured frontend build with compile_commands.json (the Qt
 lane's build tree; ci/linux_qt_frontend.py exports it). The checks are in
 frontend/.clang-tidy. clang-tidy and lizard come pinned through uvx, like
-clang-format.
+clang-format. clazy-standalone is Ubuntu's `clazy` package: with
+--install-clazy (the Qt lane) it is installed with `sudo apt-get` when there
+are groups to lint; otherwise it runs only when it is on PATH.
 
 Report only: it prints its findings, and writes them to
 $GITHUB_STEP_SUMMARY when that is set. It exits 0 whatever the tools find
@@ -33,6 +36,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,6 +49,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CLANG_TIDY = "clang-tidy==22.1.8"
+# clazy (#5453 step 2): Ubuntu's package, installed on demand (about 80 MB
+# with its LLVM, so only when there are groups to lint). Level 0 and 1
+# without the two patterns of upstream's Designer forms (117 of 138 spike
+# findings were those).
+CLAZY = "clazy-standalone"
+CLAZY_CHECKS = "level0,level1,no-connect-by-name,no-qproperty-without-notify"
+CLAZY_INSTALL = ["sudo", "-n", "apt-get", "install", "-y", "--no-install-recommends", "clazy"]
+INSTALL_TIMEOUT = 180
 LIZARD = "lizard==1.26.1"
 CONFIG = "frontend/.clang-tidy"
 # A change to these lints every group.
@@ -219,6 +231,13 @@ def parse_tidy(text: str, src: Path) -> list[Finding]:
     return sorted(findings)
 
 
+def parse_clazy(text: str, src: Path) -> list[Finding]:
+    """clazy's own warnings (`[-Wclazy-<check>]`) as `clazy-<check>`; the
+    compiler warnings clazy passes through are not its findings."""
+    findings = (Finding(f.path, f.line, f.col, f.check.removeprefix("-W"), f.message) for f in parse_tidy(text, src))
+    return sorted(f for f in findings if f.check.startswith("clazy-"))
+
+
 def parse_lizard(text: str) -> list[Function]:
     """lizard --csv: NLOC, CCN, tokens, parameters, length, location, file,
     name, long name, start, end."""
@@ -252,6 +271,19 @@ def tidy_command(exe: str, database: Path, src: Path, tu: str) -> list[str]:
         # either drops the whole group.
         "--extra-arg=-Wno-error",
         "--extra-arg=-Wno-ignored-gch",
+        tu,
+    ]
+
+
+def clazy_command(exe: str, database: Path, src: Path, tu: str) -> list[str]:
+    return [
+        exe, "-p", str(database), f"-checks={CLAZY_CHECKS}",
+        f"-header-filter=^{re.escape(str(src).rstrip('/'))}/frontend/",
+        # The build's -Werror turns clazy's findings into errors, and clang
+        # stops after 20 errors; the GCC precompiled header as for clang-tidy.
+        "-extra-arg=-Wno-error", "-extra-arg=-ferror-limit=0",
+        "-extra-arg=-Wno-unknown-warning-option", "-extra-arg=-Wno-unused-command-line-argument",
+        "-extra-arg=-Wno-ignored-gch",
         tu,
     ]
 
@@ -290,11 +322,11 @@ def group_entries(report: Report, build: Path, groups: set[str]) -> list[dict]:
     try:
         database = json.loads((build / "compile_commands.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
-        report(f"clang-tidy: no compile DB ({error})")
+        report(f"lint: no compile DB ({error})")
         return []
     entries = [entry for entry in obs_studio_entries(database) if group_of(entry) in groups]
     if missing := sorted(groups - {group_of(entry) for entry in entries}):
-        report(f"clang-tidy: not in this build's compile DB (disabled here): {', '.join(missing)}")
+        report(f"lint: groups not in this build's compile DB (disabled here): {', '.join(missing)}")
     return entries
 
 
@@ -305,11 +337,14 @@ def failure(result: subprocess.CompletedProcess[str]) -> str:
     return f"exit {result.returncode}" + (f": {error[:200]}" if error else "")
 
 
-def run_groups(runner: Runner, exe: str, src: Path, entries: list[dict], jobs: int,
-               budget: float) -> tuple[list[tuple[str, str]], list[Finding]]:
-    """((group, problem) per group, findings): one clang-tidy per group TU,
-    `jobs` at a time; a group not started within `budget` seconds is not run."""
-    deadline = time.monotonic() + budget
+Command = Callable[[str, Path, Path, str], list[str]]
+Parse = Callable[[str, Path], list[Finding]]
+
+
+def run_groups(runner: Runner, command: Command, parse: Parse, exe: str, src: Path, entries: list[dict],
+               jobs: int, deadline: float) -> tuple[list[tuple[str, str]], list[Finding]]:
+    """((group, problem) per group, findings): one run per group TU, `jobs`
+    at a time; a group not started before `deadline` is not run."""
     findings: list[Finding] = []
     with tempfile.TemporaryDirectory(prefix="cpp-lint-") as tmp:
         Path(tmp, "compile_commands.json").write_text(json.dumps(entries), encoding="utf-8")
@@ -319,12 +354,13 @@ def run_groups(runner: Runner, exe: str, src: Path, entries: list[dict], jobs: i
             if left <= 0:
                 return group_of(entry), "not run: over the time budget"
             try:
-                result = runner(tidy_command(exe, Path(tmp), src, entry["file"]), min(GROUP_TIMEOUT, left))
+                result = runner(command(exe, Path(tmp), src, entry["file"]), min(GROUP_TIMEOUT, left))
             except subprocess.TimeoutExpired:
                 return group_of(entry), "timed out"
             except (OSError, subprocess.SubprocessError) as error:
                 return group_of(entry), f"failed: {error}"
-            findings.extend(parse_tidy(result.stdout, src))
+            # clang-tidy prints its findings on stdout, clazy (like clang) on stderr.
+            findings.extend(parse(f"{result.stdout}\n{result.stderr}", src))
             return group_of(entry), "" if result.returncode == 0 else failure(result)
 
         with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
@@ -332,30 +368,70 @@ def run_groups(runner: Runner, exe: str, src: Path, entries: list[dict], jobs: i
     return outcomes, sorted(set(findings))
 
 
-def tidy(report: Report, runner: Runner, build: Path, src: Path, groups: set[str], changed: set[str],
-         jobs: int, budget: float = BUDGET) -> None:
-    entries = group_entries(report, build, groups)
-    if not entries:
-        report("clang-tidy: no group to run")
-        return
-    exe = uvx_tool(runner, CLANG_TIDY, "clang-tidy")
-    if exe is None:
-        report(f"clang-tidy: {CLANG_TIDY} is not available through uvx; skipped")
-        return
-    start = time.monotonic()
-    outcomes, findings = run_groups(runner, exe, src, entries, jobs, budget)
+def summarize(report: Report, tool: str, label: str, outcomes: list[tuple[str, str]], findings: list[Finding],
+              changed: set[str], seconds: int) -> None:
     names = [name for name, _ in outcomes]
-    report(f"clang-tidy {CLANG_TIDY.split('==')[1]}: {len(names)} group(s) in {int(time.monotonic() - start)} s: "
-           f"{', '.join(names)}")
+    report(f"{label}: {len(names)} group(s) in {seconds} s: {', '.join(names)}")
     for name, problem in outcomes:
         if problem:
             report(f"  {name}: {problem}")
     mine = [finding for finding in findings if finding.path in changed]
     for finding in mine:
         report(f"{finding.path}:{finding.line}:{finding.col}: {finding.check}: {finding.message}")
-    report(f"clang-tidy: {len(findings)} finding(s) in these groups, {len(mine)} in the changed files")
+    report(f"{tool}: {len(findings)} finding(s) in these groups, {len(mine)} in the changed files")
     for check, count in Counter(finding.check for finding in findings).most_common():
         report(f"  {count:5} {check}")
+
+
+def tidy(report: Report, runner: Runner, entries: list[dict], src: Path, changed: set[str], jobs: int,
+         deadline: float) -> None:
+    exe = uvx_tool(runner, CLANG_TIDY, "clang-tidy")
+    if exe is None:
+        report(f"clang-tidy: {CLANG_TIDY} is not available through uvx; skipped")
+        return
+    start = time.monotonic()
+    outcomes, findings = run_groups(runner, tidy_command, parse_tidy, exe, src, entries, jobs, deadline)
+    summarize(report, "clang-tidy", f"clang-tidy {CLANG_TIDY.split('==')[1]}", outcomes, findings, changed,
+              int(time.monotonic() - start))
+
+
+def clazy_exe(report: Report, runner: Runner, which: Callable[[str], str | None], install: bool) -> str | None:
+    """clazy-standalone, installed with apt first when `install` (the Qt
+    lane); report only, so a failed install is a skip line."""
+    exe = which(CLAZY)
+    if exe or not install:
+        if not exe:
+            report(f"clazy: {CLAZY} is not installed; skipped")
+        return exe
+    try:
+        result = runner(CLAZY_INSTALL, INSTALL_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as error:
+        report(f"clazy: apt-get install clazy failed ({error}); skipped")
+        return None
+    if result.returncode != 0:
+        report(f"clazy: apt-get install clazy failed (exit {result.returncode}); skipped")
+        return None
+    exe = which(CLAZY)
+    if not exe:
+        report(f"clazy: {CLAZY} is still missing after apt-get install; skipped")
+    return exe
+
+
+def clazy(report: Report, runner: Runner, which: Callable[[str], str | None], install: bool,
+          entries: list[dict], src: Path, changed: set[str], jobs: int, deadline: float) -> None:
+    if time.monotonic() >= deadline:
+        report("clazy: not run: over the time budget")
+        return
+    exe = clazy_exe(report, runner, which, install)
+    if exe is None:
+        return
+    try:
+        version = runner([exe, "--version"], 30).stdout.strip().splitlines()[0]
+    except (OSError, subprocess.SubprocessError, IndexError):
+        version = "version unknown"
+    start = time.monotonic()
+    outcomes, findings = run_groups(runner, clazy_command, parse_clazy, exe, src, entries, jobs, deadline)
+    summarize(report, "clazy", f"clazy ({version})", outcomes, findings, changed, int(time.monotonic() - start))
 
 
 def complexity(report: Report, runner: Runner, git: Git, base: str, files: list[str]) -> None:
@@ -413,10 +489,11 @@ def read(path: str) -> str | None:
 
 
 def lint(build: Path, base: str | None, *, git: Git = git, runner: Runner = run,
-         env: dict[str, str] | None = None) -> Report:
+         env: dict[str, str] | None = None, which: Callable[[str], str | None] = shutil.which,
+         install_clazy: bool = False) -> Report:
     env = dict(os.environ) if env is None else env
     report = Report()
-    report(f"== C++ lint report (report only, #5453): {CLANG_TIDY}, {LIZARD}")
+    report(f"== C++ lint report (report only, #5453): {CLANG_TIDY}, clazy ({CLAZY_CHECKS}), {LIZARD}")
     if not (build / "compile_commands.json").is_file():
         report(f"no compile DB in {build}; skipped")
         return report
@@ -436,7 +513,15 @@ def lint(build: Path, base: str | None, *, git: Git = git, runner: Runner = run,
         report(f"  in no unity group, not linted: {path}")
     if groups:
         jobs = int(env.get("CPP_LINT_JOBS") or os.cpu_count() or 2)
-        tidy(report, runner, build, ROOT, groups, set(frontend), jobs)
+        # One budget for clang-tidy, the clazy install and clazy: the Qt
+        # lane stops the whole report after 600 s.
+        deadline = time.monotonic() + BUDGET
+        entries = group_entries(report, build, groups)
+        if entries:
+            tidy(report, runner, entries, ROOT, set(frontend), jobs, deadline)
+            clazy(report, runner, which, install_clazy, entries, ROOT, set(frontend), jobs, deadline)
+        else:
+            report("lint: no group to run")
     elif not frontend:
         report("no frontend C/C++ change; nothing to lint")
     complexity(report, runner, git, base_sha, frontend)
@@ -447,9 +532,11 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--build", type=Path, required=True, help="build dir with compile_commands.json")
     parser.add_argument("--base", help="commit to diff against (default: the GitHub event, or origin/master)")
+    parser.add_argument("--install-clazy", action="store_true",
+                        help="install clazy with sudo apt-get when there are groups to lint (the Qt lane)")
     args = parser.parse_args(argv)
     try:
-        report = lint(args.build.resolve(), args.base)
+        report = lint(args.build.resolve(), args.base, install_clazy=args.install_clazy)
     except Exception as error:  # report only: never fail the caller
         print(f"cpp-lint: report failed: {error!r}", flush=True)
         return 0
