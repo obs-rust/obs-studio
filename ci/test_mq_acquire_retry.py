@@ -313,17 +313,19 @@ class RetryTest(unittest.TestCase):
 
 
 class WorkflowTest(unittest.TestCase):
-    def test_completion_trigger_is_isolated_from_rebase_and_untrusted_checkout(self):
+    def test_scheduled_recovery_is_isolated_from_rebase_and_untrusted_checkout(self):
         guard = load_ci("test_ai_rebase_token_guard")
         workflow = (ROOT / ".github/workflows/ai-rebase.yaml").read_text()
-        self.assertNotIn("workflow_run:", workflow)
+        self.assertNotIn("workflow_run", workflow)
         jobs = guard.jobs(workflow)
         recovery = jobs["capacity-recovery"]
-        self.assertIn("github.event.workflow_run.id", recovery)
+        self.assertIn("ci/mq_acquire_retry.py $DRY", recovery)
+        self.assertNotIn("RUN_ID", recovery)
+        self.assertIn("ci/ai_rebase.py --requeue-ejected --limit 10", recovery)
         self.assertIn("ref: master", recovery)
         self.assertIn("persist-credentials: false", recovery)
         self.assertIn("steps.app.outputs.token || github.token", recovery)
-        self.assertIn("github.event_name != 'workflow_run'", jobs["rebase"])
+        self.assertIn("github.event_name != 'schedule'", jobs["rebase"])
         self.assertIn('17,47 * * * *', workflow)
         self.assertNotIn("ci/mq_acquire_retry.py", jobs["rebase"])
 
