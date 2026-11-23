@@ -75,6 +75,7 @@ pub mod output_protocol_registry;
 pub mod private_data;
 pub mod raw_audio_remove;
 pub mod reset_audio;
+pub mod reset_audio2;
 pub mod set_cmdline_args;
 pub mod set_locale;
 pub mod set_output_source;

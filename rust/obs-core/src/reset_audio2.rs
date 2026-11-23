@@ -32,7 +32,6 @@
 use core::ffi::c_int;
 
 use crate::audio_info_queries::AudioInfo2;
-#[allow(unused_imports)]
 use crate::core_setup_rules::{
     AudioStep, audio_refused, buffer_default_ticks, buffer_ms, buffer_set, buffer_ticks,
 };
@@ -110,6 +109,35 @@ pub trait Steps {
 
 /// `obs_reset_audio2(oai)` over `steps`.
 pub fn reset_audio2(steps: &mut impl Steps) -> bool {
-    let _ = steps;
-    todo!()
+    if audio_refused(AudioStep::Core, steps.core()) {
+        return false;
+    }
+    if steps.has_output() && audio_refused(AudioStep::Active, steps.output_active()) {
+        return false;
+    }
+
+    steps.free_audio();
+    let Some(info) = steps.info() else {
+        return true;
+    };
+
+    // The C stores the `uint32_t` ticks in an `int`.
+    let ticks = if buffer_set(info.max_buffering_ms) {
+        buffer_ticks(info.max_buffering_ms, info.samples_per_sec)
+    } else {
+        buffer_default_ticks()
+    }
+    .cast_signed();
+    steps.set_buffering(ticks, info.fixed_buffering);
+
+    steps.log(Line::Separator);
+    steps.log(Line::Reset {
+        // `(int)ai.samples_per_sec`.
+        samples_per_sec: info.samples_per_sec.cast_signed(),
+        speakers: info.speakers,
+        max_buffering_ms: buffer_ms(ticks, info.samples_per_sec),
+        fixed: info.fixed_buffering,
+    });
+
+    steps.init_audio(info.samples_per_sec, info.speakers)
 }
