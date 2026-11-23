@@ -1,20 +1,22 @@
 use super::*;
 
 /// #1390: retain all five unchanged top-level window close cases. The
-/// floating dock case (#5409) also watches `dock-window.hpp`.
+/// floating dock case (#5409) also watches `dock-window.hpp`. #5478: the
+/// binary was `test_close_top_level`; it also holds the quit, dock window,
+/// moved dock and redock cases.
 #[test]
-fn canonical_close_top_level_is_registered() {
+fn canonical_top_level_windows_is_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("qt");
     let target = graph
         .targets
-        .get("test_close_top_level")
-        .expect("canonical graph omits test_close_top_level");
+        .get("test_top_level_windows")
+        .expect("canonical graph omits test_top_level_windows");
     assert_eq!(target.sources.len(), 1);
     assert!(
-        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_close_top_level.cpp")
+        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_top_level_windows.cpp")
     );
     assert!(matches!(
         target.cpp_standard,
@@ -28,7 +30,7 @@ fn canonical_close_top_level_is_registered() {
             "frontend/utility/dock-window.hpp",
         ]
     );
-    let test = &graph.tests["test_close_top_level"];
+    let test = &graph.tests["test_top_level_windows"];
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
     assert_eq!(test.timeout_seconds, Some(120));
     for linux in [false, true] {
@@ -46,7 +48,10 @@ fn canonical_close_top_level_is_registered() {
                     .into(),
                 )
                 .unwrap();
-            assert_eq!(selected.tests.contains_key("test_close_top_level"), widgets);
+            assert_eq!(
+                selected.tests.contains_key("test_top_level_windows"),
+                widgets
+            );
         }
     }
 }

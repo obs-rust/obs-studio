@@ -287,8 +287,6 @@ mod canonical_caption_unmappable_is_registered;
 mod canonical_capture_helpers_are_registered;
 #[path = "native/registration/canonical_capture_planes_and_parser_lifecycle_are_registered.rs"]
 mod canonical_capture_planes_and_parser_lifecycle_are_registered;
-#[path = "native/registration/canonical_close_top_level_is_registered.rs"]
-mod canonical_close_top_level_is_registered;
 #[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
@@ -517,6 +515,8 @@ mod canonical_source_push_queries_is_registered;
 mod canonical_source_state_getters_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
+#[path = "native/registration/canonical_top_level_windows_is_registered.rs"]
+mod canonical_top_level_windows_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
 mod canonical_transition_compatibility_is_registered;
 #[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
@@ -1192,7 +1192,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
-        "test_close_top_level": graph["targets"].get("test_close_top_level").expect("canonical graph omits test_close_top_level"),
+        "test_top_level_windows": graph["targets"].get("test_top_level_windows").expect("canonical graph omits test_top_level_windows"),
         "test_settings_track_rows": graph["targets"].get("test_settings_track_rows").expect("canonical graph omits test_settings_track_rows"),
         "test_replay_buffer_estimate": graph["targets"].get("test_replay_buffer_estimate").expect("canonical graph omits test_replay_buffer_estimate"),
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
@@ -1204,7 +1204,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
-        "test_close_top_level": graph["tests"]["test_close_top_level"],
+        "test_top_level_windows": graph["tests"]["test_top_level_windows"],
         "test_settings_track_rows": graph["tests"]["test_settings_track_rows"],
         "test_replay_buffer_estimate": graph["tests"]["test_replay_buffer_estimate"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
@@ -1284,7 +1284,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .collect();
     let mut expected_names: std::collections::BTreeSet<_> = [
         "test_remux_queue_model",
-        "test_close_top_level",
+        "test_top_level_windows",
         "test_frontend_api_call",
         "test_settings_track_rows",
     ]
@@ -1331,7 +1331,7 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     assert_settings_track_rows_ctest_properties(tests);
-    assert_close_top_level_ctest_properties(tests);
+    assert_top_level_windows_ctest_properties(tests);
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")
@@ -1347,10 +1347,10 @@ fn canonical_remux_queue_runs_unchanged() {
 }
 
 #[cfg(feature = "libobs-integration")]
-fn assert_close_top_level_ctest_properties(tests: &[serde_json::Value]) {
+fn assert_top_level_windows_ctest_properties(tests: &[serde_json::Value]) {
     let close = tests
         .iter()
-        .find(|test| test["name"] == "test_close_top_level")
+        .find(|test| test["name"] == "test_top_level_windows")
         .unwrap();
     assert!(
         close["properties"]
