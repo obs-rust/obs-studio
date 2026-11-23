@@ -456,7 +456,7 @@ class LintTest(unittest.TestCase):
                 mock.patch.object(c, "lint", return_value=report):
             self.assertEqual(c.main(["--build", str(self.build)]), 0)
         self.assertIn("a finding", summary.read_text(encoding="utf-8"))
-        self.assertIn("report only", summary.read_text(encoding="utf-8"))
+        self.assertIn("new findings fail the gate", summary.read_text(encoding="utf-8"))
 
 
 def finding(path, check, message, line=1):

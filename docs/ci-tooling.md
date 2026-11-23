@@ -1006,8 +1006,8 @@ The Qt frontend has a C++ lint report (#5453), `ci/cpp_lint.py`:
 - clang-tidy (`clang-tidy==22.1.8` through uvx) with the checks in
   `frontend/.clang-tidy`, on the unity groups that the change touches. A
   changed implementation file runs its group. A changed header runs the groups
-  whose precompiled header includes it. A header that no precompiled header
-  includes, or a change to the config or the script, runs every group.
+  that include it (see the gate below). A change to the config, the script or
+  the baseline runs every group.
 - clazy (Ubuntu's `clazy` package, `clazy-standalone`): level 0 and 1 without
   `connect-by-name` and `qproperty-without-notify` (upstream's Designer
   patterns), on the same groups and in the same time budget as clang-tidy.
@@ -1017,8 +1017,23 @@ The Qt frontend has a C++ lint report (#5453), `ci/cpp_lint.py`:
   of every new or changed function in the changed frontend files, with the
   values before the change.
 
-It is **report only**: it prints, writes the step summary, and never fails a
-job or `./lint`. A baseline and a gate on new findings follow later.
+**The gate** (#5453 step 3): `ci/cpp_lint_baseline.txt` holds the findings
+master has, one sorted line per key with its count. A key has no line number,
+no machine path and no number that moves with an edit, so moved code is not
+new. In a PR or merge group the Qt lane fails when a key goes above its count
+(`ci/cpp_lint.py --gate`, exit 3, the only exit code that fails the job); the
+report names the baseline line. Fix the finding, or add its line only for a
+finding you keep on purpose. A finding gone from a changed file is listed (lower
+or delete its line) but does not fail. A tool that did not judge every group
+(not available, a timeout, over the budget) or has another version than the
+baseline records judges nothing. A change to the baseline, the config or the
+script runs every group. `--update-baseline` rewrites the file from such a run.
+
+In the Qt lane the build's own dependencies (`ninja -t deps`) map a changed
+header to exactly the groups that include it. Without them (`./lint` with
+another generator) the precompiled-header rule applies.
+
+`./lint` stays report only.
 
 - **Qt lane:** `ci/linux_qt_frontend.py` exports `compile_commands.json` and
   runs the report after the tests. The changed files come from the GitHub
