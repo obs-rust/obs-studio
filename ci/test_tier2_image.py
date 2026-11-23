@@ -1,5 +1,6 @@
 #!/usr/bin/env -S uv run --script
 """Prebaking must preserve hosted fallback, package identity and writer isolation."""
+import email.message
 import hashlib
 import importlib.util
 import io
@@ -132,6 +133,39 @@ class ImageTest(unittest.TestCase):
                 self.image.publish(ROOT)
             run.assert_not_called()
 
+    def test_verify_fails_loudly_when_the_package_is_private(self):
+        # select_image() swallows every probe error, so a private package
+        # degrades to stock Ubuntu in silence. Publishing is the one place that
+        # can tell, and it must not leave the flip to memory.
+        # verify() closes the response before exiting, so the self-test gate's
+        # ResourceWarning check (#2235) stays clean.
+        def private(code):
+            def raise_(*_args, **_kwargs):
+                raise urllib.error.HTTPError('https://ghcr.io', code, 'no',
+                                             email.message.Message(), io.BytesIO(b''))
+            return raise_
+
+        for code in (401, 403, 404):
+            with self.subTest(code=code), \
+                    patch.object(self.image, 'manifest_digest', side_effect=private(code)), \
+                    self.assertRaises(SystemExit) as error:
+                self.image.verify(ROOT)
+            message = str(error.exception)
+            self.assertIn(f'HTTP {code}', message)
+            self.assertIn('packages/container/tier2-linux/settings', message)
+            self.assertIn('public', message)
+
+    def test_verify_fails_when_the_tag_is_missing(self):
+        with patch.object(self.image, 'manifest_digest', return_value=None), \
+                self.assertRaises(SystemExit) as error:
+            self.image.verify(ROOT)
+        self.assertIn('missing', str(error.exception))
+
+    def test_verify_passes_on_an_anonymous_read(self):
+        digest = 'sha256:' + 'a' * 64
+        with patch.object(self.image, 'manifest_digest', return_value=digest):
+            self.image.verify(ROOT)
+
 
 class WorkflowTest(unittest.TestCase):
     def test_builder_is_master_push_only_and_off_gate_path(self):
@@ -142,6 +176,11 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("github.repository == 'obs-rust/obs-studio'", builder)
         self.assertIn('packages: write', builder)
         self.assertIn('uv run --no-project ci/tier2_image.py publish', builder)
+        # A private package is invisible to the selector; the publish job must
+        # say so rather than let every Tier 2 job rebuild from stock Ubuntu.
+        self.assertIn('uv run --no-project ci/tier2_image.py verify', builder)
+        self.assertLess(builder.index('tier2_image.py publish'),
+                        builder.index('tier2_image.py verify'))
         self.assertEqual(needs(builder), [])
         for name in all_jobs:
             if name != 'tier2-image':

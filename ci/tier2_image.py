@@ -105,15 +105,43 @@ def publish(root: Path) -> None:
     subprocess.run(['docker', 'build', '--platform', 'linux/amd64', '--tag', tag,
                     '--file', str(root / DOCKERFILE), str(root / CONTEXT)], check=True)
     subprocess.run(['docker', 'push', tag], check=True)
-    print(f'Published {tag}; ensure the GHCR package visibility is public')
+    print(f'Published {tag}')
+
+
+def verify(root: Path) -> None:
+    """Fail when the published image is not anonymously readable.
+
+    The probe inside select_image() falls back to stock Ubuntu on any error, so
+    a private package degrades silently: every Linux Tier 2 job re-downloads
+    its 339 MB of .debs and nobody learns why. Publishing is the one moment we
+    can tell the difference, so assert the documented invariant here instead of
+    leaving it to whoever remembers to flip the setting.
+    """
+    tag = identity(root)
+    try:
+        digest = manifest_digest(tag)
+    except urllib.error.HTTPError as error:
+        status = error.code
+        # The probe held a response; close it before turning this into an exit.
+        error.close()
+        raise SystemExit(
+            f'{tag} is not anonymously readable (HTTP {status}): the package is '
+            f'private. Anonymous probes and Docker pulls need no credentials, so make '
+            f'https://github.com/orgs/obs-rust/packages/container/tier2-linux/settings '
+            f'public; until then every Tier 2 job silently rebuilds from stock Ubuntu.')
+    if digest is None:
+        raise SystemExit(f'{tag} is missing: the publish step should have created it')
+    print(f'{tag} is publicly readable ({digest})')
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('identity', 'select', 'publish'))
+    parser.add_argument('command', choices=('identity', 'select', 'publish', 'verify'))
     args = parser.parse_args()
     if args.command == 'publish':
         publish(ROOT)
+    elif args.command == 'verify':
+        verify(ROOT)
     elif args.command == 'identity':
         print(identity(ROOT))
     else:
