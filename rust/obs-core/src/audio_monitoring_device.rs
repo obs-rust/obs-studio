@@ -34,6 +34,8 @@
     clippy::unreachable
 )]
 
+use crate::core_setup_rules::{aoc_check, monitor_missing, monitor_same};
+
 /// The live monitors as `obs_reset_audio_monitoring()` sees them:
 /// `obs_audio_monitoring_available()`, `obs->audio.monitoring_mutex`,
 /// `monitors.num` and `audio_monitor_reset(monitors.array[i])`.
@@ -71,21 +73,55 @@ pub trait Device: Monitors {
 }
 
 /// `obs_reset_audio_monitoring()`.
-pub fn reset_monitoring<M: Monitors + ?Sized>(_monitors: &mut M) {
-    todo!()
+pub fn reset_monitoring<M: Monitors + ?Sized>(monitors: &mut M) {
+    if !monitors.available() {
+        return;
+    }
+    monitors.lock();
+    let mut index: usize = 0;
+    while index < monitors.count() {
+        monitors.reset(index);
+        // `index < count()`, a `usize`, so this never wraps.
+        index = index.wrapping_add(1);
+    }
+    monitors.unlock();
 }
 
 /// The enumeration callback: tell an Audio Output Capture source; always
 /// continue.
-pub fn aoc_source<D: Device + ?Sized>(_device: &mut D, _source: D::Source) -> bool {
-    todo!()
+pub fn aoc_source<D: Device + ?Sized>(device: &mut D, source: D::Source) -> bool {
+    if aoc_check(device.output_flags(source)) {
+        device.notify(source);
+    }
+    true
 }
 
 /// `obs_set_audio_monitoring_device(name, id)`; `None` is NULL.
 pub fn set_device<D: Device + ?Sized>(
-    _device: &mut D,
-    _name: Option<D::Str>,
-    _id: Option<D::Str>,
+    device: &mut D,
+    name: Option<D::Str>,
+    id: Option<D::Str>,
 ) -> bool {
-    todo!()
+    if monitor_missing(name.is_some()) || monitor_missing(id.is_some()) {
+        return false;
+    }
+    let (Some(name), Some(id)) = (name, id) else {
+        return false;
+    };
+    if monitor_missing(!device.empty(name)) || monitor_missing(!device.empty(id)) {
+        return false;
+    }
+    if monitor_missing(device.available()) {
+        return false;
+    }
+    device.lock();
+    if monitor_same(device.compare(id)) {
+        device.unlock();
+        return true;
+    }
+    device.store(name, id);
+    device.unlock();
+    reset_monitoring(device);
+    device.enum_sources();
+    true
 }

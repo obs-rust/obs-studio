@@ -16,6 +16,7 @@ mod audio_min_ts_parity;
 mod audio_mix;
 mod audio_mix_parity;
 mod audio_monitoring_device;
+mod audio_monitoring_device_parity;
 mod audio_render;
 mod audio_render_parity;
 mod base_effect;

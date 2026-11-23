@@ -5,6 +5,7 @@ pub mod audio_discard;
 pub mod audio_info_queries;
 pub mod audio_min_ts;
 pub mod audio_mix;
+pub mod audio_monitoring_device;
 pub mod audio_render;
 pub mod base_effect;
 pub mod canvas_channel_getter;
