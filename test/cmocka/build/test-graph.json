@@ -16405,6 +16405,28 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_set_audio_monitoring_device": {
+      "sources": [
+        "test/cmocka/test_set_audio_monitoring_device.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "PulseAudio::PulseAudio"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic"
+      ],
+      "compile_options_if_supported": [
+        "-fvisibility=default"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "ENABLE_PULSEAUDIO"
+        ]
+      }
+    },
     "test_set_cmdline_args": {
       "sources": [
         "test/cmocka/test_set_cmdline_args.c"
@@ -28737,6 +28759,29 @@
       "target": "test_service_state",
       "command": [
         "${target}"
+      ]
+    },
+    "test_set_audio_monitoring_device": {
+      "target": "test_set_audio_monitoring_device",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_set_cmdline_args": {
