@@ -157,6 +157,8 @@ mod output_protocol_registry;
 mod output_protocol_registry_parity;
 mod private_data;
 mod private_data_parity;
+mod raw_audio_add;
+mod raw_audio_add_parity;
 mod raw_audio_remove;
 mod raw_audio_remove_parity;
 mod reset_audio;
