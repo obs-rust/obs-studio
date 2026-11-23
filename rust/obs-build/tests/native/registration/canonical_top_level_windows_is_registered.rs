@@ -48,7 +48,10 @@ fn canonical_top_level_windows_is_registered() {
                     .into(),
                 )
                 .unwrap();
-            assert_eq!(selected.tests.contains_key("test_top_level_windows"), widgets);
+            assert_eq!(
+                selected.tests.contains_key("test_top_level_windows"),
+                widgets
+            );
         }
     }
 }

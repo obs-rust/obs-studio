@@ -287,8 +287,6 @@ mod canonical_caption_unmappable_is_registered;
 mod canonical_capture_helpers_are_registered;
 #[path = "native/registration/canonical_capture_planes_and_parser_lifecycle_are_registered.rs"]
 mod canonical_capture_planes_and_parser_lifecycle_are_registered;
-#[path = "native/registration/canonical_top_level_windows_is_registered.rs"]
-mod canonical_top_level_windows_is_registered;
 #[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
@@ -517,6 +515,8 @@ mod canonical_source_push_queries_is_registered;
 mod canonical_source_state_getters_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
+#[path = "native/registration/canonical_top_level_windows_is_registered.rs"]
+mod canonical_top_level_windows_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
 mod canonical_transition_compatibility_is_registered;
 #[path = "native/registration/canonical_transport_helpers_are_registered.rs"]

@@ -716,14 +716,14 @@ int main(int argc, char **argv)
 
 	/* One group per topic (obs-rust/obs-studio#5478): cmocka prints each
 	 * group's name with its results. */
-	const struct CMUnitTest close[] = {
+	const struct CMUnitTest close_tests[] = {
 		cmocka_unit_test_setup_teardown(never_shown_window_gets_close_event, setup, teardown),
 		cmocka_unit_test_setup_teardown(never_shown_window_can_refuse, setup, teardown),
 		cmocka_unit_test_setup_teardown(shown_window_closes, setup, teardown),
 		cmocka_unit_test_setup_teardown(shown_window_can_refuse, setup, teardown),
 		cmocka_unit_test_setup_teardown(window_without_qwindow_closes, setup, teardown),
 	};
-	const struct CMUnitTest quit[] = {
+	const struct CMUnitTest quit_tests[] = {
 		cmocka_unit_test_setup_teardown(quit_closes_the_main_window_with_floating_main_docks, quit_setup,
 						quit_teardown),
 		cmocka_unit_test_setup_teardown(quit_is_cancelled_when_the_main_window_refuses, quit_setup,
@@ -731,15 +731,15 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
 						quit_teardown),
 	};
-	const struct CMUnitTest dock_window[] = {
+	const struct CMUnitTest dock_window_tests[] = {
 		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
 		cmocka_unit_test(dock_window_is_set_up_once),
 	};
-	const struct CMUnitTest moved_dock[] = {
+	const struct CMUnitTest moved_dock_tests[] = {
 		cmocka_unit_test_setup_teardown(moved_dock_keeps_the_main_window_layout, moved_setup, moved_teardown),
 		cmocka_unit_test_setup_teardown(moved_dock_docks_into_the_main_window, moved_setup, moved_teardown),
 	};
-	const struct CMUnitTest redock[] = {
+	const struct CMUnitTest redock_tests[] = {
 		cmocka_unit_test_setup_teardown(close_of_a_floating_main_dock_puts_it_back, redock_setup,
 						redock_teardown),
 		cmocka_unit_test_setup_teardown(quit_closes_a_floating_main_dock, redock_setup, redock_teardown),
@@ -752,10 +752,10 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(close_key_is_added_once, redock_setup, redock_teardown),
 	};
 	int failed = 0;
-	failed += cmocka_run_group_tests_name("close", close, NULL, NULL);
-	failed += cmocka_run_group_tests_name("quit", quit, NULL, NULL);
-	failed += cmocka_run_group_tests_name("dock_window", dock_window, NULL, NULL);
-	failed += cmocka_run_group_tests_name("moved_dock", moved_dock, NULL, NULL);
-	failed += cmocka_run_group_tests_name("redock", redock, NULL, NULL);
+	failed += cmocka_run_group_tests_name("close", close_tests, NULL, NULL);
+	failed += cmocka_run_group_tests_name("quit", quit_tests, NULL, NULL);
+	failed += cmocka_run_group_tests_name("dock_window", dock_window_tests, NULL, NULL);
+	failed += cmocka_run_group_tests_name("moved_dock", moved_dock_tests, NULL, NULL);
+	failed += cmocka_run_group_tests_name("redock", redock_tests, NULL, NULL);
 	return failed;
 }
