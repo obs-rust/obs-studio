@@ -18,6 +18,7 @@ name: AI rebase
 # no workflows, so the rebased PR would never get CI.
 # Schedule/manual scan retains capacity recovery without a Pull-completion
 # feedback edge; master pushes do not start sweeps.
+# Infrastructure-ejected PRs are re-armed on the schedule (up to 30 minutes later).
 on:
   schedule:
     - cron: "17,47 * * * *"
@@ -61,8 +62,6 @@ jobs:
           private-key: ${{ secrets.AI_REBASE_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
-      # workflow_run is privileged. Never checkout the triggering head or read
-      # its artifacts; inspect only API evidence using default-branch code.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: master
@@ -73,17 +72,12 @@ jobs:
       - name: Recover proven hosted capacity failures
         env:
           GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
         run: |
           # shellcheck disable=SC2086 # DRY is an optional argument
-          if [ -n "$RUN_ID" ]; then
-            uv run --no-project --script ci/mq_acquire_retry.py --run-id "$RUN_ID" $DRY
-          else
-            uv run --no-project --script ci/mq_acquire_retry.py $DRY
-          fi
+          uv run --no-project --script ci/mq_acquire_retry.py $DRY
       - name: Re-arm infrastructure-ejected PRs
-        if: github.event_name != 'workflow_run' && env.HAS_TOKEN == 'true'
+        if: env.HAS_TOKEN == 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
@@ -96,7 +90,7 @@ jobs:
     concurrency:
       group: ai-rebase-conflicts
       cancel-in-progress: false
-    if: github.event_name != 'workflow_run' && (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio')
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # GitHub does not allow `secrets` in a job `if:`, so whether the App is
