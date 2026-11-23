@@ -421,6 +421,7 @@ QT_PREFIXES = (
     "shared/properties-view/",
     "plugins/frontend-tools/",
     "plugins/obs-vst3/",
+    "rust/obs-vst3/",
     "rust/obs-vst3-scanner/",
     "rust/obs-vst3-scanner-native/",
     "test/cmocka/vst3-test-",

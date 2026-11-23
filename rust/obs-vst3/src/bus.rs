@@ -39,8 +39,40 @@ impl BusPlan {
         output: &[Description],
         main_arrangement: u64,
     ) -> Result<Self, Error> {
-        let _ = (input, output, main_arrangement);
-        todo!()
+        let main_input = input
+            .iter()
+            .position(|bus| bus.kind == Kind::Main)
+            .ok_or(Error::MissingMainInput)?;
+        let main_output = output
+            .iter()
+            .position(|bus| bus.kind == Kind::Main)
+            .ok_or(Error::MissingMainOutput)?;
+        let sidechain = input
+            .iter()
+            .position(|bus| bus.kind == Kind::Auxiliary && matches!(bus.channels, 1 | 2));
+        let input = select(input, |index| {
+            if index == main_input {
+                Some(main_arrangement)
+            } else if Some(index) == sidechain {
+                Some(if input[index].channels == 1 {
+                    1 << 19
+                } else {
+                    3
+                })
+            } else {
+                None
+            }
+        })?;
+        let output = select(output, |index| {
+            (index == main_output).then_some(main_arrangement)
+        })?;
+        Ok(Self {
+            input,
+            output,
+            main_input,
+            main_output,
+            sidechain,
+        })
     }
 
     pub fn matches_active_arrangements(
@@ -48,7 +80,32 @@ impl BusPlan {
         input: &[Description],
         output: &[Description],
     ) -> bool {
-        let _ = (input, output);
-        todo!()
+        fn matches(selection: &[Selection], buses: &[Description]) -> bool {
+            selection.len() == buses.len()
+                && selection.iter().zip(buses).all(|(selected, bus)| {
+                    !selected.enabled || bus.arrangement == Some(selected.arrangement)
+                })
+        }
+        matches(&self.input, input) && matches(&self.output, output)
     }
+}
+
+fn select(
+    buses: &[Description],
+    desired_arrangement: impl Fn(usize) -> Option<u64>,
+) -> Result<Vec<Selection>, Error> {
+    buses
+        .iter()
+        .enumerate()
+        .map(|(index, bus)| {
+            let selected = desired_arrangement(index);
+            let arrangement = selected
+                .or(bus.arrangement)
+                .ok_or(Error::ArrangementUnavailable)?;
+            Ok(Selection {
+                enabled: selected.is_some(),
+                arrangement,
+            })
+        })
+        .collect()
 }

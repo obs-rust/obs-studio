@@ -22,9 +22,8 @@ add_library(obs-vst3 MODULE)
 add_library(OBS::vst3 ALIAS obs-vst3)
 add_dependencies(obs-vst3 obs-vst3-scanner)
 
-target_sources(
-  obs-vst3
-  PRIVATE
+set(
+  _obs_vst3_host_sources
     VST3Plugin.h
     build/obs-vst3.core+.hpp.cpp
     build/obs-vst3.editor+.hpp.cpp
@@ -35,11 +34,34 @@ target_sources(
     "$<$<PLATFORM_ID:Darwin>:build/obs-vst3.host.macos+.hpp.cpp>"
     "$<$<PLATFORM_ID:Windows>:build/obs-vst3.host.windows+.hpp.cpp>"
 )
+target_sources(obs-vst3 PRIVATE ${_obs_vst3_host_sources})
 target_compile_options(obs-vst3 PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJCXX,AppleClang>:-fobjc-arc>")
 if(OS_MACOS)
   set_target_properties(obs-vst3 PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()
 target_link_libraries(obs-vst3 PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
+if(OBS_LIBOBS_BACKEND STREQUAL HYBRID)
+  corrosion_import_crate(
+    MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
+    CRATES obs-vst3
+    CRATE_TYPES staticlib
+    PROFILE release
+  )
+  obs_serialize_cargo_build(obs-vst3)
+  target_compile_definitions(obs-vst3 PRIVATE OBS_VST3_RUST_HOST)
+  target_link_libraries(obs-vst3 PRIVATE obs_vst3-static)
+  if(OS_LINUX)
+    target_link_options(obs-vst3 PRIVATE "LINKER:--exclude-libs,ALL")
+    if(ENABLE_UNIT_TESTS)
+      add_library(obs-vst3-c-reference MODULE EXCLUDE_FROM_ALL ${_obs_vst3_host_sources})
+      target_link_libraries(obs-vst3-c-reference PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
+      set_target_properties(obs-vst3-c-reference PROPERTIES PREFIX "" AUTOMOC ON)
+      if(OBS_VST3_SCANNER_NAME)
+        target_compile_definitions(obs-vst3-c-reference PRIVATE OBS_VST3_SCANNER_NAME="${OBS_VST3_SCANNER_NAME}")
+      endif()
+    endif()
+  endif()
+endif()
 if(OBS_VST3_SCANNER_NAME)
   target_compile_definitions(obs-vst3 PRIVATE OBS_VST3_SCANNER_NAME="${OBS_VST3_SCANNER_NAME}")
 endif()

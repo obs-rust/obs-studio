@@ -842,6 +842,10 @@ dependencies = [
 [[package]]
 name = "obs-vst3"
 version = "0.1.0"
+dependencies = [
+ "libloading",
+ "vst3",
+]
 
 [[package]]
 name = "obs-vst3-scanner"

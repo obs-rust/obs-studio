@@ -779,11 +779,10 @@ void vst3Save(void *data, obs_data_t *settings)
 }
 
 // -------------- audio processing (incl. sidechain) ---------------
-static inline void preprocessInput(struct Vst3AudioData *filterData, const std::shared_ptr<VST3Plugin> &plugin)
+static inline void processBlock(struct Vst3AudioData *filterData, const std::shared_ptr<VST3Plugin> &plugin)
 {
 	const int numberChannels = static_cast<int>(filterData->channels);
 	const int sidechainNumberChannels = plugin->sidechainNumberChannels;
-	const int frames = static_cast<int>(filterData->frames);
 	const size_t segmentSize = filterData->frames * sizeof(float);
 	const bool hasSidechain = filterData->hasSidechain.load(std::memory_order_relaxed);
 	const bool sidechainEnabled = filterData->sidechainEnabled.load(std::memory_order_relaxed);
@@ -810,30 +809,14 @@ static inline void preprocessInput(struct Vst3AudioData *filterData, const std::
 		}
 	}
 
-	for (int ch = 0; ch < numberChannels; ++ch) {
-		auto *inputBuffers = filterData->copyBuffers[ch];
-		float *vstInputBuffers = plugin->channelBuffer32(Steinberg::Vst::kInput, ch);
-		if (inputBuffers && vstInputBuffers) {
-			memcpy(vstInputBuffers, inputBuffers, frames * sizeof(float));
-		}
-	}
-
-	if (hasSidechain) {
-		for (int ch = 0; ch < sidechainNumberChannels; ++ch) {
-			float *vstSidechainInputBuffers = plugin->auxChannelBuffer32(Steinberg::Vst::kInput, ch);
-			if (vstSidechainInputBuffers) {
-				memset(vstSidechainInputBuffers, 0, segmentSize);
-			}
-		}
-	}
-
+	const float *sidechain[MAX_AV_PLANES] = {};
+	size_t sidechainFrames = 0;
+	auto sidechainResampler = std::atomic_load(&filterData->sidechainResampler);
 	if (hasSidechain && sidechainEnabled) {
-		const bool needsResampling =
-			filterData->channels != static_cast<size_t>(plugin->sidechainNumberChannels) &&
-			(plugin->sidechainNumberChannels == 1 || plugin->sidechainNumberChannels == 2);
-		auto sidechainResampler = std::atomic_load(&filterData->sidechainResampler);
+		const bool needsResampling = numberChannels != sidechainNumberChannels &&
+					     (sidechainNumberChannels == 1 || sidechainNumberChannels == 2);
 		if (needsResampling && sidechainResampler) {
-			uint8_t *resampled[2] = {nullptr, nullptr};
+			uint8_t *resampled[2] = {};
 			uint32_t outputResamplerFrames;
 			uint64_t timestampOffset;
 
@@ -841,44 +824,24 @@ static inline void preprocessInput(struct Vst3AudioData *filterData, const std::
 						     &timestampOffset,
 						     (const uint8_t **)filterData->sidechainCopyBuffers,
 						     static_cast<uint32_t>(filterData->frames))) {
+				sidechainFrames = outputResamplerFrames;
 				for (int ch = 0; ch < sidechainNumberChannels; ++ch) {
-					auto *inputBuffers = reinterpret_cast<float *>(resampled[ch]);
-					float *vstSidechainInputBuffers =
-						plugin->auxChannelBuffer32(Steinberg::Vst::kInput, ch);
-					if (inputBuffers && vstSidechainInputBuffers) {
-						memcpy(vstSidechainInputBuffers, inputBuffers,
-						       outputResamplerFrames * sizeof(float));
-					}
+					sidechain[ch] = reinterpret_cast<const float *>(resampled[ch]);
 				}
 			}
 		} else {
-			for (int ch = 0; ch < sidechainNumberChannels; ++ch) {
-				float *inputBuffers = filterData->sidechainCopyBuffers[ch];
-				float *vstSidechainInputBuffers =
-					plugin->auxChannelBuffer32(Steinberg::Vst::kInput, ch);
-				if (inputBuffers && vstSidechainInputBuffers) {
-					memcpy(vstSidechainInputBuffers, inputBuffers, frames * sizeof(float));
-				}
+			sidechainFrames = filterData->frames;
+			for (int ch = 0; ch < std::min(sidechainNumberChannels, numberChannels); ++ch) {
+				sidechain[ch] = filterData->sidechainCopyBuffers[ch];
 			}
 		}
 	}
+	plugin->processBlock(filterData->copyBuffers, filterData->channels, sidechain, sidechainFrames, filterData->frames);
 }
 
 static inline void process(struct Vst3AudioData *filterData, const std::shared_ptr<VST3Plugin> &plugin)
 {
-	const int numberChannels = static_cast<int>(filterData->channels);
-	const int frames = static_cast<int>(filterData->frames);
-
-	preprocessInput(filterData, plugin);
-	plugin->process(frames);
-
-	for (int ch = 0; ch < numberChannels; ++ch) {
-		auto *outputBuffers = reinterpret_cast<uint8_t *>(filterData->copyBuffers[ch]);
-		float *vstOutputBuffers = plugin->channelBuffer32(Steinberg::Vst::kOutput, ch);
-		if (outputBuffers && vstOutputBuffers) {
-			memcpy(outputBuffers, vstOutputBuffers, frames * sizeof(float));
-		}
-	}
+	processBlock(filterData, plugin);
 
 	for (size_t i = 0; i < filterData->channels; ++i) {
 		deque_push_back(&filterData->outputBuffers[i], filterData->copyBuffers[i],

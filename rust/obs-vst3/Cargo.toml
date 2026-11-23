@@ -13,4 +13,9 @@ workspace = true
 
 [lib]
 test = false
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+libloading = { workspace = true, default-features = true }
+vst3 = { workspace = true }
 
