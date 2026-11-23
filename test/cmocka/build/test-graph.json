@@ -13987,6 +13987,15 @@
         }
       ]
     },
+    "test_raw_audio_add": {
+      "sources": [
+        "test/cmocka/test_raw_audio_add.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_raw_output_video_reset": {
       "sources": [
         "test/cmocka/test_raw_output_video_reset.c"
@@ -27949,6 +27958,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_raw_audio_add": {
+      "target": "test_raw_audio_add",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 60
     },
     "test_raw_output_video_reset": {
       "target": "test_raw_output_video_reset",
