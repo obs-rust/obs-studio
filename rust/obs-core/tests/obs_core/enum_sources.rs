@@ -607,6 +607,14 @@ fn canvas_enum_scenes_step_order() {
     stop.scenes();
     assert_eq!(
         stop.events,
-        [Lock, First(1), GetRef(0, true), Scene(0), Visit(0), Release(0), Unlock]
+        [
+            Lock,
+            First(1),
+            GetRef(0, true),
+            Scene(0),
+            Visit(0),
+            Release(0),
+            Unlock
+        ]
     );
 }

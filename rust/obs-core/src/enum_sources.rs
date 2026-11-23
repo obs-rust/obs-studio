@@ -80,24 +80,70 @@ pub trait Scenes: Referenced {
 
 /// `obs_enum_sources()` over `sources`.
 pub fn enum_sources<S: Sources>(sources: &mut S) {
-    let _ = sources;
-    todo!()
+    sources.lock();
+    let mut source = sources.first();
+    while let Some(listed) = source {
+        if let Some(s) = sources.get_ref(listed) {
+            // The original's `if (input && !call) ... else if (group &&
+            // !call)`: an input whose call answered true is asked for the
+            // group id too.
+            if !sources.private(s)
+                && ((sources.input(s) && !sources.visit(s))
+                    || (sources.group(s) && !sources.visit(s)))
+            {
+                sources.release(s);
+                break;
+            }
+            sources.release(s);
+        }
+        source = sources.next(listed);
+    }
+    sources.unlock();
+}
+
+/// uthash's `HASH_ITER` from `head`: each entry's next link is read before
+/// its callback.
+fn iterate<T: Table>(table: &mut T, head: Option<T::Entry>) {
+    let mut entry = head;
+    while let Some(current) = entry {
+        entry = table.next(current);
+        if !table.visit(current) {
+            break;
+        }
+    }
 }
 
 /// `obs_enum_all_sources()`: the static `obs_enum_uuid()` over `table`.
 pub fn enum_uuid<T: Table>(table: &mut T) {
-    let _ = table;
-    todo!()
+    table.lock();
+    let head = table.first();
+    iterate(table, head);
+    table.unlock();
 }
 
-/// `obs_enum_canvases()` over the named canvases.
+/// `obs_enum_canvases()` over the named canvases. The head is read before
+/// the canvases' mutex is taken, as the original reads it.
 pub fn enum_canvases<T: Table>(canvases: &mut T) {
-    let _ = canvases;
-    todo!()
+    let head = canvases.first();
+    canvases.lock();
+    iterate(canvases, head);
+    canvases.unlock();
 }
 
-/// `obs_canvas_enum_scenes()` over one canvas's sources.
+/// `obs_canvas_enum_scenes()` over one canvas's sources. The scene type is
+/// asked of the listed entry, as the original does.
 pub fn canvas_enum_scenes<S: Scenes>(scenes: &mut S) {
-    let _ = scenes;
-    todo!()
+    scenes.lock();
+    let mut source = scenes.first();
+    while let Some(listed) = source {
+        if let Some(s) = scenes.get_ref(listed) {
+            if scenes.scene(listed) && !scenes.visit(s) {
+                scenes.release(s);
+                break;
+            }
+            scenes.release(s);
+        }
+        source = scenes.next(listed);
+    }
+    scenes.unlock();
 }

@@ -20,7 +20,7 @@
 #include "libobs/obs-enter-leave-graphics-fields.c.h"
 #include "libobs/obs-enum-contexts-fields.c.h"
 #include "libobs/obs-enum-scenes-fields.c.h"
-#include "libobs/obs-enum-sources.c.h"
+#include "libobs/obs-enum-sources-fields.c.h"
 #include "libobs/obs-get-audio-fields.c.h"
 #include "libobs/obs-get-latest-input-type-id.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
