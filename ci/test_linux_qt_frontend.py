@@ -266,10 +266,17 @@ class LinuxQtFrontendTest(unittest.TestCase):
                 report = [call for call in self.calls("uv") if "ci/cpp_lint.py" in call["argv"]]
                 self.assertEqual([call["argv"] for call in report],
                                  [["run", "--no-project", "ci/cpp_lint.py", "--build", str(self.build),
-                                   "--install-clazy"]])
+                                   "--install-clazy", "--gate"]])
                 self.assertIn("qt-phase phase=lint seconds=", result.stdout)
                 self.assertLess(result.stdout.index("qt-phase phase=test"), result.stdout.index("qt-phase phase=lint"))
                 self.assertEqual("exited 1 (report only, ignored)" in result.stdout, code == "1")
+
+    def test_new_cpp_lint_findings_fail_the_job(self) -> None:
+        """#5453 step 3: only the report's gate code fails the job."""
+        gate = str(driver().CPP_LINT_GATE_FAILED)
+        result = self.run_script(*self.prefixes(), CPP_LINT_EXIT=gate)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("new C++ lint findings", result.stdout + result.stderr)
 
     def test_the_ctest_job_count_is_configurable(self) -> None:
         self.assertEqual(self.run_script(*self.prefixes(), CTEST_JOBS="7").returncode, 0)

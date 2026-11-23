@@ -54,11 +54,15 @@ REAL_QT_TESTS = [
     "ci.test_vst_platform_facade.VstPlatformFacadeTest.test_real_qt_policy",
     "ci.test_widget_platform_facade.WidgetPlatformFacadeTest.test_live_x11_wayland_window_handles",
 ]
-# The C++ lint report (#5453): report only, so its exit code and a timeout
-# are printed, never raised. It has its own time budget; this is the stop.
+# The C++ lint report (#5453): only its gate code (new findings) fails the
+# job; any other exit code and a timeout are printed, never raised. It has
+# its own time budget; this is the stop.
 # clazy is installed with apt only when there are groups to lint.
 CPP_LINT = ["uv", "run", "--no-project", "ci/cpp_lint.py", "--build"]
 CPP_LINT_TIMEOUT = 600
+# ci/cpp_lint.py's GATE_FAILED: new findings in a PR or merge group (#5453
+# step 3). The only exit code of the report that fails the job.
+CPP_LINT_GATE_FAILED = 3
 # The two forms `ninja -t targets all` gives a built executable: phony (from
 # the cmocka test fragment) and the linker rule.
 TARGET = re.compile(r"^([A-Za-z0-9_]*): phony$|^([A-Za-z0-9_]*): CXX_EXECUTABLE_LINKER")
@@ -208,12 +212,17 @@ def run(qt: Path, ff: Path, build: Path) -> None:
 
 
 def cpp_lint(build: Path) -> None:
-    """The C++ lint report (#5453). Report only: it never fails the job."""
+    """The C++ lint report (#5453): only new findings (the gate code) fail the job."""
     try:
-        result = subprocess.run([*CPP_LINT, str(build), "--install-clazy"], cwd=SRC, timeout=CPP_LINT_TIMEOUT)
+        result = subprocess.run([*CPP_LINT, str(build), "--install-clazy", "--gate"], cwd=SRC,
+                                timeout=CPP_LINT_TIMEOUT)
     except (OSError, subprocess.SubprocessError) as error:
         print(f"== C++ lint report did not run: {error}", flush=True)
         return
+    if result.returncode == CPP_LINT_GATE_FAILED:
+        print("== new C++ lint findings: the report above names them and the baseline lines (#5453)",
+              flush=True)
+        sys.exit(1)
     if result.returncode != 0:
         print(f"== C++ lint report exited {result.returncode} (report only, ignored)", flush=True)
 

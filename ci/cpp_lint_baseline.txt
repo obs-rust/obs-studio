@@ -1,0 +1,652 @@
+# C++ lint baseline (#5453): one line per finding key and its count. A PR
+# may not add a finding (ci/cpp_lint.py --gate in the Qt lane). Rewrite it
+# with: uv run --no-project ci/cpp_lint.py --build <dir> --update-baseline
+# Keys have no line, no machine path and no number that moves with an edit.
+# clang-tidy 22.1.8
+# clazy Ubuntu LLVM version 21.1.8
+frontend/OBSApp.cpp.hpp: bugprone-unused-return-value: the value returned by this function should not be disregarded; neglecting it may lead to errors	1
+frontend/OBSApp.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/OBSApp.cpp.hpp: modernize-use-nullptr: use nullptr	8
+frontend/OBSApp.cpp.hpp: performance-unnecessary-value-param: the parameter 'func' of type 'VoidFunc' (aka 'std::function<void ()>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/OBSApp.cpp.hpp: readability-function-cognitive-complexity: function 'CreateShortcutFilter' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp.cpp.hpp: readability-function-cognitive-complexity: function 'InitLocale' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp.cpp.hpp: readability-function-cognitive-complexity: function 'MigrateLegacySettings' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp.cpp.hpp: readability-function-cognitive-complexity: function 'move_basic_to_profiles' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp.cpp.hpp: readability-function-cognitive-complexity: lambda has cognitive complexity of N (threshold N)	1
+frontend/OBSApp.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/OBSApp_Themes.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'themeMigrations' with static storage duration may throw an exception that cannot be caught	1
+frontend/OBSApp_Themes.cpp.hpp: clazy-non-pod-global-static: non-POD static (map themeMigrations)	1
+frontend/OBSApp_Themes.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QHash)	2
+frontend/OBSApp_Themes.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QStringList)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'EvalMath' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'FindThemes' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'ParseColor' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'ParseMath' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'ParseThemeMeta' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'ParseThemeVariables' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'PreparePalette' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'PrepareQSS' has cognitive complexity of N (threshold N)	1
+frontend/OBSApp_Themes.cpp.hpp: readability-function-cognitive-complexity: function 'SetTheme' has cognitive complexity of N (threshold N)	1
+frontend/OBSStudioAPI.cpp.hpp: bugprone-multi-level-implicit-pointer-conversion: multilevel pointer conversion from 'obs_canvas_t **' (aka 'struct obs_canvas **') to 'const void *', please use explicit cast	1
+frontend/OBSStudioAPI.cpp.hpp: bugprone-multi-level-implicit-pointer-conversion: multilevel pointer conversion from 'obs_source_t **' (aka 'struct obs_source **') to 'const void *', please use explicit cast	2
+frontend/OBSStudioAPI.cpp.hpp: performance-no-int-to-ptr: integer to pointer cast pessimizes optimization opportunities	1
+frontend/components/AbsoluteSlider.cpp.hpp: bugprone-float-loop-counter: loop induction expression should not have floating-point type	1
+frontend/components/AbsoluteSlider.cpp.hpp: bugprone-integer-division: result of integer division used in a floating point context; possible loss of precision	1
+frontend/components/AbsoluteSlider.cpp.hpp: clang-analyzer-security.FloatLoopCounter: Variable 'offset' with floating point type 'double' should not be used as a loop counter	1
+frontend/components/AbsoluteSlider.cpp.hpp: performance-move-const-arg: std::move of the variable 'c' of the trivially-copyable type 'QColor' has no effect; remove std::move()	1
+frontend/components/AbsoluteSlider.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	5
+frontend/components/AccessibleAlignmentCell.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	1
+frontend/components/AccessibleAlignmentSelector.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/AlignmentSelector.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	2
+frontend/components/AlignmentSelector.cpp.hpp: readability-function-cognitive-complexity: function 'paintEvent' has cognitive complexity of N (threshold N)	1
+frontend/components/ApplicationAudioCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/AudioCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/BrowserToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/BrowserToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/ColorSourceToolbar.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	1
+frontend/components/ColorSourceToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/ColorSourceToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/ComboSelectToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	3
+frontend/components/ComboSelectToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/DeviceCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/DeviceCaptureToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/DisplayCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/FlowFrame.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	1
+frontend/components/FlowFrame.cpp.hpp: readability-function-cognitive-complexity: function 'keyPressEvent' has cognitive complexity of N (threshold N)	1
+frontend/components/GameCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/GameCaptureToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/ImageSourceToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/ImageSourceToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/MediaControls.cpp.hpp: bugprone-implicit-widening-of-multiplication-result: performing an implicit widening conversion to type 'int64_t' (aka 'long') of a multiplication performed in type 'int'	2
+frontend/components/MediaControls.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/MediaControls.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/MenuButton.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	1
+frontend/components/Multiview.cpp.hpp: bugprone-branch-clone: switch has N consecutive identical branches	2
+frontend/components/Multiview.cpp.hpp: bugprone-integer-division: result of integer division used in a floating point context; possible loss of precision	8
+frontend/components/Multiview.cpp.hpp: readability-function-cognitive-complexity: function 'GetSourceByPosition' has cognitive complexity of N (threshold N)	1
+frontend/components/Multiview.cpp.hpp: readability-function-cognitive-complexity: function 'Render' has cognitive complexity of N (threshold N)	1
+frontend/components/OBSAdvAudioCtrl.cpp.hpp: bugprone-macro-parentheses: macro replacement list should be enclosed in parentheses	1
+frontend/components/OBSAdvAudioCtrl.cpp.hpp: performance-unnecessary-value-param: parameter 'newName' of type 'QString' is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/components/OBSAdvAudioCtrl.hpp: modernize-use-override: prefer using 'override' or (rarely) 'final' instead of 'virtual'	1
+frontend/components/OBSSourceLabel.hpp: clazy-overloaded-signal: signal destroyed is overloaded (with qobject.h)	1
+frontend/components/OBSSourceLabel.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/SceneTree.cpp.hpp: bugprone-parent-virtual-call: qualified name 'QObject::eventFilter' refers to a member overridden in subclass; did you mean 'QAbstractItemView'?	1
+frontend/components/SceneTree.cpp.hpp: clazy-connect-3arg-lambda: Pass a context object as 2nd singleShot parameter	1
+frontend/components/SceneTree.cpp.hpp: clazy-detaching-temporary: Don't call QList::operator[]() on temporary	2
+frontend/components/SceneTree.cpp.hpp: readability-function-cognitive-complexity: function 'RepositionGrid' has cognitive complexity of N (threshold N)	1
+frontend/components/SourceSelectButton.cpp.hpp: performance-unnecessary-value-param: the parameter 'name' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceSelectButton.cpp.hpp: performance-unnecessary-value-param: the parameter 'pixmap' of type 'QPixmap' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceSelectButton.cpp.hpp: performance-unnecessary-value-param: the parameter 'weak' of type 'OBSWeakSource' (aka 'OBSRef<struct obs_weak_source *, obs_weak_source_addref, obs_weak_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceSelectButton.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/SourceToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceTree.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/components/SourceTree.cpp.hpp: performance-unnecessary-value-param: the parameter 'item' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceTree.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceTree.cpp.hpp: readability-function-cognitive-complexity: function 'dropEvent' has cognitive complexity of N (threshold N)	1
+frontend/components/SourceTreeItem.cpp.hpp: bugprone-parent-virtual-call: qualified name 'QWidget::paintEvent' refers to a member overridden in subclass; did you mean 'QFrame'?	1
+frontend/components/SourceTreeItem.cpp.hpp: performance-unnecessary-value-param: the parameter 'sceneitem_' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/SourceTreeItem.cpp.hpp: readability-function-cognitive-complexity: function 'SourceTreeItem' has cognitive complexity of N (threshold N)	1
+frontend/components/SourceTreeItem.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/components/SourceTreeModel.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/components/SourceTreeModel.cpp.hpp: readability-function-cognitive-complexity: function 'ReorderItems' has cognitive complexity of N (threshold N)	1
+frontend/components/TextSourceToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/TextSourceToolbar.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/UIValidation.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/components/UIValidation.cpp.hpp: performance-unnecessary-value-param: the parameter 'service' of type 'OBSService' (aka 'OBSSafeRef<struct obs_service *, obs_service_get_ref, obs_service_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/UrlPushButton.cpp.hpp: performance-unnecessary-value-param: the parameter 'url' of type 'QUrl' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/VolumeAccessibleInterface.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/components/VolumeControl.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/components/VolumeControl.cpp.hpp: performance-unnecessary-value-param: the parameter 'name' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/VolumeControl.cpp.hpp: readability-function-cognitive-complexity: function 'renameSource' has cognitive complexity of N (threshold N)	1
+frontend/components/VolumeControl.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/VolumeMeter.cpp.hpp: performance-move-const-arg: std::move of the variable 'c' of the trivially-copyable type 'QColor' has no effect; remove std::move()	15
+frontend/components/VolumeMeter.cpp.hpp: readability-function-cognitive-complexity: function 'paintEvent' has cognitive complexity of N (threshold N)	1
+frontend/components/VolumeMeter.cpp.hpp: readability-function-cognitive-complexity: function 'updateBackgroundCache' has cognitive complexity of N (threshold N)	1
+frontend/components/VolumeName.cpp.hpp: performance-unnecessary-value-param: the parameter 'name' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/components/VolumeName.hpp: bugprone-derived-method-shadowing-base-method: 'VolumeName::setText' shadows method with the same name in class 'QAbstractButton'	1
+frontend/components/VolumeName.hpp: clazy-overloaded-signal: signal destroyed is overloaded (with qobject.h)	1
+frontend/components/VolumeName.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/components/VolumeSlider.cpp.hpp: bugprone-parent-virtual-call: qualified name 'QSlider::paintEvent' refers to a member overridden in subclass; did you mean 'AbsoluteSlider'?	2
+frontend/components/VolumeSlider.cpp.hpp: clazy-skipped-base-method: Maybe you meant to call AbsoluteSlider::paintEvent() instead	2
+frontend/components/VolumeSlider.hpp: bugprone-derived-method-shadowing-base-method: 'VolumeSlider::getDisplayTicks' shadows method with the same name in class 'AbsoluteSlider'	1
+frontend/components/VolumeSlider.hpp: bugprone-derived-method-shadowing-base-method: 'VolumeSlider::setDisplayTicks' shadows method with the same name in class 'AbsoluteSlider'	1
+frontend/components/VolumeSlider.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	1
+frontend/components/WindowCaptureToolbar.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/LogUploadDialog.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/LogUploadDialog.hpp: clazy-fully-qualified-moc-types: slot arguments need to be fully-qualified	2
+frontend/dialogs/NameDialog.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OAuthLogin.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	3
+frontend/dialogs/OAuthLogin.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSAbout.hpp: modernize-use-nullptr: use nullptr	1
+frontend/dialogs/OBSBasicAdvAudio.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OBSBasicAdvAudio.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/dialogs/OBSBasicAdvAudio.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicFilters.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OBSBasicFilters.cpp.hpp: performance-unnecessary-value-param: the parameter 'filter' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	3
+frontend/dialogs/OBSBasicFilters.cpp.hpp: performance-unnecessary-value-param: the parameter 'source_' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicFilters.cpp.hpp: readability-function-cognitive-complexity: function 'OBSBasicFilters' has cognitive complexity of N (threshold N)	1
+frontend/dialogs/OBSBasicFilters.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/dialogs/OBSBasicFilters.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicInteraction.cpp.hpp: clazy-wrong-qevent-cast: Cast from a QEvent::Leave event to QMouseEvent looks suspicious.	1
+frontend/dialogs/OBSBasicInteraction.cpp.hpp: performance-unnecessary-value-param: the parameter 'source_' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicInteraction.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/dialogs/OBSBasicInteraction.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicProperties.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OBSBasicProperties.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicProperties.cpp.hpp: performance-unnecessary-value-param: the parameter 'source_' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicProperties.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	3
+frontend/dialogs/OBSBasicProperties.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	6
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: clazy-unused-non-trivial-variable: unused QString placeHolderText	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: clazy-unused-non-trivial-variable: unused QVariant unversionedIdData	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-move-const-arg: passing result of std::move() as a const reference argument; no move will actually happen	3
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'createdSource' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'item' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	2
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-value-param: the const qualified parameter 'name' of type 'const std::string' (aka 'const basic_string<char>') is copied for each invocation; consider making it a reference	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-value-param: the parameter 'type' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: performance-unnecessary-value-param: the parameter 'uuid' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: readability-function-cognitive-complexity: function 'sourceButtonToggled' has cognitive complexity of N (threshold N)	1
+frontend/dialogs/OBSBasicSourceSelect.cpp.hpp: readability-function-cognitive-complexity: function 'updateExistingSources' has cognitive complexity of N (threshold N)	1
+frontend/dialogs/OBSBasicSourceSelect.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicTransform.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OBSBasicTransform.cpp.hpp: performance-unnecessary-value-param: the parameter 'item' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicTransform.cpp.hpp: performance-unnecessary-value-param: the parameter 'newItem' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/dialogs/OBSBasicTransform.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSBasicTransform.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSBasicVCamConfig.cpp.hpp: readability-function-cognitive-complexity: function 'OutputTypeChanged' has cognitive complexity of N (threshold N)	1
+frontend/dialogs/OBSBasicVCamConfig.hpp: modernize-use-nullptr: use nullptr	1
+frontend/dialogs/OBSLogViewer.hpp: modernize-use-nullptr: use nullptr	1
+frontend/dialogs/OBSLogViewer.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/dialogs/OBSMissingFiles.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	1
+frontend/dialogs/OBSRemux.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/dialogs/OBSRemux.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QFileInfoList)	1
+frontend/dialogs/OBSRemux.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/dialogs/OBSRemux.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QFileInfo)	1
+frontend/dialogs/OBSRemux.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QUrl)	1
+frontend/dialogs/OBSRemux.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	2
+frontend/dialogs/OBSRemux.cpp.hpp: performance-unnecessary-value-param: the parameter 'inFile' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSRemux.cpp.hpp: performance-unnecessary-value-param: the parameter 'outFile' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/dialogs/OBSRemux.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	5
+frontend/dialogs/OBSWhatsNew.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/dialogs/OBSWhatsNew.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/docks/OBSDock.hpp: modernize-use-override: prefer using 'override' or (rarely) 'final' instead of 'virtual'	2
+frontend/importer/ImporterEntryPathItemDelegate.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	4
+frontend/importer/ImporterModel.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	3
+frontend/importer/ImporterModel.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QStringList)	1
+frontend/importer/ImporterModel.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QString)	1
+frontend/importer/ImporterModel.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/importer/ImporterModel.cpp.hpp: readability-function-cognitive-complexity: function 'data' has cognitive complexity of N (threshold N)	1
+frontend/importer/ImporterModel.cpp.hpp: readability-function-cognitive-complexity: function 'setData' has cognitive complexity of N (threshold N)	1
+frontend/importer/ImporterModel.hpp: modernize-use-nullptr: use nullptr	1
+frontend/importer/ImporterModel.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	6
+frontend/importer/OBSImporter.cpp.hpp: bugprone-unused-local-non-trivial-variable: unused local variable 'file' of type 'std::string' (aka 'basic_string<char>')	1
+frontend/importer/OBSImporter.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/importer/OBSImporter.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QUrl)	1
+frontend/importer/OBSImporter.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/importer/OBSImporter.cpp.hpp: performance-unnecessary-value-param: the parameter 'path' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/importer/OBSImporter.cpp.hpp: readability-function-cognitive-complexity: function 'importCollections' has cognitive complexity of N (threshold N)	1
+frontend/importer/OBSImporter.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/importers/classic.cpp.hpp: bugprone-macro-parentheses: macro argument should be enclosed in parentheses	4
+frontend/importers/classic.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'atof' used to convert a string to a floating-point value, but function will not report conversion errors; consider using 'strtod' instead	1
+frontend/importers/classic.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'atoi' used to convert a string to an integer value, but function will not report conversion errors; consider using 'strtol' instead	1
+frontend/importers/classic.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/importers/classic.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'in_scene' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/classic.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'source' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	4
+frontend/importers/classic.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'source_arr' of type 'Json::array' (aka 'std::vector<Json>') is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/classic.cpp.hpp: readability-function-cognitive-complexity: function 'create_data_item' has cognitive complexity of N (threshold N)	1
+frontend/importers/classic.cpp.hpp: readability-function-cognitive-complexity: function 'translate_source' has cognitive complexity of N (threshold N)	1
+frontend/importers/importers.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	19
+frontend/importers/sl.cpp.hpp: bugprone-macro-parentheses: macro argument should be enclosed in parentheses	5
+frontend/importers/sl.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'binding' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'c' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'hot_arr' of type 'Json::array' (aka 'std::vector<Json>') is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'hotkey' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'item' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	4
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'scene' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'source' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'transition' of type 'Json' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/importers/sl.cpp.hpp: readability-function-cognitive-complexity: function 'attempt_import' has cognitive complexity of N (threshold N)	1
+frontend/importers/sl.cpp.hpp: readability-function-cognitive-complexity: function 'translate_key' has cognitive complexity of N (threshold N)	1
+frontend/importers/studio.cpp.hpp: readability-function-cognitive-complexity: function 'TranslatePaths' has cognitive complexity of N (threshold N)	1
+frontend/importers/xsplit.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/importers/xsplit.cpp.hpp: readability-function-cognitive-complexity: function 'parse_items' has cognitive complexity of N (threshold N)	1
+frontend/importers/xsplit.cpp.hpp: readability-function-cognitive-complexity: function 'parse_media_types' has cognitive complexity of N (threshold N)	1
+frontend/models/SceneCollection.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	1
+frontend/oauth/Auth.cpp.hpp: clazy-non-pod-global-static: non-POD static (vector authDefs)	1
+frontend/oauth/Auth.cpp.hpp: performance-unnecessary-value-param: parameter 'create' of type 'create_cb' (aka 'std::function<std::shared_ptr<Auth> ()>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/Auth.hpp: modernize-use-override: prefer using 'override' or (rarely) 'final' instead of 'virtual'	1
+frontend/oauth/Auth.hpp: performance-unnecessary-value-param: parameter 'error_' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/Auth.hpp: performance-unnecessary-value-param: parameter 'message_' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/AuthListener.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'responseTemplate' with static storage duration may throw an exception that cannot be caught	1
+frontend/oauth/AuthListener.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'serverResponseHeader' with static storage duration may throw an exception that cannot be caught	1
+frontend/oauth/AuthListener.cpp.hpp: clazy-incorrect-emit: Emitting inside constructor probably has no effect	1
+frontend/oauth/AuthListener.cpp.hpp: clazy-non-pod-global-static: non-POD static (QString responseTemplate)	1
+frontend/oauth/AuthListener.cpp.hpp: clazy-non-pod-global-static: non-POD static (QString serverResponseHeader)	1
+frontend/oauth/AuthListener.cpp.hpp: clazy-use-static-qregularexpression: Don't create temporary QRegularExpression objects. Use a static QRegularExpression object instead	2
+frontend/oauth/AuthListener.cpp.hpp: performance-unnecessary-value-param: parameter 'newState' of type 'QString' is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/AuthListener.cpp.hpp: readability-function-cognitive-complexity: function 'NewConnection' has cognitive complexity of N (threshold N)	1
+frontend/oauth/AuthListener.hpp: modernize-use-nullptr: use nullptr	1
+frontend/oauth/OAuth.cpp.hpp: bugprone-unused-local-non-trivial-variable: unused local variable 'desc' of type 'std::string' (aka 'basic_string<char>')	1
+frontend/oauth/OAuth.cpp.hpp: clazy-non-pod-global-static: non-POD static (vector loginCBs)	1
+frontend/oauth/OAuth.cpp.hpp: performance-unnecessary-value-param: parameter 'create' of type 'create_cb' (aka 'std::function<std::shared_ptr<Auth> ()>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/OAuth.cpp.hpp: performance-unnecessary-value-param: parameter 'delete_cookies' of type 'delete_cookies_cb' (aka 'std::function<void ()>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/OAuth.cpp.hpp: performance-unnecessary-value-param: parameter 'login' of type 'login_cb' (aka 'std::function<std::shared_ptr<Auth> (QWidget *, const basic_string<char> &)>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/oauth/OAuth.cpp.hpp: readability-function-cognitive-complexity: function 'GetTokenInternal' has cognitive complexity of N (threshold N)	1
+frontend/oauth/OAuth.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	3
+frontend/obs-main.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	2
+frontend/obs-main.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/obs-main.cpp.hpp: performance-avoid-endl: do not use 'endl' with streams; use '\n' instead	2
+frontend/obs-main.cpp.hpp: readability-function-cognitive-complexity: function 'delete_oldest_file' has cognitive complexity of N (threshold N)	1
+frontend/obs-main.cpp.hpp: readability-function-cognitive-complexity: function 'main' has cognitive complexity of N (threshold N)	1
+frontend/obs-main.cpp.hpp: readability-function-cognitive-complexity: function 'run_program' has cognitive complexity of N (threshold N)	1
+frontend/plugin-manager/PluginManager.cpp.hpp: performance-avoid-endl: do not use 'std::endl' with streams; use '\n' instead	1
+frontend/plugin-manager/PluginManager.cpp.hpp: performance-faster-string-find: 'rfind' called with a string literal consisting of a single character; consider using the more effective overload accepting a character	5
+frontend/plugin-manager/PluginManager.cpp.hpp: performance-unnecessary-value-param: the parameter 'module' of type 'OBS::ModuleInfo' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/plugin-manager/PluginManager.cpp.hpp: readability-function-cognitive-complexity: function 'addModuleTypes_' has cognitive complexity of N (threshold N)	1
+frontend/plugin-manager/PluginManager.cpp.hpp: readability-function-cognitive-complexity: function 'linkUnloadedModules_' has cognitive complexity of N (threshold N)	1
+frontend/plugin-manager/PluginManagerWindow.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	2
+frontend/plugin-manager/PluginManagerWindow.cpp.hpp: clazy-unused-non-trivial-variable: unused QString version	1
+frontend/plugin-manager/PluginManagerWindow.cpp.hpp: readability-function-cognitive-complexity: function 'setupInstalledPage' has cognitive complexity of N (threshold N)	1
+frontend/plugin-manager/PluginModuleLoader.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	1
+frontend/plugin-manager/PluginModuleLoader.hpp: modernize-use-nullptr: use nullptr	1
+frontend/plugin-manager/PluginModuleLoader_Linux.cpp.hpp: performance-unnecessary-copy-initialization: local copy 'binaryPath' of the variable 'userPluginPath' of type 'std::string' (aka 'basic_string<char>') is never modified; consider avoiding the copy	1
+frontend/settings/OBSBasicSettings.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	3
+frontend/settings/OBSBasicSettings.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	3
+frontend/settings/OBSBasicSettings.cpp.hpp: bugprone-unused-local-non-trivial-variable: unused local variable 'path' of type 'string' (aka 'basic_string<char>')	1
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-incorrect-emit: Missing emit keyword on signal call OBSHotkeyEdit::KeyChanged	1
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	1
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-qstring-insensitive-allocation: unneeded allocation	1
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	2
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-unused-non-trivial-variable: unused QString custom_server	1
+frontend/settings/OBSBasicSettings.cpp.hpp: clazy-use-static-qregularexpression: Don't create temporary QRegularExpression objects. Use a static QRegularExpression object instead	1
+frontend/settings/OBSBasicSettings.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/settings/OBSBasicSettings.cpp.hpp: performance-inefficient-vector-operation: 'emplace_back' is called inside a loop; consider pre-allocating the container capacity before the loop	1
+frontend/settings/OBSBasicSettings.cpp.hpp: performance-unnecessary-copy-initialization: local copy 'baseResolution' of the variable 'text' of type 'QString' is never modified; consider avoiding the copy	1
+frontend/settings/OBSBasicSettings.cpp.hpp: performance-unnecessary-copy-initialization: local copy 'safeStr' of the variable 'text' of type 'QString' is never modified; consider avoiding the copy	1
+frontend/settings/OBSBasicSettings.cpp.hpp: performance-unnecessary-value-param: the const qualified parameter 'text' of type 'const QString' is copied for each invocation; consider making it a reference	1
+frontend/settings/OBSBasicSettings.cpp.hpp: performance-unnecessary-value-param: the parameter 'objectName' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'AdvOutRecCheckWarnings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'AdvReplayBufferChanged' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'DisableIncompatibleCodecs' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'FindClosestAvailableAudioBitrate' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'LoadHotkeySettings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'LoadSettings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'QueryAllowedToClose' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'ResetDownscales' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SaveGeneralSettings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SaveOutputSettings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SaveSettings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'ScanDuplicateHotkeys' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SearchHotkeys' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SimpleRecordingEncoderChanged' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SimpleReplayBufferChanged' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'SimpleStreamingEncoderChanged' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateHotkeyBackgroundMarkers' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateMultitrackVideo' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.cpp.hpp: readability-function-cognitive-complexity: lambda has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/settings/OBSBasicSettings.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/settings/OBSBasicSettings_A11y.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	1
+frontend/settings/OBSBasicSettings_A11y.cpp.hpp: performance-unnecessary-value-param: the parameter 'label' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/settings/OBSBasicSettings_Appearance.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	2
+frontend/settings/OBSBasicSettings_Appearance.cpp.hpp: readability-function-cognitive-complexity: function 'LoadThemeList' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: bugprone-multi-level-implicit-pointer-conversion: multilevel pointer conversion from 'const char **' to 'void *', please use explicit cast	4
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to a floating-point value, but function will not report conversion errors; consider using 'strtod' instead	3
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to a floating-point value, but function will not report conversion errors; consider using 'strtof' instead	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to an integer value, but function will not report conversion errors; consider using 'strtol' instead	3
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'LoadStream1Settings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'PreviewMultitrackVideoLadder' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'ResFPSValid' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'ResetEncoders' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'SaveStream1Settings' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'ServiceSupportsCodecCheck' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateResFPSLimits' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSBasicSettings_Stream.cpp.hpp: readability-function-cognitive-complexity: function 'show_ladder' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSHotkeyBackground.cpp.hpp: bugprone-unchecked-optional-access: unchecked access to optional value	3
+frontend/settings/OBSHotkeyBackground.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to an integer value, but function will not report conversion errors; consider using 'strtol' instead	1
+frontend/settings/OBSHotkeyBackground.cpp.hpp: readability-function-cognitive-complexity: function 'Compute' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSHotkeyBackground.cpp.hpp: readability-function-cognitive-complexity: function 'MarkerFor' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSHotkeyBackground.cpp.hpp: readability-function-cognitive-complexity: function 'ParseDesktopTrigger' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSHotkeyBackgroundBanner.cpp.hpp: performance-unnecessary-value-param: the parameter 'id' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/settings/OBSHotkeyBackgroundBanner.cpp.hpp: readability-function-cognitive-complexity: function 'Refresh' has cognitive complexity of N (threshold N)	1
+frontend/settings/OBSHotkeyBackgroundBanner.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/settings/OBSHotkeyLabel.hpp: bugprone-derived-method-shadowing-base-method: 'OBSHotkeyLabel::setToolTip' shadows method with the same name in class 'QWidget'	1
+frontend/settings/OBSHotkeyWidget.hpp: bugprone-derived-method-shadowing-base-method: 'OBSHotkeyWidget::setToolTip' shadows method with the same name in class 'QWidget'	1
+frontend/settings/OBSHotkeyWidget.hpp: performance-unnecessary-value-param: parameter 'name' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/utility/AdvancedOutput.cpp.hpp: bugprone-implicit-widening-of-multiplication-result: performing an implicit widening conversion to type 'long long' of a multiplication performed in type 'int'	1
+frontend/utility/AdvancedOutput.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to an integer value, but function will not report conversion errors; consider using 'strtol' instead	1
+frontend/utility/AdvancedOutput.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to an unsigned integer value, but function will not report conversion errors; consider using 'strtoul' instead	2
+frontend/utility/AdvancedOutput.cpp.hpp: clang-analyzer-deadcode.DeadStores: Value stored to 'overwriteIfExists' is never read	1
+frontend/utility/AdvancedOutput.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/AdvancedOutput.cpp.hpp: performance-move-const-arg: passing result of std::move() as a const reference argument; no move will actually happen	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'AdvancedOutput' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'SetupRecording' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'SetupStreaming' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'StartRecording' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'StartReplayBuffer' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'StartStreaming' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateAudioSettings' has cognitive complexity of N (threshold N)	1
+frontend/utility/AdvancedOutput.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	12
+frontend/utility/BasicOutputHandler.cpp.hpp: bugprone-multi-level-implicit-pointer-conversion: multilevel pointer conversion from 'const char **' to 'void *', please use explicit cast	1
+frontend/utility/BasicOutputHandler.cpp.hpp: performance-unnecessary-value-param: the parameter 'audio_encoder_id' of type 'std::string' (aka 'basic_string<char>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/BasicOutputHandler.cpp.hpp: readability-function-cognitive-complexity: function 'SetupMultitrackVideo' has cognitive complexity of N (threshold N)	1
+frontend/utility/CameraBusy.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'cb_state' with static storage duration may throw an exception that cannot be caught	1
+frontend/utility/CameraBusy.cpp.hpp: clazy-non-pod-global-static: non-POD static ( CameraBusy::cb_state)	1
+frontend/utility/CrashHandler.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	3
+frontend/utility/CrashHandler.hpp: clazy-const-signal-or-slot: signal OBS::CrashHandler::crashLogUploadFailed shouldn't be const	1
+frontend/utility/CrashHandler.hpp: clazy-const-signal-or-slot: signal OBS::CrashHandler::crashLogUploadFinished shouldn't be const	1
+frontend/utility/CrashHandler.hpp: clazy-const-signal-or-slot: signal OBS::CrashHandler::crashLogUploadStarted shouldn't be const	1
+frontend/utility/CrashHandler.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/DockLayout.cpp.hpp: clazy-child-event-qobject-cast: qobject_cast in childEvent	1
+frontend/utility/DockLayout.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	2
+frontend/utility/FFmpegCodec.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'builtin_codecs' with static storage duration may throw an exception that cannot be caught	1
+frontend/utility/FFmpegCodec.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'codec_compat' with static storage duration may throw an exception that cannot be caught	1
+frontend/utility/FFmpegCodec.cpp.hpp: clazy-non-pod-global-static: non-POD static (unordered_map codec_compat)	1
+frontend/utility/FFmpegCodec.cpp.hpp: clazy-non-pod-global-static: non-POD static (unordered_set builtin_codecs)	1
+frontend/utility/FFmpegCodec.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/FFmpegFormat.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/FallbackWarning.cpp.hpp: bugprone-throwing-static-initialization: initialization of 'fw_state' with static storage duration may throw an exception that cannot be caught	1
+frontend/utility/FallbackWarning.cpp.hpp: clazy-non-pod-global-static: non-POD static ( FallbackWarning::fw_state)	1
+frontend/utility/GoLiveAPI_CensoredJson.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/GoLiveAPI_Network.cpp.hpp: performance-unnecessary-value-param: the parameter 'message' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/GoLiveAPI_Network.cpp.hpp: performance-unnecessary-value-param: the parameter 'url' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/GoLiveAPI_PostData.cpp.hpp: bugprone-optional-value-conversion: conversion from 'std::optional<unsigned long>' into 'unsigned long' and back into 'std::optional<unsigned long>', remove potentially error-prone optional dereference	1
+frontend/utility/GoLiveAPI_PostData.cpp.hpp: performance-unnecessary-value-param: the parameter 'streamKey' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/GpuStatus.cpp.hpp: clazy-non-pod-global-static: non-POD static (basic_string GpuStatus::adapterName)	1
+frontend/utility/GpuStatus.cpp.hpp: clazy-non-pod-global-static: non-POD static (basic_string GpuStatus::loggedD3DAdapter)	1
+frontend/utility/GpuStatus.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QJsonArray)	3
+frontend/utility/GpuStatus.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QStringList)	3
+frontend/utility/GpuStatus.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QJsonValue)	4
+frontend/utility/GpuStatus.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	3
+frontend/utility/GpuStatus.cpp.hpp: readability-function-cognitive-complexity: function 'ActiveAdapterName' has cognitive complexity of N (threshold N)	1
+frontend/utility/MissingFilesModel.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	2
+frontend/utility/MissingFilesModel.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/utility/MissingFilesModel.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/MissingFilesModel.cpp.hpp: performance-unnecessary-copy-initialization: local copy 'path' of the variable 'valueString' of type 'QString' is never modified; consider avoiding the copy	1
+frontend/utility/MissingFilesModel.cpp.hpp: readability-function-cognitive-complexity: function 'data' has cognitive complexity of N (threshold N)	1
+frontend/utility/MissingFilesModel.cpp.hpp: readability-function-cognitive-complexity: function 'fileCheckLoop' has cognitive complexity of N (threshold N)	1
+frontend/utility/MissingFilesModel.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/MissingFilesModel.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	6
+frontend/utility/MissingFilesPathItemDelegate.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	4
+frontend/utility/MultitrackVideoError.cpp.hpp: performance-unnecessary-value-param: parameter 'error' of type 'QString' is passed by value and only copied once; consider moving it to avoid unnecessary copies	2
+frontend/utility/MultitrackVideoOutput.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: modernize-use-nullptr: use nullptr	3
+frontend/utility/MultitrackVideoOutput.cpp.hpp: readability-function-cognitive-complexity: function 'PrepareStreaming' has cognitive complexity of N (threshold N)	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: readability-function-cognitive-complexity: function 'apply_encoder_overrides' has cognitive complexity of N (threshold N)	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: readability-function-cognitive-complexity: function 'create_audio_encoders' has cognitive complexity of N (threshold N)	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: readability-function-cognitive-complexity: function 'create_service' has cognitive complexity of N (threshold N)	1
+frontend/utility/MultitrackVideoOutput.cpp.hpp: readability-function-cognitive-complexity: function 'create_video_encoder' has cognitive complexity of N (threshold N)	1
+frontend/utility/NativeEventFilter.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/OBSEventFilter.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/OBSEventFilter.hpp: performance-unnecessary-value-param: parameter 'filter_' of type 'EventFilterFunc' (aka 'std::function<bool (QObject *, QEvent *)>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	1
+frontend/utility/OBSTranslator.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/utility/PreviewProgramSizeObserver.cpp.hpp: readability-function-cognitive-complexity: function 'syncContainerSizes' has cognitive complexity of N (threshold N)	1
+frontend/utility/PreviewProgramSizeObserver.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/QuickTransition.hpp: performance-unnecessary-value-param: the parameter 'source_' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/RemoteTextThread.cpp.hpp: performance-unnecessary-value-param: the parameter 'extraHeaders' of type 'std::vector<std::string>' (aka 'std::vector<basic_string<char>>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/RemoteTextThread.cpp.hpp: performance-unnecessary-value-param: the parameter 'request_type' of type 'std::string' (aka 'basic_string<char>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/utility/RemoteTextThread.cpp.hpp: readability-function-cognitive-complexity: function 'GetRemoteFile' has cognitive complexity of N (threshold N)	1
+frontend/utility/RemoteTextThread.cpp.hpp: readability-function-cognitive-complexity: function 'run' has cognitive complexity of N (threshold N)	1
+frontend/utility/RemoteTextThread.hpp: performance-unnecessary-value-param: parameter 'contentType_' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	2
+frontend/utility/RemoteTextThread.hpp: performance-unnecessary-value-param: parameter 'postData_' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	2
+frontend/utility/RemoteTextThread.hpp: performance-unnecessary-value-param: parameter 'url_' of type 'std::string' (aka 'basic_string<char>') is passed by value and only copied once; consider moving it to avoid unnecessary copies	2
+frontend/utility/RemuxEntryPathItemDelegate.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	1
+frontend/utility/RemuxEntryPathItemDelegate.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	4
+frontend/utility/RemuxQueueModel.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	1
+frontend/utility/RemuxQueueModel.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	3
+frontend/utility/RemuxQueueModel.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QStringList)	1
+frontend/utility/RemuxQueueModel.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (QString)	1
+frontend/utility/RemuxQueueModel.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/utility/RemuxQueueModel.cpp.hpp: readability-function-cognitive-complexity: function 'setData' has cognitive complexity of N (threshold N)	1
+frontend/utility/RemuxQueueModel.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/RemuxQueueModel.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	6
+frontend/utility/RemuxWorker.hpp: modernize-use-override: prefer using 'override' or (rarely) 'final' instead of 'virtual'	1
+frontend/utility/SceneRenameDelegate.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	1
+frontend/utility/SceneRenameDelegate.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/utility/ScreenshotObj.cpp.hpp: bugprone-implicit-widening-of-multiplication-result: performing an implicit widening conversion to type 'size_type' (aka 'unsigned long') of a multiplication performed in type 'uint32_t' (aka 'unsigned int')	1
+frontend/utility/ScreenshotObj.cpp.hpp: bugprone-implicit-widening-of-multiplication-result: result of multiplication in type 'uint32_t' (aka 'unsigned int') is used as a pointer offset after an implicit widening conversion to type 'size_t'	2
+frontend/utility/SimpleOutput.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	6
+frontend/utility/SimpleOutput.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'ConfigureRecording' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'LoadRecordingPreset' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'SetupOutputs' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'SimpleOutput' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'StartStreaming' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'Update' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateRecording' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateRecordingSettings' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.cpp.hpp: readability-function-cognitive-complexity: function 'get_simple_output_encoder' has cognitive complexity of N (threshold N)	1
+frontend/utility/SimpleOutput.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	12
+frontend/utility/ThumbnailItem.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/ThumbnailManager.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/ThumbnailView.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/utility/WHIPSimulcastEncoders.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (OBSSafeRef<obs_encoder *, &obs_encoder_get_ref, &obs_encoder_release>)	1
+frontend/utility/WHIPSimulcastEncoders.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/utility/audio-encoders.cpp.hpp: clazy-non-pod-global-static: non-POD static (map encoderBitrates)	1
+frontend/utility/audio-encoders.cpp.hpp: clazy-non-pod-global-static: non-POD static (map simpleAACBitrateMap)	1
+frontend/utility/audio-encoders.cpp.hpp: clazy-non-pod-global-static: non-POD static (map simpleOpusBitrateMap)	1
+frontend/utility/audio-encoders.cpp.hpp: clazy-non-pod-global-static: non-POD static (vector fallbackBitrates)	1
+frontend/utility/audio-encoders.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (std::pair<const int, std::basic_string<char>>)	1
+frontend/utility/audio-encoders.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/utility/audio-encoders.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/utility/audio-encoders.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: function 'FindClosestAvailableAudioBitrate' has cognitive complexity of N (threshold N)	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: function 'FindClosestAvailableSimpleBitrate' has cognitive complexity of N (threshold N)	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: function 'PopulateBitrateLists' has cognitive complexity of N (threshold N)	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: function 'PopulateSimpleAACBitrateMap' has cognitive complexity of N (threshold N)	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: function 'PopulateSimpleOpusBitrateMap' has cognitive complexity of N (threshold N)	1
+frontend/utility/audio-encoders.cpp.hpp: readability-function-cognitive-complexity: lambda has cognitive complexity of N (threshold N)	1
+frontend/utility/platform-signal-posix.cpp.hpp: clazy-non-pod-global-static: non-POD static (QPointer (anonymous namespace)::sigAbrtNotifier)	1
+frontend/utility/platform-signal-posix.cpp.hpp: clazy-non-pod-global-static: non-POD static (QPointer (anonymous namespace)::sigIntNotifier)	1
+frontend/utility/platform-signal-posix.cpp.hpp: clazy-non-pod-global-static: non-POD static (QPointer (anonymous namespace)::sigQuitNotifier)	1
+frontend/utility/platform-signal-posix.cpp.hpp: clazy-non-pod-global-static: non-POD static (QPointer (anonymous namespace)::sigTermNotifier)	1
+frontend/utility/platform-x11.cpp.hpp: bugprone-branch-clone: switch has N consecutive identical branches	1
+frontend/utility/platform-x11.cpp.hpp: bugprone-macro-parentheses: macro argument should be enclosed in parentheses	2
+frontend/utility/platform-x11.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/utility/platform-x11.cpp.hpp: modernize-use-nullptr: use nullptr	5
+frontend/utility/platform-x11.cpp.hpp: readability-function-cognitive-complexity: function 'TranslatePlatformImportedSource' has cognitive complexity of N (threshold N)	1
+frontend/utility/source-select-list.cpp.hpp: readability-function-cognitive-complexity: function 'SourceSelectExistingList' has cognitive complexity of N (threshold N)	1
+frontend/utility/system-info-posix.cpp.hpp: bugprone-assignment-in-if-condition: an assignment within an 'if' condition is bug-prone	1
+frontend/utility/system-info-posix.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'atoi' used to convert a string to an integer value, but function will not report conversion errors; consider using 'strtol' instead	2
+frontend/utility/system-info-posix.cpp.hpp: bugprone-unchecked-string-to-number-conversion: 'sscanf' used to convert a string to an unsigned integer value, but function will not report conversion errors; consider using 'strtoul' instead	6
+frontend/utility/system-info-posix.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/utility/system-info-posix.cpp.hpp: performance-faster-string-find: 'find_first_not_of' called with a string literal consisting of a single character; consider using the more effective overload accepting a character	1
+frontend/utility/system-info-posix.cpp.hpp: readability-function-cognitive-complexity: function 'get_cpu_name' has cognitive complexity of N (threshold N)	1
+frontend/utility/system-info-posix.cpp.hpp: readability-function-cognitive-complexity: function 'get_distribution_info' has cognitive complexity of N (threshold N)	1
+frontend/utility/system-info-posix.cpp.hpp: readability-function-cognitive-complexity: function 'get_drm_cards' has cognitive complexity of N (threshold N)	1
+frontend/utility/system-info-posix.cpp.hpp: readability-function-cognitive-complexity: function 'system_gpu_data' has cognitive complexity of N (threshold N)	1
+frontend/widgets/AudioMixer.cpp.hpp: performance-unnecessary-value-param: parameter 'uuid' of type 'QString' is passed by value and only copied once; consider moving it to avoid unnecessary copies	2
+frontend/widgets/AudioMixer.cpp.hpp: performance-unnecessary-value-param: the parameter 'uuid' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	3
+frontend/widgets/AudioMixer.cpp.hpp: readability-function-cognitive-complexity: function 'AudioMixer' has cognitive complexity of N (threshold N)	1
+frontend/widgets/AudioMixer.cpp.hpp: readability-function-cognitive-complexity: function 'updateVolumeLayouts' has cognitive complexity of N (threshold N)	1
+frontend/widgets/AudioMixer.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/AudioMixer.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/widgets/ColorSelect.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSBasic.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/widgets/OBSBasic.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/widgets/OBSBasic.cpp.hpp: modernize-use-nullptr: use nullptr	3
+frontend/widgets/OBSBasic.cpp.hpp: readability-function-cognitive-complexity: function 'InitBasicConfigDefaults' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic.cpp.hpp: readability-function-cognitive-complexity: function 'OBSInit' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic.cpp.hpp: readability-function-cognitive-complexity: function 'PromptForName' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic.cpp.hpp: readability-function-cognitive-complexity: function 'ResetVideo' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic.hpp: bugprone-derived-method-shadowing-base-method: 'OBSBasic::close' shadows method with the same name in class 'QWidget'	1
+frontend/widgets/OBSBasic.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSBasic.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	5
+frontend/widgets/OBSBasic.hpp: modernize-use-override: prefer using 'override' or (rarely) 'final' instead of 'virtual'	1
+frontend/widgets/OBSBasic.hpp: performance-unnecessary-copy-initialization: the variable 'str' of type 'QString' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/widgets/OBSBasicControls.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: bugprone-float-loop-counter: loop induction expression should not have floating-point type	2
+frontend/widgets/OBSBasicPreview.cpp.hpp: bugprone-integer-division: result of integer division used in a floating point context; possible loss of precision	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	2
+frontend/widgets/OBSBasicPreview.cpp.hpp: clang-analyzer-security.FloatLoopCounter: Variable 'i' with floating point type 'float' should not be used as a loop counter	2
+frontend/widgets/OBSBasicPreview.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasicPreview.cpp.hpp: performance-move-const-arg: passing result of std::move() as a const reference argument; no move will actually happen	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'ClampAspect' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'CropItem' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'DrawSelectedItem' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'DrawSpacingHelpers' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'FindHandleAtPos' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'FindItemsInBox' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'GetSnapOffset' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'GetSourceSnapOffset' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'RotateItem' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'StretchItem' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateCursor' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'mouseMoveEvent' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicPreview.cpp.hpp: readability-function-cognitive-complexity: function 'mouseReleaseEvent' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasicStats.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	1
+frontend/widgets/OBSBasicStats.cpp.hpp: bugprone-fold-init-type: folding type 'long double' into type 'double' might result in loss of precision	1
+frontend/widgets/OBSBasicStats.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/widgets/OBSBasicStats.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSBasicStats.cpp.hpp: performance-unnecessary-value-param: the parameter 'name' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/widgets/OBSBasicStats.cpp.hpp: readability-function-cognitive-complexity: function 'Update' has cognitive complexity of N (threshold N)	2
+frontend/widgets/OBSBasicStats.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	3
+frontend/widgets/OBSBasicStats.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/widgets/OBSBasicStatusBar.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QStringList)	1
+frontend/widgets/OBSBasic_Canvases.cpp.hpp: performance-unnecessary-value-param: the parameter 'canvas' of type 'OBSCanvas' (aka 'OBSSafeRef<struct obs_canvas *, obs_canvas_get_ref, obs_canvas_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Clipboard.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	2
+frontend/widgets/OBSBasic_Clipboard.cpp.hpp: performance-unnecessary-value-param: the parameter 'dstSource' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Clipboard.cpp.hpp: performance-unnecessary-value-param: the parameter 'item' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Clipboard.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Clipboard.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_ContextToolbar.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	2
+frontend/widgets/OBSBasic_ContextToolbar.cpp.hpp: readability-function-cognitive-complexity: function 'UpdateContextBar' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_ContextToolbar.cpp.hpp: readability-function-cognitive-complexity: function 'createContextBarWidget' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_DeviceBusy.cpp.hpp: performance-unnecessary-value-param: the parameter 'device' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_DeviceBusy.cpp.hpp: performance-unnecessary-value-param: the parameter 'holder' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_DeviceBusy.cpp.hpp: performance-unnecessary-value-param: the parameter 'weak' of type 'OBSWeakSource' (aka 'OBSRef<struct obs_weak_source *, obs_weak_source_addref, obs_weak_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Docks.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/widgets/OBSBasic_Docks.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSBasic_Dropfiles.cpp.hpp: performance-unnecessary-copy-initialization: the variable 'url' of type 'QUrl' is copy-constructed from a const reference but is only used as const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Dropfiles.cpp.hpp: readability-function-cognitive-complexity: function 'dropEvent' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Hotkeys.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSBasic_Hotkeys.cpp.hpp: readability-function-cognitive-complexity: function 'CreateHotkeys' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_MainControls.cpp.hpp: clazy-incorrect-emit: Missing emit keyword on signal call QWidget::customContextMenuRequested	2
+frontend/widgets/OBSBasic_MainControls.cpp.hpp: clazy-range-loop-detach: c++11 range-loop might detach Qt container (QList)	3
+frontend/widgets/OBSBasic_MainControls.cpp.hpp: readability-function-cognitive-complexity: function 'SetShowing' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Preview.cpp.hpp: bugprone-switch-missing-default-case: switching on non-enum value without default case may not cover all cases	1
+frontend/widgets/OBSBasic_Preview.cpp.hpp: clazy-lambda-in-connect: captured local variable by reference might go out of scope before lambda is called	1
+frontend/widgets/OBSBasic_Preview.cpp.hpp: readability-function-cognitive-complexity: function 'ColorChange' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: bugprone-branch-clone: repeated branch body in conditional chain	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	2
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: clazy-non-pod-global-static: non-POD static (QList (anonymous namespace)::sortedProfiles)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	3
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (std::pair<const std::basic_string<char>, OBSProfile>)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	2
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: performance-unnecessary-value-param: the parameter 'b' of type 'std::string' (aka 'basic_string<char>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: performance-unnecessary-value-param: the parameter 'profile' of type 'OBSProfile' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: readability-function-cognitive-complexity: function 'CheckForMissingEncoders' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: readability-function-cognitive-complexity: function 'CheckForSimpleModeX264Fallback' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: readability-function-cognitive-complexity: function 'CheckNVENCInternal' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: readability-function-cognitive-complexity: function 'on_actionImportProfile_triggered' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Profiles.cpp.hpp: readability-function-cognitive-complexity: lambda has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Projectors.cpp.hpp: clazy-qstring-arg: Use multi-arg instead	1
+frontend/widgets/OBSBasic_Recording.cpp.hpp: performance-unnecessary-value-param: the parameter 'input' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Recording.cpp.hpp: performance-unnecessary-value-param: the parameter 'lastRecordingPath' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Recording.cpp.hpp: performance-unnecessary-value-param: the parameter 'last_error' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Recording.cpp.hpp: readability-function-cognitive-complexity: function 'RecordingStop' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_ReplayBuffer.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	11
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: clang-analyzer-deadcode.DeadStores: Value stored to 'name' is never read	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: clazy-connect-3arg-lambda: Pass a context object as 2nd singleShot parameter	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: clazy-non-pod-global-static: non-POD static (QList (anonymous namespace)::sortedSceneCollections)	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: clazy-range-loop-reference: Missing reference in range-for with non trivial type (value_type)	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: performance-for-range-copy: loop variable is copied but only used as const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: performance-no-int-to-ptr: integer to pointer cast pessimizes optimization opportunities	5
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: performance-unnecessary-value-param: the parameter 'b' of type 'string' (aka 'basic_string<char>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: performance-unnecessary-value-param: the parameter 'collection' of type 'SceneCollection' (aka 'OBS::SceneCollection') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: readability-function-cognitive-complexity: function 'LoadData' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_SceneCollections.cpp.hpp: readability-function-cognitive-complexity: function 'Save' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: bugprone-macro-parentheses: macro argument should be enclosed in parentheses	10
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: bugprone-suspicious-stringview-data-usage: result of a `data()` call may not be null terminated, provide size information to the callee to prevent potential issues	1
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	7
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: performance-unnecessary-value-param: the parameter 'newName' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: performance-unnecessary-value-param: the parameter 'prevName' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_SceneItems.cpp.hpp: readability-function-cognitive-complexity: function 'CreateSourcePopupMenu' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: performance-unnecessary-value-param: the parameter 'item' of type 'OBSSceneItem' (aka 'OBSRef<struct obs_scene_item *, obs_sceneitem_addref, obs_sceneitem_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: performance-unnecessary-value-param: the parameter 'redo_data' of type 'OBSData' (aka 'OBSRef<struct obs_data *, obs_data_addref, obs_data_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: performance-unnecessary-value-param: the parameter 'settingsData' of type 'OBSData' (aka 'OBSRef<struct obs_data *, obs_data_addref, obs_data_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/widgets/OBSBasic_Scenes.cpp.hpp: performance-unnecessary-value-param: the parameter 'undo_data' of type 'OBSData' (aka 'OBSRef<struct obs_data *, obs_data_addref, obs_data_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Screenshots.cpp.hpp: performance-unnecessary-value-param: the parameter 'path' of type 'std::string' (aka 'basic_string<char>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Screenshots.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Service.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_Streaming.cpp.hpp: modernize-use-nullptr: use nullptr	3
+frontend/widgets/OBSBasic_Streaming.cpp.hpp: performance-unnecessary-value-param: the parameter 'last_error' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Streaming.cpp.hpp: readability-function-cognitive-complexity: function 'StartStreaming' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Streaming.cpp.hpp: readability-function-cognitive-complexity: function 'StreamActionTriggered' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Streaming.cpp.hpp: readability-function-cognitive-complexity: function 'StreamingStop' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_StudioMode.cpp.hpp: readability-function-cognitive-complexity: function 'SetPreviewProgramMode' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: bugprone-swapped-arguments: argument with implicit conversion from 'bool' to 'int' followed by argument converted from 'int' to 'bool', potentially swapped arguments.	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	4
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: modernize-use-nullptr: use nullptr	2
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: performance-no-int-to-ptr: integer to pointer cast pessimizes optimization opportunities	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSScene' (aka 'OBSSafeRef<struct obs_scene *, obs_scene_get_ref, obs_scene_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: performance-unnecessary-value-param: the parameter 'scene' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: performance-unnecessary-value-param: the parameter 'source' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: performance-unnecessary-value-param: the parameter 'transition' of type 'OBSSource' (aka 'OBSSafeRef<struct obs_source *, obs_source_get_ref, obs_source_release>') is copied for each invocation but only used as a const reference; consider making it a const reference	4
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: readability-function-cognitive-complexity: function 'CreatePerSceneTransitionMenu' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: readability-function-cognitive-complexity: function 'CreateVisibilityTransitionMenu' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Transitions.cpp.hpp: readability-function-cognitive-complexity: function 'TransitionToScene' has cognitive complexity of N (threshold N)	1
+frontend/widgets/OBSBasic_Updater.cpp.hpp: bugprone-implicit-widening-of-multiplication-result: performing an implicit widening conversion to type 'long long' of a multiplication performed in type 'int'	1
+frontend/widgets/OBSBasic_Updater.cpp.hpp: clazy-non-pod-global-static: non-POD static (QPointer (anonymous namespace)::obsWhatsNew)	1
+frontend/widgets/OBSBasic_VirtualCam.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/widgets/OBSProjector.cpp.hpp: clazy-detaching-temporary: Don't call QList::operator[]() on temporary	1
+frontend/widgets/OBSProjector.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/widgets/OBSProjector.cpp.hpp: clazy-non-pod-global-static: non-POD static (QList multiviewProjectors)	1
+frontend/widgets/OBSProjector.cpp.hpp: performance-unnecessary-value-param: the parameter 'name' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSProjector.cpp.hpp: performance-unnecessary-value-param: the parameter 'newName' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSProjector.cpp.hpp: performance-unnecessary-value-param: the parameter 'oldName' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	1
+frontend/widgets/OBSProjector.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/widgets/OBSQTDisplay.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	5
+frontend/widgets/OBSQTDisplay.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/wizards/AutoConfig.cpp.hpp: clazy-install-event-filter: 'this' should usually be the filter object, not the monitored one.	1
+frontend/wizards/AutoConfig.cpp.hpp: modernize-use-nullptr: use nullptr	1
+frontend/wizards/AutoConfig.cpp.hpp: readability-function-cognitive-complexity: function 'AutoConfig' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfig.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	1
+frontend/wizards/AutoConfig.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/wizards/AutoConfigStartPage.cpp.hpp: bugprone-macro-parentheses: macro replacement list should be enclosed in parentheses	1
+frontend/wizards/AutoConfigStartPage.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	5
+frontend/wizards/AutoConfigStartPage.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	1
+frontend/wizards/AutoConfigStartPage.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/wizards/AutoConfigStreamPage.cpp.hpp: bugprone-empty-catch: empty catch statements hide issues; to handle exceptions appropriately, consider re-throwing, handling, or avoiding catch altogether	1
+frontend/wizards/AutoConfigStreamPage.cpp.hpp: bugprone-macro-parentheses: macro replacement list should be enclosed in parentheses	1
+frontend/wizards/AutoConfigStreamPage.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	47
+frontend/wizards/AutoConfigStreamPage.cpp.hpp: readability-function-cognitive-complexity: function 'ServiceChanged' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigStreamPage.cpp.hpp: readability-function-cognitive-complexity: function 'validatePage' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigStreamPage.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	3
+frontend/wizards/AutoConfigStreamPage.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: bugprone-macro-parentheses: macro replacement list should be enclosed in parentheses	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: bugprone-multi-level-implicit-pointer-conversion: multilevel pointer conversion from 'const char **' to 'void *', please use explicit cast	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: clazy-empty-qstringliteral: Use QLatin1String("") or QString() instead of an empty QStringLiteral	2
+frontend/wizards/AutoConfigTestPage.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	146
+frontend/wizards/AutoConfigTestPage.cpp.hpp: performance-unnecessary-value-param: the parameter 'message' of type 'QString' is copied for each invocation but only used as a const reference; consider making it a const reference	2
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'FinalizeResults' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'FindIdealHardwareResolution' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'TestBandwidthThread' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'TestRecordingEncoderThread' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'TestSoftwareEncoding' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.cpp.hpp: readability-function-cognitive-complexity: function 'TestStreamEncoderThread' has cognitive complexity of N (threshold N)	1
+frontend/wizards/AutoConfigTestPage.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	4
+frontend/wizards/AutoConfigTestPage.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
+frontend/wizards/AutoConfigVideoPage.cpp.hpp: bugprone-macro-parentheses: macro replacement list should be enclosed in parentheses	1
+frontend/wizards/AutoConfigVideoPage.cpp.hpp: cppcoreguidelines-pro-type-reinterpret-cast: do not use reinterpret_cast	20
+frontend/wizards/AutoConfigVideoPage.hpp: modernize-use-override: 'virtual' is redundant since the function is already declared 'override'	2
+frontend/wizards/AutoConfigVideoPage.hpp: modernize-use-override: annotate this function with 'override' or (rarely) 'final'	1
