@@ -137,11 +137,17 @@ class ImageTest(unittest.TestCase):
         # select_image() swallows every probe error, so a private package
         # degrades to stock Ubuntu in silence. Publishing is the one place that
         # can tell, and it must not leave the flip to memory.
+        # verify() closes the response before exiting, so the self-test gate's
+        # ResourceWarning check (#2235) stays clean.
+        def private(code):
+            def raise_(*_args, **_kwargs):
+                raise urllib.error.HTTPError('https://ghcr.io', code, 'no',
+                                             email.message.Message(), io.BytesIO(b''))
+            return raise_
+
         for code in (401, 403, 404):
             with self.subTest(code=code), \
-                    patch.object(self.image, 'manifest_digest',
-                                 side_effect=urllib.error.HTTPError(
-                        'https://ghcr.io', code, 'no', email.message.Message(), io.BytesIO())), \
+                    patch.object(self.image, 'manifest_digest', side_effect=private(code)), \
                     self.assertRaises(SystemExit) as error:
                 self.image.verify(ROOT)
             message = str(error.exception)

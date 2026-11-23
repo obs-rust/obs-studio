@@ -121,8 +121,11 @@ def verify(root: Path) -> None:
     try:
         digest = manifest_digest(tag)
     except urllib.error.HTTPError as error:
+        status = error.code
+        # The probe held a response; close it before turning this into an exit.
+        error.close()
         raise SystemExit(
-            f'{tag} is not anonymously readable (HTTP {error.code}): the package is '
+            f'{tag} is not anonymously readable (HTTP {status}): the package is '
             f'private. Anonymous probes and Docker pulls need no credentials, so make '
             f'https://github.com/orgs/obs-rust/packages/container/tier2-linux/settings '
             f'public; until then every Tier 2 job silently rebuilds from stock Ubuntu.')
