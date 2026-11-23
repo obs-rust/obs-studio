@@ -92,15 +92,18 @@ static int setup(void **state)
 static int teardown(void **state)
 {
 	(void)state;
-	if (obs_initialized()) {
-		/* The stand-in is not the core's to free. */
+	/* The stand-in is not the core's to free. */
+	if (obs_initialized())
 		main_canvas()->mix = NULL;
-		obs_shutdown();
-	}
+	/* Close the outputs while the core is still up: a video thread that
+	 * first runs after obs_shutdown would read the freed core's profiler
+	 * name store (obs->name_store). */
 	video_output_close(main_video);
 	video_output_close(other_video);
 	main_video = NULL;
 	other_video = NULL;
+	if (obs_initialized())
+		obs_shutdown();
 	return 0;
 }
 
