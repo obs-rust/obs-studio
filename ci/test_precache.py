@@ -11,9 +11,10 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import sys
 import tempfile
 import unittest
+
+import precache
 
 # ci/ tests run under the gate's interpreter (3.13 today) while the tool itself
 # declares requires-python >= 3.14 for `compression.zstd`, the same split
@@ -22,16 +23,6 @@ import unittest
 HAS_ZSTD = importlib.util.find_spec('compression') is not None
 
 ROOT = Path(__file__).resolve().parent.parent
-CI = ROOT / 'ci'
-sys.path.insert(0, str(CI))
-
-
-def load():
-    spec = importlib.util.spec_from_file_location('precache', CI / 'precache.py')
-    assert spec is not None and spec.loader is not None, CI / 'precache.py'
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def sample_tree(base: Path) -> Path:
@@ -45,7 +36,7 @@ def sample_tree(base: Path) -> Path:
 
 class NamingTest(unittest.TestCase):
     def setUp(self):
-        self.precache = load()
+        self.precache = precache
 
     def test_asset_and_manifest_follow_the_libs_convention(self):
         self.assertEqual(self.precache.asset_name('tier2-ccache', 'windows-x64', 'abc123'),
@@ -62,7 +53,7 @@ class NamingTest(unittest.TestCase):
 @unittest.skipUnless(HAS_ZSTD, 'pack needs Python 3.14 (compression.zstd)')
 class PackTest(unittest.TestCase):
     def setUp(self):
-        self.precache = load()
+        self.precache = precache
 
     def test_the_same_tree_packs_to_the_same_digest(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -98,7 +89,7 @@ class PackTest(unittest.TestCase):
 
 class ManifestTest(unittest.TestCase):
     def setUp(self):
-        self.precache = load()
+        self.precache = precache
 
     def test_manifest_carries_the_pin_the_consumer_needs(self):
         text = self.precache.manifest('app', 'macos-arm64', 'deadbeef',

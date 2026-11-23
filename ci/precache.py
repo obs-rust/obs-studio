@@ -38,8 +38,8 @@ import sys
 import tarfile
 import tempfile
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fetch_libs_asset import fetch, sha256_of  # noqa: E402
+# `uv run ci/precache.py` puts ci/ on sys.path; import the sibling by name.
+from fetch_libs_asset import fetch, sha256_of
 
 REPOSITORY = 'obs-rust/obs-studio-libs'
 DEFAULT_TAG = 'ci-cache'
