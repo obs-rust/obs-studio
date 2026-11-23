@@ -744,7 +744,7 @@ int main(void) {
         for hevc in (False, True):
             self.assertEqual(inventories[False, hevc] - inventories[True, hevc],
                              {"test_null_audio_monitoring"})
-            self.assertEqual(len(inventories[True, hevc] - inventories[False, hevc]), 6)
+            self.assertEqual(len(inventories[True, hevc] - inventories[False, hevc]), 7)
         for pulse in (False, True):
             self.assertEqual(len(inventories[pulse, True]) - len(inventories[pulse, False]), 1)
         self.assertGreaterEqual(len(inventories[False, True]), 417)
