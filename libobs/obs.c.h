@@ -1310,16 +1310,6 @@ void obs_shutdown(void)
 	obs_host_shutdown();
 }
 
-uint32_t obs_get_version(void)
-{
-	return LIBOBS_API_VER;
-}
-
-const char *obs_get_version_string(void)
-{
-	return OBS_VERSION;
-}
-
 /* A video mix freed by obs_reset_video(), and the canvas that owned it. */
 struct freed_video {
 	video_t *video;
