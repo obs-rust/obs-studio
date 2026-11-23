@@ -150,12 +150,15 @@ class CooperationTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[:4], ("uv", "run", "--no-project", "--script"))
         self.assertTrue(run.call_args.args[4].endswith("gh_graphql.py"))
 
-    def test_failed_arm_outcome_sets_nonzero_exit(self):
+    def test_failed_arm_after_attempt_is_nonfatal(self):
+        candidate = pr()
         with patch.object(bot.sys, "argv", ["ai_rebase.py", "1"]), \
                 patch.object(bot, "run", return_value=HEAD), \
+                patch.object(bot, "gh_json", side_effect=[candidate, {"id": 123}]), \
+                patch.object(bot, "select_rebases", return_value=[candidate]), \
                 patch.object(bot, "rebase_pr", return_value="pushed: old -> new; failed to arm auto-merge: rejected"), \
                 contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(bot.main(), 1)
+            self.assertEqual(bot.main(), 0)
 
     def test_stacked_draft_still_becomes_ready_and_arms(self):
         stack = (42, "c" * 40, "MERGED")

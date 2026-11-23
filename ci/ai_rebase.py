@@ -317,10 +317,12 @@ def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> s
     return "auto-merge armed" if go else f"left out of the queue: {why}"
 
 
-def rebase_pr(n: int, dry_run: bool) -> str:
+def rebase_pr(n: int, dry_run: bool, expected_head: str | None = None) -> str:
     pr = gh_json("pr", "view", str(n), "--repo", REPO, "--json",
                  "headRefName,headRefOid,isCrossRepository,autoMergeRequest,id,state,isDraft,body,"
                  "number,labels,statusCheckRollup,reviewDecision,updatedAt")
+    if expected_head is not None and pr["headRefOid"] != expected_head:
+        return "skipped: head changed since selection"
     if pr["state"] != "OPEN" or pr["isCrossRepository"]:
         return "skipped: not an open same-repo PR"
     if worker_active(pr):
@@ -713,6 +715,57 @@ def requeue_ejected(prs: list[int], dry_run: bool, limit: int) -> int:
     return rc
 
 
+ATTEMPT = re.compile(r"<!-- ai-rebase ([0-9a-f]{40}) (\S+) (\w+) -->")
+
+
+def attempts(comments: list[dict]) -> list[tuple[str, dt.datetime, str]]:
+    """Only the dedicated App can write trusted budget records."""
+    result = []
+    for comment in comments:
+        user = comment.get("user") or {}
+        if user.get("login") != "obs-rust-ai-rebase[bot]" or user.get("type") != "Bot":
+            continue
+        for head, when, outcome in ATTEMPT.findall(comment.get("body") or ""):
+            try:
+                stamp = dt.datetime.fromisoformat(when.replace("Z", "+00:00"))
+                if stamp.tzinfo is not None:
+                    result.append((head, stamp, outcome))
+            except ValueError:
+                continue
+    return result
+
+
+def recent_attempt_comments(now: dt.datetime) -> list[dict]:
+    since = (now - dt.timedelta(hours=1)).isoformat()
+    return requeue_api_items(f"repos/{REPO}/issues/comments?since={urllib.parse.quote(since)}&per_page=100")
+
+
+def select_rebases(prs: list[dict], *, now: dt.datetime, headroom: int = 3,
+                   cooldown_hours: float = 6) -> list[dict]:
+    recent = attempts(recent_attempt_comments(now))
+    # One comment per attempt is updated in place from started to its outcome.
+    hourly = sum(when > now - dt.timedelta(hours=1) for _, when, _ in recent)
+    limits = [(3, "per-run cap"), (max(0, 6 - hourly), "per-hour cap"),
+              (max(0, headroom), "backpressure headroom")]
+    limit, reason = min(limits, key=lambda item: item[0])
+    selected = []
+    for pr in prs:
+        if len(selected) >= limit:
+            print(f"stopped: {reason} ({limit} available)")
+            break
+        history = attempts(requeue_comments(pr["number"]))
+        same_head = [when for head, when, _ in history if head == pr["headRefOid"]]
+        if same_head and max(same_head) > now - dt.timedelta(hours=cooldown_hours):
+            print(f"#{pr['number']} skipped: same-head cooldown")
+            continue
+        selected.append(pr)
+    return selected
+
+
+def attempt_body(head: str, when: dt.datetime, outcome: str, detail: str = "") -> str:
+    return f"<!-- ai-rebase {head} {when.isoformat()} {outcome} -->\nai-rebase: {outcome} {detail}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("prs", nargs="*", type=int)
@@ -721,12 +774,16 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=10, help="maximum requeue actions per run")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--comment", action="store_true", help="post the outcome on the PR")
+    ap.add_argument("--cooldown-hours", type=float, default=6)
     a = ap.parse_args()
+    if a.cooldown_hours < 6:
+        ap.error("--cooldown-hours must be at least 6")
     if a.requeue_ejected:
         if a.dirty or a.limit < 1:
             ap.error("--requeue-ejected needs a positive --limit and cannot be combined with --dirty")
         return requeue_ejected(a.prs, a.dry_run, a.limit)
     prs = list(a.prs)
+    headroom = 3
     if a.dirty:
         spec = importlib.util.spec_from_file_location(
             "backpressure", Path(__file__).with_name("backpressure.py"))
@@ -734,23 +791,50 @@ def main() -> int:
         spec.loader.exec_module(backpressure)
         v = backpressure.measure(REPO)
         # A rebase restarts CI, so it spends queue capacity like a new PR does.
-        prs += dirty_prs(max(1, v["headroom"]) if v["state"] == "open" else 0)
+        headroom = max(0, v["headroom"]) if v["state"] == "open" else 0
+        prs += dirty_prs(300)
         print(f"backpressure {v['state']}, rebasing {prs}")
-    start = run("git", "rev-parse", "HEAD").strip()
-    rc = 0
-    for n in prs:
+    now = dt.datetime.now(dt.timezone.utc)
+    try:
+        candidates = [gh_json("pr", "view", str(n), "--repo", REPO, "--json",
+                              "number,headRefOid") for n in dict.fromkeys(prs)]
+        selected = select_rebases(candidates, now=now, headroom=headroom,
+                                  cooldown_hours=a.cooldown_hours)
+        start = run("git", "rev-parse", "HEAD").strip()
+    except Exception as e:
+        print(f"::error::cannot prepare rebase sweep: {e}")
+        return 1
+    return execute_rebases(selected, start, a.dry_run)
+
+
+def execute_rebases(selected: list[dict], start: str, dry_run: bool) -> int:
+    """Reserve before mutating; failures leave a durable cooldown record."""
+    attempted = 0
+    for pr in selected:
+        n, head = pr["number"], pr["headRefOid"]
+        when = dt.datetime.now(dt.timezone.utc)
+        comment_id = None
         try:
-            out = rebase_pr(n, a.dry_run)
-        except Exception as e:  # report and move to the next PR
+            if not dry_run:
+                record = gh_json("api", "--method", "POST", f"repos/{REPO}/issues/{n}/comments",
+                                 "-f", f"body={attempt_body(head, when, 'started')}")
+                comment_id = record["id"]
+            attempted += 1
+            out = rebase_pr(n, dry_run, expected_head=head)
+        except Exception as e:  # API/model/push problems consume the reserved attempt
             run("git", "rebase", "--abort", check=False)
             out = f"failed: {e}"
-        print(f"#{n} {out}")
-        if a.comment and not out.startswith("skipped"):
-            run("gh", "pr", "comment", str(n), "--repo", REPO, "--body",
-                f"ai-rebase ({MODEL}): {out}", check=False)
-        rc |= 0 if out.startswith(("pushed", "dry-run", "skipped")) and "failed to arm" not in out else 1
+        print(f"::notice::#{n} {out}")
+        outcome = ("resolution_refused" if out.startswith("refused") else
+                   "error" if out.startswith("failed") else out.split(":", 1)[0].split()[0])
+        if comment_id is not None:
+            run("gh", "api", "--method", "PATCH", f"repos/{REPO}/issues/comments/{comment_id}",
+                "-f", f"body={attempt_body(head, when, outcome, out)}", check=False)
+        elif not dry_run:
+            print("::error::could not reserve attempt; stopping without further mutations")
+            return 0 if attempted else 1
         run("git", "checkout", "-q", "--detach", start, check=False)
-    return rc
+    return 0
 
 
 if __name__ == "__main__":

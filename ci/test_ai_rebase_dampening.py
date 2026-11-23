@@ -55,6 +55,43 @@ class DampeningTests(unittest.TestCase):
         forged["user"] = {"login": "someone", "type": "User"}
         self.assertEqual(len(self.select([{"number": 1, "headRefOid": HEAD}], [forged])), 1)
 
+    def test_headroom_is_an_additional_cap(self):
+        prs = [{"number": n, "headRefOid": HEAD} for n in range(10)]
+        self.assertEqual(self.select(prs, headroom=0), [])
+        self.assertEqual(len(self.select(prs, headroom=1)), 1)
+
+    def test_model_and_token_errors_after_reservation_are_nonfatal(self):
+        candidate = {"number": 1, "headRefOid": HEAD}
+        for error in (RuntimeError("model unavailable"), RuntimeError("push token rejected")):
+            with self.subTest(error=str(error)), \
+                    patch.object(bot.sys, "argv", ["ai_rebase.py", "1"]), \
+                    patch.object(bot, "select_rebases", return_value=[candidate]), \
+                    patch.object(bot, "gh_json", side_effect=[candidate, {"id": 123}]), \
+                    patch.object(bot, "run", return_value=HEAD) as run, \
+                    patch.object(bot, "rebase_pr", side_effect=error), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(bot.main(), 0)
+                updates = [c for c in run.call_args_list if "PATCH" in c.args]
+                self.assertEqual(len(updates), 1)
+                self.assertIn("error -->", updates[0].args[-1])
+
+    def test_no_attempt_when_reservation_fails_is_broken_automation(self):
+        candidate = {"number": 1, "headRefOid": HEAD}
+        with patch.object(bot.sys, "argv", ["ai_rebase.py", "1"]), \
+                patch.object(bot, "select_rebases", return_value=[candidate]), \
+                patch.object(bot, "gh_json", side_effect=[candidate, RuntimeError("token rejected")]), \
+                patch.object(bot, "run", return_value=HEAD), \
+                patch.object(bot, "rebase_pr") as rebase, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bot.main(), 1)
+            rebase.assert_not_called()
+
+    def test_changed_head_after_selection_is_skipped(self):
+        with patch.object(bot, "gh_json", return_value={"headRefOid": "b" * 40}), \
+                patch.object(bot, "run") as run:
+            self.assertIn("head changed", bot.rebase_pr(1, False, expected_head=HEAD))
+            run.assert_not_called()
+
     def test_workflow_has_only_schedule_and_manual_triggers(self):
         workflow = Path(".github/workflows/ai-rebase.yaml").read_text()
         triggers = workflow.split("on:", 1)[1].split("permissions:", 1)[0]
