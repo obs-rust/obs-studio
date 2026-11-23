@@ -17,7 +17,8 @@ Lanes:
                CMake trees, plus rustfmt,
                clippy -D warnings and the repo Dylints (dylints/*). Formatters are pinned through uvx, so no
                brew/zsh install is needed. Also ci/platform_ifdef_ratchet.py (#847)
-               and ci/perf_guard_lint.py (#1303). Plus one clippy per Cargo
+               and ci/perf_guard_lint.py (#1303), and the C++ lint report
+               ci/cpp_lint.py with OBS_CPP_LINT_BUILD (#5453, report only). Plus one clippy per Cargo
                feature set in FEATURE_SETS (#2056), and a check that every
                workspace feature is built on and off by some clippy run.
   rust-test    soldr cargo test --workspace --locked (Tiers 1-3), the
@@ -354,6 +355,18 @@ def perf_guard_lint() -> None:
 def knowledge_lint(fix: bool) -> None:
     """docs/knowledge/ keeps the OKF core and its index (#3438); see ci/knowledge_lint.py."""
     run([sys.executable, "ci/knowledge_lint.py"] + (["--fix"] if fix else []))
+
+
+def cpp_lint() -> None:
+    """The C++ lint report for changed frontend files (#5453), when
+    OBS_CPP_LINT_BUILD names a build dir with compile_commands.json. Report
+    only: it never fails the lane."""
+    build = os.environ.get("OBS_CPP_LINT_BUILD", "")
+    if not build or not (Path(build) / "compile_commands.json").is_file():
+        print("+ cpp-lint: skipped (set OBS_CPP_LINT_BUILD to a build dir with compile_commands.json; #5453)",
+              flush=True)
+        return
+    subprocess.run([sys.executable, "ci/cpp_lint.py", "--build", build], cwd=ROOT, check=False)
 
 
 def tracked_files() -> list[str]:
@@ -706,6 +719,7 @@ def lane_lint(fix: bool, *, self_tests: bool = True) -> None:
     platform_ifdef_ratchet()
     perf_guard_lint()
     knowledge_lint(fix)
+    cpp_lint()
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
     soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
     for args in FEATURE_SETS:

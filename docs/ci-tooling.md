@@ -999,6 +999,34 @@ symbolic refs are rejected. No unconditional force option is supported.
    compiled on Linux only; the full builds run on schedule,
    workflow_dispatch, tags and the release gate.
 
+## C++ lint report (frontend)
+
+The Qt frontend has a C++ lint report (#5453), `ci/cpp_lint.py`:
+
+- clang-tidy (`clang-tidy==22.1.8` through uvx) with the checks in
+  `frontend/.clang-tidy`, on the unity groups that the change touches. A
+  changed implementation file runs its group. A changed header runs the groups
+  whose precompiled header includes it. A header that no precompiled header
+  includes, or a change to the config or the script, runs every group.
+- lizard (`lizard==1.26.1`): the cyclomatic complexity (CCN) and length (NLOC)
+  of every new or changed function in the changed frontend files, with the
+  values before the change.
+
+It is **report only**: it prints, writes the step summary, and never fails a
+job or `./lint`. A baseline and a gate on new findings follow later.
+
+- **Qt lane:** `ci/linux_qt_frontend.py` exports `compile_commands.json` and
+  runs the report after the tests. The changed files come from the GitHub
+  event: the PR's base, the merge group's base, or the push's `before`.
+- **`./lint`:** runs the report when `OBS_CPP_LINT_BUILD` names a build dir
+  with `compile_commands.json` (configure with
+  `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` and the Ninja or Makefile generator,
+  then build once). Otherwise it prints a skip line. The changed files are the
+  changes since the merge-base with `origin/master`, including uncommitted and
+  untracked files.
+- **By hand:**
+  `uv run --no-project ci/cpp_lint.py --build <dir> [--base <rev>]`.
+
 ## When CI fails
 
 - Read the failing job's log first: `gh run view <run> --job <job> --log-failed`,
