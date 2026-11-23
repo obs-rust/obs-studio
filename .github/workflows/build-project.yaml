@@ -2752,6 +2752,10 @@ jobs:
       # Dell host cache; hosted runners mount an empty directory without the marker.
       volumes:
         - /var/cache/obs-runner:/var/cache/obs-runner
+        # The runner's apt mirror list for the bootstrap apt step (#5510). The whole
+        # directory: a missing file would make Docker create a directory in
+        # its place on a persistent runner.
+        - /etc/apt:/run/host-apt:ro
     # A hung test held a runner for 4.5 h without a timeout (#983). The MCP cases (#3319) add a bundled libobs build.
     timeout-minutes: 45
     # Compilation consumes no Fast Gate output and can overlap its runner.
@@ -2790,6 +2794,19 @@ jobs:
             -e 's/^Components: main universe restricted multiverse$/Components: main universe/' "$src"
           [ "$(grep -cx 'Components: main universe' "$src")" = 2 ] && grep -qx 'Components: main universe' "$src" ||
             { echo "unexpected $src layout"; cat "$src"; exit 1; }
+          # One mirror per attempt (#5510): a mirror that accepts and never
+          # answers keeps apt past its bound on every index file, and apt's
+          # mirror method never drops it (run 45159376402). First the runner's
+          # own (the first plain-HTTP, non-security entry of the host's list,
+          # lowest priority first), then the fallbacks. ci/host_apt_mirrors.py
+          # holds the same rule and list; test_tier2_apt_cache checks both.
+          mirrors=$(awk '$1 ~ /^http:\/\// && $1 !~ /security/ { p = 1000; for (i = 2; i <= NF; i++) if ($i ~ /^priority:[0-9]+$/) p = substr($i, 10) + 0; print p, $1 }' \
+            /run/host-apt/apt-mirrors.txt 2>/dev/null | sort -n -s -k1,1 | head -n 1 | cut -d' ' -f2) ||
+            mirrors=''  # no list on this runner (pipefail would end the step): the fallbacks
+          mirrors=$(printf '%s\n' $mirrors http://archive.ubuntu.com/ubuntu/ http://mirrors.edge.kernel.org/ubuntu/ | awk '!seen[$0]++' | tr '\n' ' ')
+          rotate=true
+          grep -qx 'URIs: http://security.ubuntu.com/ubuntu/' "$src" ||
+            { echo "no security stanza in $src; keeping its sources"; rotate=false; }
           # A stale index 404s a just-superseded .deb and an archive host can
           # refuse a connection (run 42755735949): refetch the index and retry.
           # A timeout that stops the install in the unpack leaves dpkg
@@ -2797,6 +2814,12 @@ jobs:
           # 45113911635): recover first, as the Tier 2 package step does. The
           # .debs already downloaded stay in apt's cache for the next attempt.
           for attempt in 1 2 3; do
+            if [ "$rotate" = true ]; then
+              set -- $mirrors
+              shift $(( (attempt - 1) % $# ))
+              sed -i "/security\.ubuntu\.com/!s|^URIs: .*|URIs: $1|" "$src"
+              echo "apt attempt $attempt: $1"
+            fi
             dpkg --configure -a || true
             timeout --kill-after=10s 180 apt-get update -qq &&
               timeout --kill-after=10s 180 apt-get -f install -y &&

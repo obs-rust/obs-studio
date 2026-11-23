@@ -24,6 +24,69 @@ EXPECTED = ORIGINAL.replace('/ubuntu/\tpriority:1', '/ubuntu/\tpriority:2', 1).r
     'https://archive.ubuntu.com/ubuntu/\tpriority:2', 'https://archive.ubuntu.com/ubuntu/\tpriority:1')
 
 
+def load_mirrors():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('host_apt_mirrors', SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+AZURE_LIST = ('http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n'
+              'https://archive.ubuntu.com/ubuntu/\tpriority:2\n'
+              'https://security.ubuntu.com/ubuntu/\tpriority:3\n')
+# Seen on 2026-11-23: a hosted runner in AWS fetched from the EC2 mirror.
+AWS_LIST = ('http://us-east-2.ec2.archive.ubuntu.com/ubuntu/\tpriority:1\n'
+            'https://archive.ubuntu.com/ubuntu/\tpriority:2\n')
+# Container mirror cases (#5510): (runner list or None, expected order).
+CONTAINER_CASES = (
+    (AZURE_LIST, ['http://azure.archive.ubuntu.com/ubuntu/', 'http://archive.ubuntu.com/ubuntu/',
+                  'http://mirrors.edge.kernel.org/ubuntu/']),
+    (AWS_LIST, ['http://us-east-2.ec2.archive.ubuntu.com/ubuntu/', 'http://archive.ubuntu.com/ubuntu/',
+                'http://mirrors.edge.kernel.org/ubuntu/']),
+    # After host_apt_mirrors.py swapped the priorities: the first plain-HTTP
+    # entry is still the runner's mirror; HTTPS needs CA certificates first.
+    (EXPECTED, ['http://azure.archive.ubuntu.com/ubuntu/', 'http://archive.ubuntu.com/ubuntu/',
+                'http://mirrors.edge.kernel.org/ubuntu/']),
+    # Lowest priority wins, the file order breaks ties, a missing priority is last.
+    ('http://b.example/ubuntu/\n http://c.example/ubuntu/\tpriority:3\n'
+     'http://d.example/ubuntu/\tpriority:2\nhttp://e.example/ubuntu/\tpriority:2\n',
+     ['http://d.example/ubuntu/', 'http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/']),
+    # The runner's mirror is the archive itself: no duplicate attempt.
+    ('http://archive.ubuntu.com/ubuntu/\tpriority:1\n',
+     ['http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/']),
+    # Only HTTPS or security entries, an empty file, or no file: the fallbacks.
+    ('https://archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://security.ubuntu.com/ubuntu/\tpriority:2\n',
+     ['http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/']),
+    ('', ['http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/']),
+    (None, ['http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/']),
+)
+
+
+class ContainerMirrorsTest(unittest.TestCase):
+    """#5510: the Tier 2 containers try another mirror on each attempt, the
+    runner's own first. test_tier2_apt_cache runs the workflow's shell
+    against the same cases, so the step and this module cannot differ."""
+
+    def test_the_runner_mirror_comes_first_then_the_fallbacks(self):
+        module = load_mirrors()
+        self.assertEqual(module.FALLBACK_MIRRORS,
+                         ('http://archive.ubuntu.com/ubuntu/', 'http://mirrors.edge.kernel.org/ubuntu/'))
+        for text, expected in CONTAINER_CASES:
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'apt-mirrors.txt'
+                if text is not None:
+                    path.write_text(text)
+                self.assertEqual(module.container_mirrors(path), expected)
+
+    def test_the_fallbacks_are_the_hosts_known_archive_over_http(self):
+        # The archive the host recognizer knows, without TLS: the stock
+        # container has no CA certificates before Install Git.
+        module = load_mirrors()
+        archive = module.ARCHIVE.replace('\\', '').replace('https://', 'http://')
+        self.assertEqual(module.FALLBACK_MIRRORS[0], archive)
+
+
 class HostAptMirrorsTest(unittest.TestCase):
     def execute(self, text, repeat=1):
         with tempfile.TemporaryDirectory() as directory:

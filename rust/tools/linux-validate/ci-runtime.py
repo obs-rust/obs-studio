@@ -34,6 +34,12 @@ ASSET_CACHE_MARKER = Path('/var/cache/obs-runner/.persistent-cache')
 spec = importlib.util.spec_from_file_location('runtime_selection', Path(__file__).with_name('runtime-selection.py'))
 selection = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selection)
+# The runner's mirror and the fallbacks, one rule for the build container's
+# Install Git step and these containers (#5510).
+spec = importlib.util.spec_from_file_location(
+    'host_apt_mirrors', Path(__file__).resolve().parents[3] / 'ci' / 'host_apt_mirrors.py')
+host_apt_mirrors = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(host_apt_mirrors)
 
 
 def command(*args: str, capture_stderr: bool = False) -> str:
@@ -177,16 +183,35 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
     return result
 
 
+# The host's apt mirror list and the containers' main source (#5510).
+HOST_MIRRORS = Path('/etc/apt/apt-mirrors.txt')
+SOURCES = '/etc/apt/sources.list.d/ubuntu.sources'
+
+
+# Point the main source (every stanza but the security one) at a mirror, only
+# when the sources have the stock security stanza; never fail on it.
+USE_MIRROR = ('grep -qx "URIs: http://security.ubuntu.com/ubuntu/" "$0" && '
+              'sed -i "/security\\.ubuntu\\.com/!s|^URIs: .*|URIs: $1|" "$0" || '
+              'echo "keeping the sources of $0"')
+
+
+def use_mirror(ident: str, uri: str) -> None:
+    """The container's main source points at `uri` (#5510)."""
+    print(f'Runtime delta mirror: {uri}', flush=True)
+    command('docker', 'exec', ident, 'sh', '-c', USE_MIRROR, SOURCES, uri)
+
+
 # timeout(1) exits 124 when the bound stops a command, 137 when it has to kill it.
 TIMED_OUT = (124, 137)
 
 
-def install_once(install: tuple[str, ...], recover: tuple[str, ...]) -> None:
+def install_once(install: tuple[str, ...], recover: tuple[str, ...], next_mirror) -> None:
     """The delta install; a timeout retries it once (#5504). A slow mirror can
-    stop apt (run 45113911635), and the .debs it downloaded stay in the
-    archive mount, so the second attempt goes on from there. A timeout in the
-    unpack leaves dpkg interrupted, which fails every later apt-get until
-    `dpkg --configure -a`. Other errors still fail at once (#5249)."""
+    stop apt (run 45113911635). A timeout in the unpack leaves dpkg
+    interrupted, which fails every later apt-get until `dpkg --configure -a`.
+    The retry fetches the index from the next mirror (#5510); the .debs
+    downloaded so far stay in the archive mount. Other errors still fail at
+    once (#5249)."""
     try:
         command(*install, capture_stderr=True)
     except subprocess.CalledProcessError as error:
@@ -198,6 +223,7 @@ def install_once(install: tuple[str, ...], recover: tuple[str, ...]) -> None:
             command(*recover, capture_stderr=True)
         except subprocess.CalledProcessError as recovery:
             print(f'dpkg --configure -a failed (exit {recovery.returncode}); retrying anyway', flush=True)
+        next_mirror()
         command(*install, capture_stderr=True)
 
 
@@ -209,10 +235,17 @@ def install_prepared_delta(ident: str, packages: list[str]) -> None:
            '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
     install = (*apt, 'install', '-y', '--no-install-recommends', *packages)
     recover = (*bound, 'dpkg', '--configure', '-a')
+    mirrors = host_apt_mirrors.container_mirrors(HOST_MIRRORS)
+
+    def next_mirror() -> None:
+        use_mirror(ident, mirrors[1 % len(mirrors)])
+        command(*apt, 'update', '-qq', capture_stderr=True)
+
     try:
+        use_mirror(ident, mirrors[0])
         command(*apt, 'update', '-qq', capture_stderr=True)
         try:
-            install_once(install, recover)
+            install_once(install, recover, next_mirror)
         except subprocess.CalledProcessError as error:
             if error.returncode != 100 or not re.search(
                     r"E: Version '[^'\n]+' for '[^'\n]+' was not found", error.output or ''):
@@ -220,7 +253,7 @@ def install_prepared_delta(ident: str, packages: list[str]) -> None:
             # Refresh once for a superseded pin; never substitute newer versions.
             print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
             command(*apt, 'update', '-qq', capture_stderr=True)
-            install_once(install, recover)
+            install_once(install, recover, next_mirror)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
                            f'{" ".join(packages)}:\n{error.output or ""}') from error
