@@ -17087,6 +17087,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_audio_buffer_getters": {
+      "sources": [
+        "test/cmocka/test_source_audio_buffer_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_audio_capture_callbacks": {
       "libraries": [
         "OBS::libobs",
@@ -29341,6 +29356,12 @@
     },
     "test_source_audio_balance_mono": {
       "target": "test_source_audio_balance_mono",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_buffer_getters": {
+      "target": "test_source_audio_buffer_getters",
       "command": [
         "${target}"
       ]

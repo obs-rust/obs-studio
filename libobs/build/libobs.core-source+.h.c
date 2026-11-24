@@ -56,6 +56,7 @@
 #include "libobs/obs-source-async-rotation-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
 #include "libobs/obs-source-audio-active-setter-fields.c.h"
+#include "libobs/obs-source-audio-buffer-getters.c.h"
 #include "libobs/obs-source-audio-capture-callback-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-mixers-fields.c.h"
