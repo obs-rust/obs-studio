@@ -2,12 +2,14 @@
 """Run the test-only VST3 fixture against the binaries from a desktop package."""
 
 import argparse
+from collections.abc import Iterator
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tarfile
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import host_platform
 
@@ -38,6 +40,28 @@ def sample_timed_out_probe(process: subprocess.Popen) -> None:
     print("::endgroup::", flush=True)
 
 
+@contextmanager
+def staged_probe(app: Path, work: Path) -> Iterator[Path]:
+    if host_platform.is_windows():
+        # Match the app's LoadLibraryEx search path and use its packaged scanner.
+        target = NamedTemporaryFile(dir=app.parent, prefix="test-vst3-host-", suffix=".exe", delete=False)
+        executable = Path(target.name)
+        try:
+            with target, (work / "test_vst3_host.exe").open("rb") as source:
+                shutil.copyfileobj(source, target)
+            yield executable
+        finally:
+            executable.unlink(missing_ok=True)
+        return
+
+    stage = work / "bin"
+    stage.mkdir()
+    executable = stage / "test_vst3_host"
+    shutil.move(work / "test_vst3_host", executable)
+    shutil.copy2(app.parent / "obs-vst3-scanner", stage)
+    yield executable
+
+
 def run_probe(app: Path, archive: Path, work: Path) -> None:
     with tarfile.open(archive) as bundle:
         bundle.extractall(work, filter="data")
@@ -48,12 +72,9 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
         env.update(
             LOCALAPPDATA=str(home),
             PROGRAMFILES=str(work / "program-files"),
-            PATH=os.pathsep.join((str(app.parent), env["PATH"])),
             QT_QPA_PLATFORM="windows",
             QT_PLUGIN_PATH=str(app.parent),
         )
-        source = work / "test_vst3_host.exe"
-        scanner = app.parent / "obs-vst3-scanner.exe"
         module = app.parents[2] / "core/obs-vst3/obs-vst3.dll"
         resources = module.parent / "data"
         vst3_dir = home / "Programs/Common Files/VST3"
@@ -64,8 +85,6 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
             QT_QPA_PLATFORM="cocoa",
             QT_PLUGIN_PATH=str(one_match(contents, "libqcocoa.dylib").parents[1]),
         )
-        source = work / "test_vst3_host"
-        scanner = app.parent / "obs-vst3-scanner"
         plugin = one_match(contents, "obs-vst3.plugin")
         module = plugin / "Contents/MacOS/obs-vst3"
         resources = plugin / "Contents/Resources"
@@ -75,28 +94,24 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
     else:
         raise RuntimeError("the VST3 package probe requires Windows or macOS")
 
-    stage = work / "bin"
-    stage.mkdir()
-    executable = stage / source.name
-    shutil.move(source, executable)
-    shutil.copy2(scanner, stage)
     vst3_dir.mkdir(parents=True)
     shutil.move(work / "OBSFixture.vst3", vst3_dir)
     config = work / "config"
     config.mkdir()
-    command = [executable, module, resources, config, *GAIN_CLASSES, "--editor"]
-    with subprocess.Popen(command, cwd=app.parent, env=env) as process:
-        try:
-            result = process.wait(timeout=30)
-        except subprocess.TimeoutExpired:
+    with staged_probe(app, work) as executable:
+        command = [executable, module, resources, config, *GAIN_CLASSES, "--editor"]
+        with subprocess.Popen(command, cwd=app.parent, env=env) as process:
             try:
-                sample_timed_out_probe(process)
-            finally:
-                process.kill()
-                process.wait()
-            raise
-    if result:
-        raise subprocess.CalledProcessError(result, command)
+                result = process.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                try:
+                    sample_timed_out_probe(process)
+                finally:
+                    process.kill()
+                    process.wait()
+                raise
+        if result:
+            raise subprocess.CalledProcessError(result, command)
 
 
 def main() -> None:

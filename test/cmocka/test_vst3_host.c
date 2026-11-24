@@ -137,7 +137,7 @@ static obs_source_t *create_filter(const char *class_id, const char *state)
 	return filter;
 }
 
-static void editor_step(const char *message)
+static void report_probe_step(const char *message)
 {
 	fprintf(stderr, "%s\n", message);
 	fflush(stderr);
@@ -145,25 +145,25 @@ static void editor_step(const char *message)
 
 static bool open_editor(obs_source_t *filter, obs_property_t *button)
 {
-	editor_step("Opening the VST3 editor through the filter property");
+	report_probe_step("Opening the VST3 editor through the filter property");
 	if (!obs_property_button_clicked(button, filter))
 		return false;
-	editor_step("Checking the visible VST3 editor window");
+	report_probe_step("Checking the visible VST3 editor window");
 	return vst3_test_qt_window_visible();
 }
 
 static bool close_editor(void)
 {
-	editor_step("Sending a close event to the VST3 editor window");
+	report_probe_step("Sending a close event to the VST3 editor window");
 	if (!vst3_test_qt_close_window())
 		return false;
-	editor_step("Checking that the VST3 editor window closed");
+	report_probe_step("Checking that the VST3 editor window closed");
 	return !vst3_test_qt_window_visible();
 }
 
 static bool verify_editor(obs_source_t *filter)
 {
-	editor_step("Reading the VST3 filter's editor property");
+	report_probe_step("Reading the VST3 filter's editor property");
 	obs_properties_t *props = obs_source_properties(filter);
 	obs_property_t *button = obs_properties_get(props, "vst3_open_gui");
 	bool passed = button && obs_property_visible(button) && open_editor(filter, button) && close_editor() &&
@@ -215,6 +215,8 @@ static bool test_host(const char *module_path, const char *data_path, const char
 	if (editor)
 		passed = filter && verify_editor(filter) && passed;
 	obs_data_t *saved = filter ? obs_save_source(filter) : NULL;
+	if (editor)
+		report_probe_step("Releasing the tested VST3 filter");
 	obs_source_release(filter);
 	filter = saved ? obs_load_private_source(saved) : NULL;
 	obs_data_release(saved);
@@ -247,10 +249,18 @@ int main(int argc, char **argv)
 	bool passed = false;
 	if (obs_startup("en-US", argv[3], NULL)) {
 		passed = test_host(argv[1], argv[2], argv[4], argv[5], editor);
+		if (editor)
+			report_probe_step("Waiting for the OBS source destroy queue");
 		obs_wait_for_destroy_queue();
+		if (editor)
+			report_probe_step("Draining deferred Qt plug-in destruction");
 		vst3_test_qt_drain();
+		if (editor)
+			report_probe_step("Shutting down libobs");
 		obs_shutdown();
 	}
+	if (editor)
+		report_probe_step("Destroying the Qt test application");
 	vst3_test_qt_stop(app);
 	return passed ? 0 : 1;
 }
