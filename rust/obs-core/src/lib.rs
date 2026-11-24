@@ -161,6 +161,7 @@ pub mod get_video;
 pub mod get_video_frame_counts;
 pub mod global_getters;
 pub mod hotkeys_background_status;
+pub mod load_sources;
 pub mod module_disable_query;
 pub mod module_failure_info;
 pub mod module_init;
