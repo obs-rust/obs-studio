@@ -1,4 +1,5 @@
-//! Exact flag, NULL diagnostic and complete source-state parity. No exclusions.
+//! Exact flag, NULL diagnostic and complete source-state parity for the
+//! getters and the unbuffered setter (#5595). No exclusions.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
 use obs_source::ffi::source_async_flag_getters::{self as rust, AsyncFlagFields};
@@ -9,6 +10,12 @@ unsafe extern "C" {
     fn oracle_source_async_flag_new(unbuffered: bool, decoupled: bool) -> *mut c_void;
     fn oracle_source_async_flag_free(source: *mut c_void);
     fn oracle_source_async_flag_unchanged(source: *const c_void) -> bool;
+    fn oracle_source_async_flag_stored(source: *mut c_void, expected: bool) -> bool;
+    fn oracle_obs_source_set_async_unbuffered(source: *mut c_void, unbuffered: bool);
+    fn oracle_source_async_unbuffered_setter_null_log(
+        set_unbuffered: unsafe extern "C" fn(*mut c_void, bool),
+        requested: bool,
+    ) -> bool;
     fn oracle_obs_source_async_unbuffered(source: *const c_void) -> bool;
     fn oracle_obs_source_async_decoupled(source: *const c_void) -> bool;
     fn oracle_source_async_flag_null_log(
@@ -64,6 +71,43 @@ fn check(unbuffered: bool, decoupled: bool) {
     }
 }
 
+/// Both setters store the same sequence into twin fixtures; after each store
+/// each fixture differs from its snapshot in the unbuffered byte alone, and
+/// both getters then agree on it.
+fn check_setter(unbuffered: bool, decoupled: bool, requests: &[bool]) {
+    // SAFETY: the oracle allocates complete real-layout C fixtures.
+    let rust = Source(unsafe { oracle_source_async_flag_new(unbuffered, decoupled) });
+    // SAFETY: an independent twin, released by Drop.
+    let c = Source(unsafe { oracle_source_async_flag_new(unbuffered, decoupled) });
+    assert!(!rust.0.is_null() && !c.0.is_null());
+    for &requested in requests {
+        // SAFETY: live, exclusively owned fixtures; nothing else touches them.
+        unsafe {
+            rust::obs_source_set_async_unbuffered(rust.0, requested);
+            oracle_obs_source_set_async_unbuffered(c.0, requested);
+            assert!(oracle_source_async_flag_stored(rust.0, requested));
+            assert!(oracle_source_async_flag_stored(c.0, requested));
+            assert_eq!(
+                rust::obs_source_async_unbuffered(rust.0),
+                oracle_obs_source_async_unbuffered(c.0)
+            );
+        }
+    }
+}
+
+#[test]
+fn setter_characterized_edges() {
+    for unbuffered in [false, true] {
+        for decoupled in [false, true] {
+            check_setter(
+                unbuffered,
+                decoupled,
+                &[true, true, false, false, true, false],
+            );
+        }
+    }
+}
+
 #[test]
 fn characterized_edges() {
     for unbuffered in [false, true] {
@@ -99,6 +143,16 @@ fn null_defaults_and_historical_logs() {
             rust::obs_source_async_unbuffered,
             rust::obs_source_async_decoupled
         ));
+        for requested in [false, true] {
+            assert!(oracle_source_async_unbuffered_setter_null_log(
+                oracle_obs_source_set_async_unbuffered,
+                requested
+            ));
+            assert!(oracle_source_async_unbuffered_setter_null_log(
+                rust::obs_source_set_async_unbuffered,
+                requested
+            ));
+        }
     }
 }
 
@@ -111,5 +165,13 @@ proptest! {
     #[test]
     fn random_fields_match_c(unbuffered in any::<bool>(), decoupled in any::<bool>()) {
         check(unbuffered, decoupled);
+    }
+
+    #[test]
+    fn setter_sequences_match_c(
+        unbuffered in any::<bool>(), decoupled in any::<bool>(),
+        requests in prop::collection::vec(any::<bool>(), 1..32),
+    ) {
+        check_setter(unbuffered, decoupled, &requests);
     }
 }

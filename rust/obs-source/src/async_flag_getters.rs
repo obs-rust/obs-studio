@@ -1,4 +1,5 @@
-//! Plain async flag reads, preserving NULL defaults and diagnostics.
+//! Plain async flag reads and the unbuffered store, preserving NULL defaults
+//! and diagnostics.
 use core::ffi::CStr;
 
 pub fn unbuffered(value: Option<bool>, log: impl FnOnce(&'static CStr, &'static CStr)) -> bool {
@@ -22,11 +23,13 @@ pub fn decoupled(value: Option<bool>, log: impl FnOnce(&'static CStr, &'static C
 }
 
 /// Store `unbuffered` into the source's flag; a missing source only logs.
-#[expect(clippy::todo, reason = "RED stub for #5595")]
 pub fn set_unbuffered(
-    _value: Option<&mut bool>,
-    _unbuffered: bool,
-    _log: impl FnOnce(&'static CStr, &'static CStr),
+    value: Option<&mut bool>,
+    unbuffered: bool,
+    log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    todo!("#5595")
+    match value {
+        Some(flag) => *flag = unbuffered,
+        None => log(c"obs_source_set_async_unbuffered", c"source"),
+    }
 }

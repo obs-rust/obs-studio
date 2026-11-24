@@ -1,9 +1,11 @@
-//! Exact setter parity, including untouched timing state at integer boundaries.
-//! No intentional differences or excluded defined inputs.
+//! Exact setter and getter (#5595) parity, including untouched timing state at
+//! integer boundaries. No intentional differences or excluded defined inputs.
 use core::ffi::c_void;
 use core::mem::{align_of, size_of};
 use core::sync::atomic::AtomicBool;
-use obs_source::ffi::source_async_compensation::obs_source_set_async_compensation;
+use obs_source::ffi::source_async_compensation::{
+    obs_source_async_compensation, obs_source_set_async_compensation,
+};
 use proptest::prelude::*;
 
 unsafe extern "C" {
@@ -16,6 +18,11 @@ unsafe extern "C" {
     fn oracle_source_async_compensation_free(source: *mut c_void);
     fn oracle_source_async_compensation_layout(layout: *mut usize);
     fn oracle_obs_source_set_async_compensation(source: *mut c_void, requested: bool);
+    fn oracle_obs_source_async_compensation(source: *const c_void) -> bool;
+    fn oracle_source_async_compensation_unchanged(source: *const c_void) -> bool;
+    fn oracle_source_async_compensation_getter_null_log(
+        getter: unsafe extern "C" fn(*const c_void) -> bool,
+    ) -> bool;
     fn oracle_source_async_compensation_null_log(
         setter: unsafe extern "C" fn(*mut c_void, bool),
         requested: bool,
@@ -43,6 +50,38 @@ fn check(initial: bool, timestamp: u64, offset: i64, requests: &[bool]) {
             oracle_obs_source_set_async_compensation(c.0, requested);
             assert!(oracle_source_async_compensation_check(rust.0, requested));
             assert!(oracle_source_async_compensation_check(c.0, requested));
+            // The getters answer the stored request and write nothing.
+            for source in [rust.0, c.0] {
+                assert_eq!(obs_source_async_compensation(source), requested);
+                assert!(oracle_source_async_compensation_unchanged(source));
+                assert_eq!(oracle_obs_source_async_compensation(source), requested);
+                assert!(oracle_source_async_compensation_unchanged(source));
+            }
+        }
+    }
+}
+
+#[test]
+fn getter_reads_the_initial_flag_alone() {
+    // The fixture sets last_async_compensation to the opposite value and the
+    // timing fields to their edges; only async_compensation decides.
+    for timestamp in [0, u64::MAX] {
+        for offset in [i64::MIN, 0, i64::MAX] {
+            for initial in [false, true] {
+                // SAFETY: complete real-layout C fixture, released by Drop.
+                let source = Source(unsafe {
+                    oracle_source_async_compensation_new(initial, timestamp, offset)
+                });
+                assert!(!source.0.is_null());
+                for _ in 0..2 {
+                    // SAFETY: live exclusive fixture; both getters only load.
+                    unsafe {
+                        assert_eq!(obs_source_async_compensation(source.0), initial);
+                        assert_eq!(oracle_obs_source_async_compensation(source.0), initial);
+                        assert!(oracle_source_async_compensation_unchanged(source.0));
+                    }
+                }
+            }
         }
     }
 }
@@ -101,6 +140,15 @@ fn null_preserves_debug_diagnostic() {
                 requested
             ));
         }
+    }
+    // SAFETY: isolated child restores its global logger; NULL is valid here.
+    unsafe {
+        assert!(oracle_source_async_compensation_getter_null_log(
+            oracle_obs_source_async_compensation
+        ));
+        assert!(oracle_source_async_compensation_getter_null_log(
+            obs_source_async_compensation
+        ));
     }
 }
 
