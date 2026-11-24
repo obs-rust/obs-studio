@@ -20,3 +20,13 @@ pub fn decoupled(value: Option<bool>, log: impl FnOnce(&'static CStr, &'static C
         }
     }
 }
+
+/// Store `unbuffered` into the source's flag; a missing source only logs.
+#[expect(clippy::todo, reason = "RED stub for #5595")]
+pub fn set_unbuffered(
+    _value: Option<&mut bool>,
+    _unbuffered: bool,
+    _log: impl FnOnce(&'static CStr, &'static CStr),
+) {
+    todo!("#5595")
+}

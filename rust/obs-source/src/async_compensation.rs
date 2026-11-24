@@ -21,3 +21,9 @@ pub fn set(value: Option<&AtomicBool>, compensate: bool, log_null: impl FnOnce()
         None => log_null(),
     }
 }
+
+/// The current request, read atomically; a missing source logs and answers false.
+#[expect(clippy::todo, reason = "RED stub for #5595")]
+pub fn get(_value: Option<&AtomicBool>, _log_null: impl FnOnce()) -> bool {
+    todo!("#5595")
+}
