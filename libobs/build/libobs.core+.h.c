@@ -54,7 +54,6 @@
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-hotkeys-background-status-changed-fields.c.h"
 #include "libobs/obs-load-sources-fields.c.h"
-#include "libobs/obs-load-sources.c.h"
 #include "libobs/obs-main-render-callbacks.c.h"
 #include "libobs/obs-main-rendered-callbacks.c.h"
 #include "libobs/obs-module-init-fields.c.h"

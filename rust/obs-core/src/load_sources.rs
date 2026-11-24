@@ -55,11 +55,36 @@ pub trait Loader {
 
 /// `obs_load_sources(array, cb, private_data)` over `loader`, with `cb` the
 /// caller's callback bound to its private data (`None` for a NULL `cb`).
-pub fn load_sources<L, F>(loader: &mut L, array: L::Array, cb: Option<F>)
+pub fn load_sources<L, F>(loader: &mut L, array: L::Array, mut cb: Option<F>)
 where
     L: Loader,
     F: FnMut(L::Source),
 {
-    let _ = (loader, array, cb);
-    todo!("obs_load_sources")
+    let count = loader.count(array);
+    let mut sources: Vec<Option<L::Source>> = Vec::with_capacity(count);
+    // Pass 1: every entry loaded before any is told to load.
+    for index in 0..count {
+        let data = loader.item(array, index);
+        let source = loader.load(data);
+        sources.push(source);
+        loader.release_data(data);
+    }
+    // Pass 2: the item taken again for every slot, NULL or not.
+    for (index, &source) in sources.iter().enumerate() {
+        let data = loader.item(array, index);
+        if let Some(source) = source {
+            if loader.is_transition(source) {
+                loader.transition_load(source, data);
+            }
+            loader.load2(source);
+            if let Some(cb) = cb.as_mut() {
+                cb(source);
+            }
+        }
+        loader.release_data(data);
+    }
+    // Pass 3: every slot released, NULL included.
+    for source in sources {
+        loader.release_source(source);
+    }
 }

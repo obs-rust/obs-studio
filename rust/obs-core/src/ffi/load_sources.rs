@@ -93,3 +93,15 @@ pub unsafe fn load_sources_bridge(
     });
     load_sources(&mut CoreLoader, array, cb);
 }
+
+/// # Safety
+/// As [`load_sources_bridge`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_load_sources(
+    array: *mut Array,
+    cb: Option<LoadCallback>,
+    private_data: *mut c_void,
+) {
+    // SAFETY: the caller's contract is load_sources_bridge's.
+    unsafe { load_sources_bridge(array, cb, private_data) }
+}
