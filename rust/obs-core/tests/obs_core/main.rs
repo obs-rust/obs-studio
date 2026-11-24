@@ -188,6 +188,8 @@ mod source_profiler;
 mod source_profiler_parity;
 mod source_type_enum;
 mod source_type_enum_parity;
+mod task_queue;
+mod task_queue_parity;
 mod tick_callbacks;
 mod tick_callbacks_parity;
 mod type_catalog_enum;

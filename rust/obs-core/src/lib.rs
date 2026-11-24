@@ -204,6 +204,7 @@ pub mod shutdown_detach;
 pub mod source_load;
 pub mod source_profiler;
 pub mod source_type_enum;
+pub mod task_queue;
 pub mod tick_callbacks;
 pub mod type_catalog_enum;
 pub mod ui_task_handler;
