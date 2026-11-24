@@ -4,6 +4,7 @@ use core::ffi::{CStr, c_char, c_int, c_void};
 
 #[repr(C)]
 pub struct Fields {
+    pub signal: *const *mut c_void,
     pub proc: *const *mut c_void,
 }
 
@@ -12,7 +13,11 @@ unsafe extern "C" {
     fn blog(level: c_int, format: *const c_char, ...);
 }
 
-unsafe fn fields(source: *const c_void) -> Option<*mut c_void> {
+/// The handler `pick` selects, or `None` for a null source.
+unsafe fn field(
+    source: *const c_void,
+    pick: fn(&Fields) -> *const *mut c_void,
+) -> Option<*mut c_void> {
     if source.is_null() {
         return None;
     }
@@ -20,7 +25,7 @@ unsafe fn fields(source: *const c_void) -> Option<*mut c_void> {
     // keeps this source and its handler fields readable throughout the call.
     unsafe {
         let fields = obs_source_handler_getters_fields(source);
-        Some(*fields.proc)
+        Some(*pick(&fields))
     }
 }
 
@@ -32,7 +37,15 @@ fn log(name: &'static CStr) {
 /// # Safety
 /// A non-null source must remain live and readable under the original C contract.
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_source_get_signal_handler(source: *const c_void) -> *mut c_void {
+    // SAFETY: the caller supplies a live source or null; field rejects null first.
+    handler_getters::signal(unsafe { field(source, |fields| fields.signal) }, log)
+}
+
+/// # Safety
+/// A non-null source must remain live and readable under the original C contract.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_get_proc_handler(source: *const c_void) -> *mut c_void {
-    // SAFETY: the caller supplies a live source or null; fields rejects null first.
-    handler_getters::proc(unsafe { fields(source) }, log)
+    // SAFETY: the caller supplies a live source or null; field rejects null first.
+    handler_getters::proc(unsafe { field(source, |fields| fields.proc) }, log)
 }

@@ -4,7 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 #define obs_source_get_proc_handler oracle_obs_source_get_proc_handler
+#define obs_source_get_signal_handler oracle_obs_source_get_signal_handler
 #include "obs-source-handler-getters.c.h"
+#include "obs-source-signal-handler.c.h"
+#undef obs_source_get_signal_handler
 #undef obs_source_get_proc_handler
 #include "source_handler_getters_fields.inc"
 
@@ -53,7 +56,7 @@ bool oracle_source_handlers_addresses(const obs_source_t *source);
 bool oracle_source_handlers_addresses(const obs_source_t *source)
 {
 	struct obs_source_handler_getters_fields fields = obs_source_handler_getters_fields(source);
-	return fields.proc == &source->context.procs;
+	return fields.signal == &source->context.signals && fields.proc == &source->context.procs;
 }
 
 void oracle_source_handlers_layout(size_t *layout);
@@ -61,9 +64,17 @@ void oracle_source_handlers_layout(size_t *layout)
 {
 	layout[0] = sizeof(struct obs_source_handler_getters_fields);
 	layout[1] = _Alignof(struct obs_source_handler_getters_fields);
-	layout[2] = offsetof(struct obs_source_handler_getters_fields, proc);
-	layout[3] = sizeof(proc_handler_t *);
-	layout[4] = _Alignof(proc_handler_t *);
+	layout[2] = offsetof(struct obs_source_handler_getters_fields, signal);
+	layout[3] = offsetof(struct obs_source_handler_getters_fields, proc);
+	layout[4] = sizeof(signal_handler_t *);
+	layout[5] = _Alignof(signal_handler_t *);
+	layout[6] = sizeof(proc_handler_t *);
+	layout[7] = _Alignof(proc_handler_t *);
+}
+
+static void *source_handlers_original_signal(const obs_source_t *source)
+{
+	return oracle_obs_source_get_signal_handler(source);
 }
 
 static void *source_handlers_original_proc(const obs_source_t *source)
@@ -91,19 +102,20 @@ static void source_handlers_capture(int level, const char *format, va_list args,
 typedef void *(*source_handlers_getter)(const obs_source_t *);
 typedef void (*source_handlers_get_log)(log_handler_t *, void **);
 typedef void (*source_handlers_set_log)(log_handler_t, void *);
-bool oracle_source_handlers_logs(source_handlers_getter proc, source_handlers_get_log get_log,
-				 source_handlers_set_log set_log);
-bool oracle_source_handlers_logs(source_handlers_getter proc, source_handlers_get_log get_log,
-				 source_handlers_set_log set_log)
+bool oracle_source_handlers_logs(source_handlers_getter signal, source_handlers_getter proc,
+				 source_handlers_get_log get_log, source_handlers_set_log set_log);
+bool oracle_source_handlers_logs(source_handlers_getter signal, source_handlers_getter proc,
+				 source_handlers_get_log get_log, source_handlers_set_log set_log)
 {
 	log_handler_t old_handler;
 	void *old_param;
 	get_log(&old_handler, &old_param);
-	source_handlers_getter rust[] = {proc};
-	source_handlers_getter original[] = {source_handlers_original_proc};
-	const char *expected[] = {"obs_source_get_proc_handler: Null 'source' parameter"};
+	source_handlers_getter rust[] = {signal, proc};
+	source_handlers_getter original[] = {source_handlers_original_signal, source_handlers_original_proc};
+	const char *expected[] = {"obs_source_get_signal_handler: Null 'source' parameter",
+				  "obs_source_get_proc_handler: Null 'source' parameter"};
 	bool equal = true;
-	for (size_t i = 0; i < 1; i++) {
+	for (size_t i = 0; i < 2; i++) {
 		struct source_handlers_log r = {0}, c = {0};
 		set_log(source_handlers_capture, &r);
 		void *rust_value = rust[i](NULL);

@@ -11,8 +11,12 @@ pub fn proc<T: Copy + Default>(source: Option<T>, log: impl FnOnce(&'static CStr
     }
 }
 
-#[expect(clippy::todo, reason = "RED stub for #5591")]
 pub fn signal<T: Copy + Default>(source: Option<T>, log: impl FnOnce(&'static CStr)) -> T {
-    let _ = (source, log);
-    todo!()
+    match source {
+        Some(handler) => handler,
+        None => {
+            log(c"obs_source_get_signal_handler");
+            T::default()
+        }
+    }
 }
