@@ -227,7 +227,45 @@ def install_once(install: tuple[str, ...], recover: tuple[str, ...], next_mirror
         command(*install, capture_stderr=True)
 
 
-def install_prepared_delta(ident: str, packages: list[str]) -> None:
+# apt's own wording for a pinned version that no index lists.
+MISSING_PIN = re.compile(r"E: Version '([^'\n]+)' for '([^'\n]+)' was not found")
+ARCHIVES = '/var/cache/apt/archives'
+
+
+def cached_pins(packages: list[str], output: str, archives: Path | None) -> list[str] | None:
+    """`packages` with each pin the index lost swapped for its cached .deb (#5579).
+
+    The build can read a mirror that still lists a version the test
+    container's mirror has already superseded (pipewire-pulse 1.2 against a
+    phased 1.3, run 45405030842). The build took that .deb from the same
+    restored apt cache that is mounted here, so install exactly that version.
+    None when a lost pin has no single cached .deb of its exact version.
+    """
+    def key(name: str, version: str) -> tuple[str, str]:
+        # apt reports `pipewire-pulse` for the pin `pipewire-pulse:amd64=...`.
+        return name.partition(':')[0], version
+
+    missing = {key(name, version) for version, name in MISSING_PIN.findall(output)}
+    pins = {key(*package.partition('=')[::2]): package for package in packages}
+    if archives is None or not missing or not missing <= pins.keys():
+        return None
+    result = []
+    for package in packages:
+        name, _, version = package.partition('=')
+        if key(name, version) not in missing:
+            result.append(package)
+            continue
+        # apt names cached files <package>_<version, ':' as %3a>_<arch>.deb.
+        stem = f'{key(name, version)[0]}_{version.replace(":", "%3a")}_'
+        found = [path for path in archives.iterdir()
+                 if path.name.startswith(stem) and path.name.endswith('.deb') and path.is_file()]
+        if len(found) != 1:
+            return None
+        result.append(f'{ARCHIVES}/{found[0].name}')
+    return result
+
+
+def install_prepared_delta(ident: str, packages: list[str], archives: Path | None = None) -> None:
     # Normal delta setup is about 45 s (#5237); allow 4x that per apt command.
     # apt.conf(5) delegates per-transport Timeout to apt-transport-http/https(1).
     bound = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '180s', 'env', 'LC_ALL=C')
@@ -253,13 +291,22 @@ def install_prepared_delta(ident: str, packages: list[str]) -> None:
             # Refresh once for a superseded pin; never substitute newer versions.
             print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
             command(*apt, 'update', '-qq', capture_stderr=True)
-            install_once(install, recover, next_mirror)
+            try:
+                install_once(install, recover, next_mirror)
+            except subprocess.CalledProcessError as still:
+                cached = cached_pins(packages, still.output or '', archives) if still.returncode == 100 else None
+                if cached is None:
+                    raise
+                print('Runtime delta pin still unavailable; installing the cached .deb of that exact version: '
+                      + ' '.join(c for c in cached if c not in packages), flush=True)
+                install_once((*apt, 'install', '-y', '--no-install-recommends', *cached), recover, next_mirror)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
                            f'{" ".join(packages)}:\n{error.output or ""}') from error
 
 
-def install_packages(ident: str, variant: str, requirements: str, changed: list[str]) -> None:
+def install_packages(ident: str, variant: str, requirements: str, changed: list[str],
+                     archives: Path | None = None) -> None:
     # Prebaked confirms exact installed versions; stock/prepared retain their installs.
     packages = changed
     if variant == 'prebaked':
@@ -273,7 +320,7 @@ def install_packages(ident: str, variant: str, requirements: str, changed: list[
                 'if test -f /etc/apt/apt.conf.d/docker-clean; then '
                 'mv /etc/apt/apt.conf.d/docker-clean /tmp/docker-clean.disabled; fi')
         if variant == 'prepared':
-            install_prepared_delta(ident, packages)
+            install_prepared_delta(ident, packages, archives)
             return
         if variant != 'prebaked':
             command('docker', 'exec', ident, 'apt-get', 'update', '-qq')
@@ -312,7 +359,7 @@ def execute(args: argparse.Namespace) -> None:
         raise ValueError('Invalid runtime container identity')
     try:
         command('docker', 'start', ident)
-        install_packages(ident, variant, requirements, changed)
+        install_packages(ident, variant, requirements, changed, args.archives)
         inventory = command('docker', 'exec', ident, 'dpkg-query', '-W', '-f=${binary:Package}\t${Version}\n')
         if not selection.satisfies(requirements, inventory):
             raise ValueError('Runtime does not satisfy the current artifact package closure')

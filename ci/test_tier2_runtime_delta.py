@@ -60,7 +60,7 @@ class AptInstallTest(unittest.TestCase):
               'env', 'LC_ALL=C', 'apt-get', '-o', 'Acquire::Retries=3',
               '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
 
-    def install(self, failures=(), host_list=None):
+    def install(self, failures=(), host_list=None, archives=None):
         calls = []
         errors = iter(failures)
         tmp = tempfile.TemporaryDirectory()
@@ -80,7 +80,8 @@ class AptInstallTest(unittest.TestCase):
         with patch.object(runtime, 'command', side_effect=command), \
                 patch.object(runtime, 'HOST_MIRRORS', host):
             try:
-                runtime.install_packages('container', 'prepared', '', self.packages)
+                runtime.install_packages('container', 'prepared', '', self.packages,
+                                         *([archives] if archives else []))
             finally:
                 self.calls = [c for c in calls if 'apt-get' in c]
                 self.all_calls = [c for c in calls if 'apt-get' in c or 'dpkg' in c or self.mirror_of(c)]
@@ -111,6 +112,45 @@ class AptInstallTest(unittest.TestCase):
         for package in self.packages:
             self.assertIn(package, str(error.exception))
         self.assertIn(missing[1], str(error.exception))
+
+    def cached(self, *names):
+        """An archive mount holding these .debs, as the restored apt cache does."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for name in names:
+            (Path(tmp.name) / name).write_bytes(b'')
+        return Path(tmp.name)
+
+    def test_a_pin_the_index_lost_installs_the_cached_deb_of_that_version(self):
+        # Run 45405030842: the build container read a mirror that still had
+        # pipewire-pulse 1.6.2-1ubuntu1.2; the test container's mirror had
+        # only the phased 1.3, so the exact pin failed on every Tier 2 lane.
+        # The build took that .deb from the same restored apt cache that is
+        # mounted here, so install exactly it; never a newer version.
+        missing = (100, f"E: Version '{NEW}' for 'zlib1g' was not found")
+        archives = self.cached(f'zlib1g_{NEW.replace(":", "%3a")}_amd64.deb',
+                               'zlib1g_1%3a1.3.dfsg+really1.3.1-1ubuntu3.1_amd64.deb')
+        self.install([None, missing, None, missing], archives=archives)
+        install = (*self.prefix, 'install', '-y', '--no-install-recommends')
+        self.assertEqual(self.calls, [
+            (*self.prefix, 'update', '-qq'), (*install, *self.packages),
+            (*self.prefix, 'update', '-qq'), (*install, *self.packages),
+            (*install, self.packages[0],
+             f'/var/cache/apt/archives/zlib1g_{NEW.replace(":", "%3a")}_amd64.deb')])
+
+    def test_a_lost_pin_without_its_cached_deb_still_fails(self):
+        missing = (100, f"E: Version '{NEW}' for 'zlib1g:amd64' was not found")
+        archives = self.cached('zlib1g_1%3a1.3.dfsg+really1.3.1-1ubuntu3.1_amd64.deb')
+        with self.assertRaises(RuntimeError) as error:
+            self.install([None, missing, None, missing], archives=archives)
+        self.assertEqual(len(self.calls), 4)
+        self.assertIn(missing[1], str(error.exception))
+
+    def test_a_cached_deb_does_not_stand_in_for_other_failures(self):
+        archives = self.cached(f'zlib1g_{NEW.replace(":", "%3a")}_amd64.deb')
+        with self.assertRaises(RuntimeError):
+            self.install([None, (100, 'dependency conflict')], archives=archives)
+        self.assertEqual(len(self.calls), 2)
 
     def test_other_failures_do_not_refresh(self):
         for failures, count in (([(100, 'archive unavailable')], 1),
