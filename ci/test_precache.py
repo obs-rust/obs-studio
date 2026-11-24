@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import precache
 
@@ -112,6 +113,84 @@ class ManifestTest(unittest.TestCase):
     def test_a_manifest_without_an_identity_is_refused(self):
         with self.assertRaises(ValueError):
             self.precache.parse_manifest(json.dumps({'asset': 'a.tar.zst', 'sha256': 'c' * 64}))
+
+
+class SelectionTest(unittest.TestCase):
+    """`pull` must restore the newest published cache, not the largest name."""
+
+    def setUp(self):
+        self.precache = precache
+
+    def asset(self, name, updated):
+        return {'name': name, 'updated_at': updated}
+
+    def test_newest_wins_even_when_its_name_sorts_first(self):
+        # rustc1.98.1 sorts before rustc1.101.0 but is the older toolchain.
+        assets = [
+            self.asset(self.precache.manifest_name('app', 'linux-x64', 'rustc1.98.1'), '2026-11-01T00:00:00Z'),
+            self.asset(self.precache.manifest_name('app', 'linux-x64', 'rustc1.101.0'), '2026-11-20T00:00:00Z'),
+        ]
+        self.assertEqual(
+            self.precache.select_manifest(assets, 'app', 'linux-x64'),
+            'cache-app-linux-x64-rustc1.101.0.manifest.json')
+
+    def test_other_platforms_and_families_are_never_selected(self):
+        assets = [
+            self.asset('cache-app-windows-x64-newer.manifest.json', '2026-11-21T00:00:00Z'),
+            self.asset('cache-appimage-linux-x64-newer.manifest.json', '2026-11-22T00:00:00Z'),
+            self.asset('cache-app-linux-x64-mine.manifest.json', '2026-11-20T00:00:00Z'),
+            self.asset('cache-app-linux-x64-mine.tar.zst', '2026-11-23T00:00:00Z'),
+        ]
+        self.assertEqual(self.precache.select_manifest(assets, 'app', 'linux-x64'),
+                         'cache-app-linux-x64-mine.manifest.json')
+
+    def test_an_explicit_identity_pins_that_identity_only(self):
+        assets = [self.asset(self.precache.manifest_name('app', 'linux-x64', 'b'), '2026-11-20T00:00:00Z')]
+        self.assertEqual(self.precache.select_manifest(assets, 'app', 'linux-x64', 'b'),
+                         'cache-app-linux-x64-b.manifest.json')
+        self.assertEqual(self.precache.select_manifest(assets, 'app', 'linux-x64', 'a'), '')
+
+    def test_nothing_published_selects_nothing(self):
+        self.assertEqual(self.precache.select_manifest([], 'app', 'macos-arm64'), '')
+
+
+class BootstrapTest(unittest.TestCase):
+    """`gh release upload` needs the release to exist; nothing creates it today."""
+
+    def test_an_existing_release_is_reused(self):
+        with mock.patch.object(precache, 'release_assets', return_value=[{'name': 'x'}]), \
+             mock.patch.object(precache, 'gh') as gh:
+            precache.ensure_release('ci-cache')
+        gh.assert_not_called()
+
+    def test_a_missing_release_is_created_as_a_prerelease(self):
+        with mock.patch.object(precache, 'release_assets', return_value=[]), \
+             mock.patch.object(precache, 'gh') as gh:
+            precache.ensure_release('ci-cache')
+        argv = gh.call_args.args
+        self.assertEqual(argv[:2], ('release', 'create'))
+        self.assertIn('--prerelease', argv)
+        # Never steal the libs repository's "Latest" (OpenSSL holds it).
+        self.assertIn('--latest=false', argv)
+
+
+class MergeTest(unittest.TestCase):
+    """A restore must not leave fetch's marker inside the cache directory."""
+
+    def test_the_stamp_is_dropped_and_everything_else_moves(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            staged = base / 'extract'
+            (staged / 'nested').mkdir(parents=True)
+            (staged / precache.FETCH_STAMP).write_text('deadbeef')
+            (staged / 'a.o').write_bytes(b'x')
+            (staged / 'nested' / 'b.rlib').write_bytes(b'y')
+            destination = base / 'dest'
+            destination.mkdir()
+            precache.merge_tree(staged, destination)
+            self.assertFalse((destination / precache.FETCH_STAMP).exists())
+            self.assertTrue((destination / 'a.o').is_file())
+            self.assertTrue((destination / 'nested' / 'b.rlib').is_file())
 
 
 if __name__ == '__main__':
