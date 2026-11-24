@@ -119,6 +119,7 @@ mod set_name;
 mod set_name_parity;
 mod settings_getter;
 mod settings_getter_parity;
+mod showing_active;
 mod size_route;
 mod size_route_parity;
 mod source_duplicate;
