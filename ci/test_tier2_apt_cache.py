@@ -147,7 +147,7 @@ class AptCacheTest(unittest.TestCase):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
             self.assertIn("docker-clean", j if name.endswith("-build") else (WORKFLOW.parents[2]/"rust/tools/linux-validate/ci-runtime.py").read_text(), name)
-            self.assertIn("path: ../../_temp/apt-archives/*.deb", j, name)
+            self.assertIn("path: .tier2-apt-archives/*.deb", j, name)
             self.assertIn("hashFiles('rust/tools/linux-validate/apt-packages.txt')", j, name)
 
     def test_consumers_restore_the_master_producers_newest_entry(self):
@@ -175,7 +175,7 @@ class AptCacheTest(unittest.TestCase):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             with self.subTest(job=name):
                 paths = re.findall(r"^          path: (.+apt[^\n]*)$", job(name), re.M)
-                self.assertEqual(paths, ["../../_temp/apt-archives/*.deb"] * (2 if name.endswith("-build") else 1))
+                self.assertEqual(paths, [".tier2-apt-archives/*.deb"] * (2 if name.endswith("-build") else 1))
 
     def test_completed_archives_restore_outside_different_workspace_roots(self):
         # The pinned cache action stores workspace-relative entries and uses
@@ -200,10 +200,12 @@ class AptCacheTest(unittest.TestCase):
                     checkout = work / "obs-studio/obs-studio"
                     checkout.mkdir(parents=True)
                     subprocess.run(["tar", "-xf", str(archive), "-P", "-C", str(checkout)], check=True, capture_output=True)
-                    restored = work / "_temp/apt-archives"
+                    restored = checkout / ".tier2-apt-archives"
                     self.assertEqual((restored / "pinned.deb").read_bytes(), b"completed package")
                     self.assertFalse((restored / "partial").exists())
-                    self.assertEqual(list(checkout.iterdir()), [])
+                    # Nothing else may land in the checkout: the archive is the
+                    # only thing the pattern is allowed to carry (#5556).
+                    self.assertEqual([p.name for p in checkout.iterdir()], [".tier2-apt-archives"])
 
     def test_tier2_archive_directories_are_job_local(self):
         # Hosted jobs retain separate archives and cache extraction. The build
@@ -213,19 +215,19 @@ class AptCacheTest(unittest.TestCase):
                 j = job(name)
                 self.assertNotIn("/var/cache/apt/archives", j)
                 if name.endswith("-build"):
-                    self.assertIn('[ -n "$dir" ] || dir="$RUNNER_TEMP/apt-archives"', j)
+                    self.assertIn('[ -n "$dir" ] || dir="$GITHUB_WORKSPACE/.tier2-apt-archives"', j)
                     self.assertIn("if: steps.pcache.outputs.apt == ''", j)
                     directory = "$dir"
                 else:
-                    directory = "$RUNNER_TEMP/apt-archives"
+                    directory = "$GITHUB_WORKSPACE/.tier2-apt-archives"
                 self.assertIn(f'mkdir -p "{directory}"', j)
                 self.assertIn(f'chmod a+rwx "{directory}"', j)
                 self.assertLess(j.index(f'mkdir -p "{directory}"'),
                                 j.index("id: apt-cache"))
                 paths = re.findall(r"^\s+path: (.+apt[^\n]*)$", j, re.M)
-                self.assertEqual(paths, ["../../_temp/apt-archives/*.deb"] *
+                self.assertEqual(paths, [".tier2-apt-archives/*.deb"] *
                                  (2 if name.endswith("-build") else 1))
-        self.assertIn('--archives "$RUNNER_TEMP/apt-archives"', job("rust-linux-tier2"))
+        self.assertIn('--archives "$GITHUB_WORKSPACE/.tier2-apt-archives"', job("rust-linux-tier2"))
         self.assertIn('-o "Dir::Cache::archives=$TIER2_APT_ARCHIVES"',
                       job("rust-linux-tier2-build"))
 
@@ -450,8 +452,8 @@ esac
     def test_cache_is_restored_before_the_install(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
-            self.assertLess(j.index("path: ../../_temp/apt-archives/*.deb"), j.index("Install Tier 2 Packages" if name.endswith("-build") else "Test Tier 2 ("), name)
-            self.assertLess(j.index("actions/checkout@"), j.index("path: ../../_temp/apt-archives/*.deb"), name)
+            self.assertLess(j.index("path: .tier2-apt-archives/*.deb"), j.index("Install Tier 2 Packages" if name.endswith("-build") else "Test Tier 2 ("), name)
+            self.assertLess(j.index("actions/checkout@"), j.index("path: .tier2-apt-archives/*.deb"), name)
 
     def test_package_index_is_fetched_once_per_fresh_container(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):

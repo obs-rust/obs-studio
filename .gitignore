@@ -72,3 +72,8 @@ build-aux/flatpak-github-action-modified-*
 /ci-evidence-*/
 /ci-evidence/
 /docs/ci-evidence/
+
+# Tier 2 apt archive restored from the Actions cache: workspace-relative so
+# actions/cache accepts the pattern (it refuses ".."), ignored so a restored
+# archive never shows up as a source change (#5556).
+/.tier2-apt-archives/

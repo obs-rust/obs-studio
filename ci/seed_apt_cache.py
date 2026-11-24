@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
@@ -65,9 +66,26 @@ def bounded(command: list[str], limit: int) -> int:
         return 124
 
 
+def expected_count(packages: list[str]) -> int:
+    """How many .debs the archive needs: the resolved closure, not the list.
+
+    `apt-packages.txt` names 85 packages, which pull 353 in. Using the list
+    length as the completion test stopped the loop after the first attempt
+    regardless of how much of the closure had actually arrived (#5556).
+    """
+    command = ['apt-get', '-s', 'install', '-y', '--no-install-recommends', '--print-uris', *packages]
+    if os.geteuid() != 0:
+        command.insert(0, 'sudo')
+    try:
+        output = subprocess.run(command, capture_output=True, text=True, timeout=120).stdout
+    except subprocess.TimeoutExpired:
+        return 0
+    return len(re.findall(r"'(?:[^']*?/)?([^/'\s]+\.deb)'", output))
+
+
 def seed(directory: Path, packages: list[str], budget: int, attempts: int) -> int:
     started = time.monotonic()
-    expected = len(packages)
+    expected = expected_count(packages)
     best = archive_count(directory)
     print(f'archive starts at {best}/{expected} packages', flush=True)
     for attempt in range(1, attempts + 1):
@@ -82,8 +100,11 @@ def seed(directory: Path, packages: list[str], budget: int, attempts: int) -> in
                  '-o', f'Dir::Cache::archives={directory}', *packages],
                 min(INSTALL_BOUND, remaining))
         count = archive_count(directory)
-        print(f'attempt {attempt}: {count}/{expected} packages (+{count - best})', flush=True)
-        if count >= expected:
+        print(f'attempt {attempt}: {count}/{expected or "?"} packages (+{count - best})', flush=True)
+        # Only an exit we can justify: expected is the resolved closure, and 0
+        # means apt would not tell us. Without it, stop on no progress instead
+        # of assuming the first attempt finished (#5556).
+        if expected and count >= expected:
             return count
         if count == best:
             time.sleep(IDLE_SLEEP)
