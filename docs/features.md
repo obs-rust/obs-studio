@@ -403,6 +403,10 @@ not get a line.
   open with their saved settings. *Windows x64, macOS, Linux x86-64/X11*,
   pending merge. Issue [#5532](https://github.com/obs-rust/obs-studio/issues/5532),
   PR [#5540](https://github.com/obs-rust/obs-studio/pull/5540).
+  The supported packages use the Rust VST3 host and scanner. VST3 remains
+  optional for SDK-free builds and is disabled with the C libobs rollback
+  backend. With no installed VST3 effects, the filter may briefly show that
+  it is scanning. Issue [#5539](https://github.com/obs-rust/obs-studio/issues/5539).
 
 ### Scenes and UI
 
