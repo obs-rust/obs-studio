@@ -1,0 +1,4 @@
+obs_render_main_texture
+obs_render_main_texture_src_color_only
+obs_render_canvas_texture
+obs_render_canvas_texture_src_color_only
