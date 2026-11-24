@@ -112,6 +112,7 @@ mod push_queries_parity;
 mod push_to_enable;
 mod push_to_enable_parity;
 mod removed;
+mod removed_parity;
 mod render_route;
 mod render_route_parity;
 mod save_load;
