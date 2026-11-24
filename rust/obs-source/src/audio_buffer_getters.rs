@@ -46,8 +46,14 @@ pub fn timestamp(
     source: Option<&mut impl Timestamp>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) -> u64 {
-    let _ = (source.is_some(), log);
-    todo!("obs_source_get_audio_timestamp core (#5592)")
+    let Some(source) = source else {
+        log(TIMESTAMP_FUNCTION, SOURCE);
+        return 0;
+    };
+    source.lock();
+    let timestamp = source.audio_ts();
+    source.unlock();
+    timestamp
 }
 
 /// A NULL source logs once with [`MIX_FUNCTION`] and [`SOURCE`] (whatever
@@ -59,6 +65,17 @@ pub fn mix<S: OutputBuffers>(
     audio: Option<&mut Mix<S::Buffer>>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (source.is_some(), audio.is_some(), log);
-    todo!("obs_source_get_audio_mix core (#5592)")
+    let Some(source) = source else {
+        log(MIX_FUNCTION, SOURCE);
+        return;
+    };
+    let Some(audio) = audio else {
+        log(AUDIO, AUDIO);
+        return;
+    };
+    for (mix, output) in audio.iter_mut().enumerate() {
+        for (channel, data) in output.iter_mut().enumerate() {
+            *data = source.output_buf(mix, channel);
+        }
+    }
 }
