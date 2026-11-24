@@ -18,9 +18,14 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
+
+use core::cmp::Ordering;
+
+use crate::core_setup_rules::data_path_match;
 
 /// The list of extra data paths, as the original sees it.
 pub trait PathList {
@@ -39,24 +44,31 @@ pub trait PathList {
 }
 
 /// `dstr_cmp()`'s result for an entry and a path, both already mapped from
-/// NULL to empty: the sign `strcmp()` gives, as -1, 0 or 1.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
+/// NULL to empty: the sign `strcmp()` gives, as -1, 0 or 1. The terminator
+/// sorts below every byte, so a proper prefix sorts first, as slices do.
 pub fn compare(entry: &[u8], path: &[u8]) -> i32 {
-    let _ = (entry, path);
-    todo!()
+    match entry.cmp(path) {
+        Ordering::Less => -1,
+        Ordering::Equal => 0,
+        Ordering::Greater => 1,
+    }
 }
 
 /// `obs_add_data_path(path)`: a copy of `path` appended.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn add<L: PathList>(list: &mut L, path: L::Path) {
-    let _ = (list, path);
-    todo!()
+    list.push_copy(path);
 }
 
 /// `obs_remove_data_path(path)`: the first entry equal to `path` (its bytes,
 /// empty for NULL) erased, true; false when no entry is equal.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn remove<L: PathList>(list: &mut L, path: &[u8]) -> bool {
-    let _ = (list, path);
-    todo!()
+    let mut index = 0;
+    while index < list.count() {
+        if data_path_match(compare(list.entry(index), path)) {
+            list.erase(index);
+            return true;
+        }
+        index = index.wrapping_add(1);
+    }
+    false
 }

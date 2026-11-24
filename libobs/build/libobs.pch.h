@@ -43,6 +43,7 @@
 #include "callback/calldata.h"
 
 #include "obs-core-setup-rules.h"
+#include "obs-data-paths.h"
 
 #include "obs-host/com.h"
 #include "obs-host/graphics-thread.h"

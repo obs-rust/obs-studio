@@ -66,6 +66,7 @@ mod core_setup_rules_parity;
 mod core_texture_activity;
 mod core_texture_activity_parity;
 mod data_paths;
+mod data_paths_parity;
 mod display;
 mod display_layout;
 mod display_parity;
