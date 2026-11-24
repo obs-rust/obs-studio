@@ -202,6 +202,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      id-token: write
 
   flatpak-runtime-reuse:
     name: Recheck Flatpak Saved Profile 🧪

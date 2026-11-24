@@ -524,6 +524,7 @@ class TrustContract(unittest.TestCase):
                                         lambda m: repr(values.get(m[1], "false")), expression)
                     expression = expression.replace("needs.rust-tests-linux.result", repr("success"))
                     expression = expression.replace("needs.check-event.result", repr("success"))
+                    expression = expression.replace("needs.ci-mode.result", repr("success"))
                     expression = re.sub(r"inputs\.[\w_-]+", "False", expression)
                     expression = expression.replace("always()", "True").replace("cancelled()", "False")
                     expression = expression.replace("&&", " and ").replace("||", " or ")
