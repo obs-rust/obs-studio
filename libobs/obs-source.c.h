@@ -3318,16 +3318,6 @@ void obs_source_remove_active_child(obs_source_t *parent, obs_source_t *child)
 	}
 }
 
-bool obs_source_active(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_active") ? os_atomic_load_long(&source->activate_refs) != 0 : false;
-}
-
-bool obs_source_showing(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_showing") ? os_atomic_load_long(&source->show_refs) != 0 : false;
-}
-
 static inline void signal_flags_updated(obs_source_t *source)
 {
 	struct calldata data;

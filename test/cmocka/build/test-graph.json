@@ -18667,6 +18667,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_showing_active": {
+      "sources": [
+        "test/cmocka/test_source_showing_active.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_size_route_steps": {
       "sources": [
         "test/cmocka/test_source_size_route_steps.c",
@@ -29781,6 +29796,12 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_source_showing_active": {
+      "target": "test_source_showing_active",
+      "command": [
+        "${target}"
+      ]
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
