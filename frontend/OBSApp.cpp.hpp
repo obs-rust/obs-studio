@@ -575,7 +575,7 @@ bool OBSApp::InitGlobalConfig()
 	if (GetAppConfigPath(configRoot, sizeof(configRoot), nullptr) > 0) {
 		std::string userConfigFile{configRoot};
 		userConfigFile.append("/" OBS_CONFIG_DIRECTORY "/user.ini");
-		legacySettings.userConfigExists = std::filesystem::exists(std::filesystem::u8path(userConfigFile));
+		legacySettings.userConfigExists = SettingsPathExists(std::filesystem::u8path(userConfigFile));
 	}
 
 	if (ShouldMigratePre31Settings(legacySettings)) {
@@ -612,18 +612,14 @@ bool OBSApp::InitGlobalConfig()
 		std::filesystem::path currentUserPluginManagerLocation =
 			std::filesystem::u8path(config_get_string(appConfig, "Locations", "PluginManagerSettings"));
 
-		userConfigLocation = (std::filesystem::exists(currentUserConfigLocation))
-					     ? std::move(currentUserConfigLocation)
-					     : std::move(defaultUserConfigLocation);
-		userScenesLocation = (std::filesystem::exists(currentUserScenesLocation))
-					     ? std::move(currentUserScenesLocation)
-					     : std::move(defaultUserScenesLocation);
-		userProfilesLocation = (std::filesystem::exists(currentUserProfilesLocation))
-					       ? std::move(currentUserProfilesLocation)
-					       : std::move(defaultUserProfilesLocation);
-		userPluginManagerSettingsLocation = (std::filesystem::exists(currentUserPluginManagerLocation))
-							    ? std::move(currentUserPluginManagerLocation)
-							    : std::move(defaultPluginManagerLocation);
+		userConfigLocation = ChooseSettingsLocation(std::move(currentUserConfigLocation),
+							    std::move(defaultUserConfigLocation));
+		userScenesLocation = ChooseSettingsLocation(std::move(currentUserScenesLocation),
+							    std::move(defaultUserScenesLocation));
+		userProfilesLocation = ChooseSettingsLocation(std::move(currentUserProfilesLocation),
+							      std::move(defaultUserProfilesLocation));
+		userPluginManagerSettingsLocation = ChooseSettingsLocation(std::move(currentUserPluginManagerLocation),
+									   std::move(defaultPluginManagerLocation));
 	}
 
 	bool userConfigResult = InitUserConfig(userConfigLocation, lastVersion);

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
+#include <utility>
 
 #include <obs-config.h>
 
@@ -36,4 +38,18 @@ inline bool ShouldMigratePre31Settings(const LegacySettingsState &state)
 	 * still shows that OBS before 31.0 wrote it. Without user.ini, migrate;
 	 * with user.ini, MigrateGlobalSettings() would fail with an error box. */
 	return state.globalHasFirstRun && !state.userConfigExists;
+}
+
+/* The settings path checks of OBSApp::InitGlobalConfig: whether user.ini
+ * exists, and each [Locations] path of global.ini (Configuration,
+ * SceneCollections, Profiles, PluginManagerSettings), used when it exists,
+ * else its default. */
+inline bool SettingsPathExists(const std::filesystem::path &path)
+{
+	return std::filesystem::exists(path);
+}
+
+inline std::filesystem::path ChooseSettingsLocation(std::filesystem::path saved, std::filesystem::path fallback)
+{
+	return SettingsPathExists(saved) ? std::move(saved) : std::move(fallback);
 }
