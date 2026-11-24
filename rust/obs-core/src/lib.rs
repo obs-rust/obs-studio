@@ -144,6 +144,7 @@ pub mod core_frame_interval;
 pub mod core_initialized;
 pub mod core_setup_rules;
 pub mod core_texture_activity;
+pub mod data_paths;
 pub mod display;
 pub mod display_size;
 pub mod display_state;
