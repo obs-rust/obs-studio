@@ -99,7 +99,8 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
     config = work / "config"
     config.mkdir()
     with staged_probe(app, work) as executable:
-        command = [executable, module, resources, config, *GAIN_CLASSES, "--editor"]
+        # Match the app's core-module loader, which normalizes both paths for libobs.
+        command = [executable, module.as_posix(), resources.as_posix(), config, *GAIN_CLASSES, "--editor"]
         with subprocess.Popen(command, cwd=app.parent, env=env) as process:
             try:
                 result = process.wait(timeout=30)
