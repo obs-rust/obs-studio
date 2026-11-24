@@ -18580,6 +18580,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_removed": {
+      "sources": [
+        "test/cmocka/test_source_removed.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_render_route_steps": {
       "sources": [
         "test/cmocka/test_source_render_route_steps.c",
@@ -29793,6 +29808,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_removed": {
+      "target": "test_source_removed",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_render_route_steps": {
