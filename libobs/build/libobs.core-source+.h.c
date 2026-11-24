@@ -93,7 +93,7 @@
 #include "libobs/obs-source-push-hotkey-registration.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
 #include "libobs/obs-source-push-to-enable-fields.c.h"
-#include "libobs/obs-source-removed.c.h"
+#include "libobs/obs-source-removed-fields.c.h"
 #include "libobs/obs-source-save-load-fields.c.h"
 #include "libobs/obs-source-set-name-fields.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"

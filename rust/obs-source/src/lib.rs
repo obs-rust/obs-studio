@@ -241,6 +241,7 @@ pub mod push_delay;
 pub mod push_hotkeys;
 pub mod push_queries;
 pub mod push_to_enable;
+pub mod removed;
 pub mod render_route;
 pub mod save_load;
 pub mod set_name;

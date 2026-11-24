@@ -9,7 +9,7 @@
  * macOS linkers want every symbol an object names resolved, used or not, so
  * obs-tests-core needs a definition; libobs has the real ones.
  * obs_source_get_ref() and obs_source_release() (oracle/view.c),
- * obs_source_removed() (oracle/audio_callback_links.c),
+ * obs_source_removed() (the obs-source Rust export),
  * gs_texrender_create() and gs_texrender_destroy() (obs-graphics) and the
  * seam's graphics accessor (oracle/source_transition_settings.c) already
  * have theirs.
