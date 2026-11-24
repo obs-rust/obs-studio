@@ -28,9 +28,9 @@ bool same_id(const char *left, const char *right)
 
 class GainView final : public IPlugView {
 public:
-	tresult PLUGIN_API queryInterface(const TUID iid, void **object) override
+	tresult PLUGIN_API queryInterface(const TUID interfaceId, void **object) override
 	{
-		if (!same_id(iid, FUnknown_iid) && !same_id(iid, IPlugView_iid)) {
+		if (!same_id(interfaceId, FUnknown_iid) && !same_id(interfaceId, IPlugView_iid)) {
 			*object = nullptr;
 			return kNoInterface;
 		}
@@ -111,13 +111,14 @@ class Gain final : public IComponent, public IAudioProcessor, public IEditContro
 public:
 	explicit Gain(float initial_gain) : gain(initial_gain) {}
 
-	tresult PLUGIN_API queryInterface(const TUID iid, void **object) override
+	tresult PLUGIN_API queryInterface(const TUID interfaceId, void **object) override
 	{
-		if (same_id(iid, FUnknown_iid) || same_id(iid, IPluginBase_iid) || same_id(iid, IComponent_iid)) {
+		if (same_id(interfaceId, FUnknown_iid) || same_id(interfaceId, IPluginBase_iid) ||
+		    same_id(interfaceId, IComponent_iid)) {
 			*object = static_cast<IComponent *>(this);
-		} else if (same_id(iid, IAudioProcessor_iid)) {
+		} else if (same_id(interfaceId, IAudioProcessor_iid)) {
 			*object = static_cast<IAudioProcessor *>(this);
-		} else if (same_id(iid, IEditController_iid)) {
+		} else if (same_id(interfaceId, IEditController_iid)) {
 			*object = static_cast<IEditController *>(this);
 		} else {
 			*object = nullptr;
@@ -278,10 +279,10 @@ private:
 
 class Factory final : public IPluginFactory2 {
 public:
-	tresult PLUGIN_API queryInterface(const TUID iid, void **object) override
+	tresult PLUGIN_API queryInterface(const TUID interfaceId, void **object) override
 	{
-		if (same_id(iid, FUnknown_iid) || same_id(iid, IPluginFactory_iid) ||
-		    same_id(iid, IPluginFactory2_iid)) {
+		if (same_id(interfaceId, FUnknown_iid) || same_id(interfaceId, IPluginFactory_iid) ||
+		    same_id(interfaceId, IPluginFactory2_iid)) {
 			*object = static_cast<IPluginFactory2 *>(this);
 		} else {
 			*object = nullptr;
@@ -323,7 +324,7 @@ public:
 		return result;
 	}
 
-	tresult PLUGIN_API createInstance(FIDString cid, FIDString iid, void **object) override
+	tresult PLUGIN_API createInstance(FIDString cid, FIDString interfaceId, void **object) override
 	{
 		*object = nullptr;
 		const bool first = same_id(cid, gain_id);
@@ -334,7 +335,7 @@ public:
 		if (!instance) {
 			return kOutOfMemory;
 		}
-		const tresult result = instance->queryInterface(iid, object);
+		const tresult result = instance->queryInterface(interfaceId, object);
 		instance->release();
 		return result;
 	}
