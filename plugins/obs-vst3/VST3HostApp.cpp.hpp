@@ -32,11 +32,18 @@ VST3HostApp::~VST3HostApp() noexcept {FUNKNOWN_DTOR}
 
 tresult PLUGIN_API VST3HostApp::getName(String128 name)
 {
+#ifdef OBS_VST3_RUST_HOST
+	return vst3_rust_host_app_name(reinterpret_cast<uint16_t *>(name));
+#else
 	return StringConvert::convert("OBS VST3 Host", name) ? kResultTrue : kInternalError;
+#endif
 }
 
 tresult PLUGIN_API VST3HostApp::createInstance(TUID cid, TUID iid_, void **obj)
 {
+#ifdef OBS_VST3_RUST_HOST
+	return vst3_rust_host_app_create(cid, iid_, obj);
+#else
 	if (FUnknownPrivate::iidEqual(cid, IMessage::iid) && FUnknownPrivate::iidEqual(iid_, IMessage::iid)) {
 		*obj = new HostMessage;
 		return kResultTrue;
@@ -51,15 +58,20 @@ tresult PLUGIN_API VST3HostApp::createInstance(TUID cid, TUID iid_, void **obj)
 	}
 	*obj = nullptr;
 	return kResultFalse;
+#endif
 }
 
 tresult PLUGIN_API VST3HostApp::isPlugInterfaceSupported(const TUID iid_)
 {
+#ifdef OBS_VST3_RUST_HOST
+	return vst3_rust_host_app_supports(iid_);
+#else
 	auto uid = FUID::fromTUID(iid_);
 	if (std::find(FUIDArray_.begin(), FUIDArray_.end(), uid) != FUIDArray_.end()) {
 		return kResultTrue;
 	}
 	return kResultFalse;
+#endif
 }
 
 tresult PLUGIN_API VST3HostApp::queryInterface(const TUID iid_, void **obj)

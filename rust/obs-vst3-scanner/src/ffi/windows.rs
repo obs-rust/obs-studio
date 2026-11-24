@@ -1,10 +1,5 @@
-use crate::cache::Class;
-use crate::ffi::{self, GetFactory};
-use libloading::os::windows::Library;
 use std::ffi::c_int;
 use std::path::{Path, PathBuf};
-
-pub(crate) const WINDOWS_COM_ORDER: bool = true;
 
 #[link(name = "kernel32")]
 unsafe extern "system" {
@@ -51,28 +46,4 @@ pub(crate) fn is_candidate(path: &Path) -> bool {
 
 pub(crate) fn metadata_root(path: &Path) -> Option<&Path> {
     path.ancestors().nth(3)
-}
-
-pub(crate) fn enumerate(binary: &Path) -> Vec<Class> {
-    // SAFETY: The dedicated scanner deliberately loads installed VST3 binaries.
-    // The SDK declares GetPluginFactory with PLUGIN_API and the optional
-    // InitDll/ExitDll as PLUGIN_API. Factory references drop while the DLL is live.
-    unsafe {
-        let Ok(library) = Library::new(binary) else {
-            return Vec::new();
-        };
-        let Ok(factory) = library.get::<GetFactory>(b"GetPluginFactory\0") else {
-            return Vec::new();
-        };
-        if let Ok(init) = library.get::<unsafe extern "system" fn() -> bool>(b"InitDll\0")
-            && !init()
-        {
-            return Vec::new();
-        }
-        let classes = ffi::classes(factory(), binary);
-        if let Ok(exit) = library.get::<unsafe extern "system" fn() -> bool>(b"ExitDll\0") {
-            exit();
-        }
-        classes
-    }
 }

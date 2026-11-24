@@ -21,6 +21,7 @@ pub fn build(
     core: &Path,
     api: &Path,
     sdk: &Path,
+    host: &Path,
     scanner: &Path,
 ) -> Result<Artifacts, String> {
     platform::validate_vst3_target(&build.target)?;
@@ -68,9 +69,18 @@ pub fn build(
         discovery_host,
     ];
     library.include_dirs.push(root.join("frontend/api"));
+    let host = host
+        .canonicalize()
+        .map_err(|error| format!("VST3 host {}: {error}", host.display()))?;
+    library.dependencies.extend([
+        api.canonicalize().map_err(|e| e.to_string())?,
+        sdk_archive,
+        host,
+    ]);
     library
-        .dependencies
-        .extend([api.canonicalize().map_err(|e| e.to_string())?, sdk_archive]);
+        .definitions
+        .push(("OBS_VST3_RUST_HOST".into(), None));
+    library.link_options.push("-Wl,--exclude-libs,ALL".into());
     platform::configure_vst3(&mut library, sdk_include);
     add_package(&mut library, &build.target, "Qt6Widgets")?;
     crate::qt::moc(

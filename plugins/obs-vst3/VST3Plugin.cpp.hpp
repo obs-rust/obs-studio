@@ -17,14 +17,9 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.core.pch.hpp"
 
+#ifndef OBS_VST3_RUST_HOST
 using namespace Steinberg;
 using namespace Steinberg::Vst;
-
-namespace Steinberg {
-const FUID IPlugView::iid(0x5BC32507, 0xD06049EA, 0xA6151B52, 0x2B755B29);
-const FUID IPlugViewContentScaleSupport::iid(0x65ED9690, 0x8AC44525, 0x8AADEF7A, 0x72EA703F);
-const FUID IPlugFrame::iid(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
-} // namespace Steinberg
 
 VST3Plugin::VST3Plugin()
 {
@@ -47,19 +42,7 @@ VST3Plugin::~VST3Plugin()
 		vstPlug->setActive(false);
 	}
 
-	if (window) {
-		hideEditor();
-
-		if (view) {
-			view->removed();
-			view->setFrame(nullptr);
-		}
-
-		delete window;
-		window = nullptr;
-	}
-
-	view = nullptr;
+	destroyEditor();
 
 	processData.unprepare();
 
@@ -369,8 +352,8 @@ void VST3Plugin::postprocess()
 			QMetaObject::invokeMethod(
 				receiver,
 				[self] {
-					if (self) {
-						self->drainDspToGui();
+					if (auto *plugin = self.data()) {
+						plugin->drainDspToGui();
 					}
 				},
 				Qt::QueuedConnection);
@@ -435,108 +418,29 @@ Steinberg::Vst::Sample32 *VST3Plugin::auxChannelBuffer32(const BusDirection dire
 	}
 }
 
-/* hack ripped from Juce, to create the view even with badly coded VST3s... */
-void VST3Plugin::tryCreatingView()
+bool VST3Plugin::processBlock(float *const *main, size_t channels, const float *const *sidechain,
+			      size_t sidechainFrames, size_t frames)
 {
-	if (auto *raw = editController->createView(Vst::ViewType::kEditor)) {
-		view = IPtr<IPlugView>::adopt(raw);
-		return;
-	}
-
-	if (auto *raw = editController->createView(nullptr)) {
-		view = IPtr<IPlugView>::adopt(raw);
-		return;
-	}
-
-	IPlugView *raw = nullptr;
-	if (editController->queryInterface(IPlugView::iid, reinterpret_cast<void **>(&raw)) == kResultOk) {
-		view = IPtr<IPlugView>::adopt(raw);
-	}
-}
-
-bool VST3Plugin::createView()
-{
-	if (!editController) {
-		infovst3plugin("VST3 does not provide an edit controller");
-		return false;
-	}
-
-	if (view) {
-		debugvst3plugin("Editor view or window already exists");
-		return false;
-	} else {
-		tryCreatingView();
-	}
-
-	if (!view) {
-		infovst3plugin("EditController does not provide its own view");
-		return false;
-	}
-
-	const auto platformType = vst3_editor_platform_type(hostContext->backend());
-	if (!platformType || view->isPlatformTypeSupported(platformType) != Steinberg::kResultTrue) {
-		infovst3plugin("Editor view does not support this display backend");
-		return false;
-	}
-
-	return true;
-}
-
-void VST3Plugin::showEditor()
-{
-	if (!view) {
-		return;
-	}
-
-	if (!window) {
-		int width = 800;
-		int height = 600;
-		Steinberg::ViewRect rect;
-		if (view->getSize(&rect) == Steinberg::kResultOk) {
-			width = rect.getWidth();
-			height = rect.getHeight();
-		} else {
-			infovst3plugin("Failed to get size before attaching an IFrame. Not SDK compliant.");
-		}
-		std::string sourceName = obs_source_get_name(filterData->context);
-		std::string windowName = sourceName + ": VST3 Plugin - " + name;
-
-		window = new VST3EditorWindow(view, windowName);
-
-		if (window->create(width, height)) {
-			window->show();
-			editorVisible = true;
-		} else {
-			infovst3plugin("Failed to create editor window");
-			delete window;
-			window = nullptr;
-		}
-	} else {
-		window->show();
-		editorVisible = true;
-	}
-}
-
-void VST3Plugin::hideEditor()
-{
-	if (window && view) {
-		window->close();
-	}
-	editorVisible = false;
-}
-
-// This function is required because we don't really close the GUI window; we hide it. This then means we have to track
-// when a GUI has been closed by the user when clicking X. I decided to just hide because creating the GUI each time
-// the user wants to display it, was prone to crashes. This also simplified the coding.
-bool VST3Plugin::isEditorVisible()
-{
-	if (window) {
-		bool wasClosed = window->getClosedState();
-		if (wasClosed && editorVisible) {
-			editorVisible = false;
+	for (size_t ch = 0; ch < channels; ++ch) {
+		if (main[ch]) {
+			memcpy(channelBuffer32(kInput, static_cast<int>(ch)), main[ch], frames * sizeof(float));
 		}
 	}
-	return editorVisible;
+	for (int ch = 0; ch < sidechainNumberChannels; ++ch) {
+		if (auto *buffer = auxChannelBuffer32(kInput, ch)) {
+			memset(buffer, 0, frames * sizeof(float));
+			if (sidechain && sidechain[ch]) {
+				memcpy(buffer, sidechain[ch], std::min(sidechainFrames, frames) * sizeof(float));
+			}
+		}
+	}
+	const bool processed = process(static_cast<int>(frames));
+	for (size_t ch = 0; ch < channels; ++ch) {
+		if (main[ch]) {
+			memcpy(main[ch], channelBuffer32(kOutput, static_cast<int>(ch)), frames * sizeof(float));
+		}
+	}
+	return processed;
 }
 
 bool VST3Plugin::saveStates(std::vector<uint8_t> &compOut, std::vector<uint8_t> &ctrlOut) const
@@ -618,3 +522,4 @@ bool VST3Plugin::loadStates(const std::vector<uint8_t> &comp, const std::vector<
 	}
 	return true;
 }
+#endif

@@ -39,6 +39,7 @@ path = "tests/cli/main.rs"
 dunce = { workspace = true, default-features = true }
 pkg-config = { workspace = true, default-features = true }
 obs-build = { path = "../obs-build" }
+obs-vst3 = { path = "../obs-vst3" }
 obs-vst3-scanner = { path = "../obs-vst3-scanner" }
 libloading = { workspace = true, default-features = true }
 tempfile = { workspace = true, default-features = true }

@@ -58,6 +58,7 @@ using namespace Vst;
 class VST3EditorWindow;
 class VST3ComponentHolder;
 class VST3HostApp;
+struct Vst3RustHost;
 struct Vst3AudioData;
 
 class OBSPlugProvider : public PlugProvider {
@@ -107,7 +108,10 @@ public:
 	void postprocess();
 	[[nodiscard]] Sample32 *channelBuffer32(BusDirection direction, int which) const;
 	[[nodiscard]] Sample32 *auxChannelBuffer32(BusDirection direction, int ch) const;
+	bool processBlock(float *const *main, size_t channels, const float *const *sidechain, size_t sidechainFrames,
+			  size_t frames);
 
+	void destroyEditor();
 	void tryCreatingView();
 	bool createView();
 	void showEditor();
@@ -142,4 +146,7 @@ public:
 
 	std::string path;
 	std::string name;
+#ifdef OBS_VST3_RUST_HOST
+	Vst3RustHost *rustHost = nullptr;
+#endif
 };

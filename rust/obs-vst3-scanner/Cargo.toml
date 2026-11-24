@@ -20,8 +20,7 @@ test = false
 
 [dependencies]
 json5 = { workspace = true }
-libloading = { workspace = true, default-features = true }
+obs-vst3 = { path = "../obs-vst3" }
 serde = { workspace = true, default-features = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
 tempfile = { workspace = true, default-features = true }
-vst3 = { workspace = true }

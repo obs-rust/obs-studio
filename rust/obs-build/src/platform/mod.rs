@@ -82,6 +82,7 @@ pub fn application_rust_archives(
         core: directory.join("liblibobs_rust.a"),
         gpu_status: directory.join("libobs_frontend.a"),
         nvenc: directory.join("libobs_nvenc_plugin.a"),
+        vst3_host: directory.join("libobs_vst3.a"),
         vst3_scanner: directory.join("obs-vst3-scanner"),
     })
 }

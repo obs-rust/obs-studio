@@ -810,6 +810,7 @@ dependencies = [
  "obs-build",
  "obs-mcp",
  "obs-sys",
+ "obs-vst3",
  "obs-vst3-scanner",
  "pkg-config",
  "serde_json",
@@ -839,15 +840,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-vst3"
+version = "0.1.0"
+dependencies = [
+ "libloading",
+ "vst3",
+]
+
+[[package]]
+name = "obs-vst3-native"
+version = "0.1.0"
+dependencies = [
+ "obs-vst3",
+]
+
+[[package]]
 name = "obs-vst3-scanner"
 version = "0.1.0"
 dependencies = [
  "json5",
- "libloading",
+ "obs-vst3",
  "serde",
  "serde_json",
  "tempfile",
- "vst3",
 ]
 
 [[package]]
