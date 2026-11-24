@@ -11,10 +11,17 @@ run-name: Pool signal is actionable 🔌
 # routing, so a flap is a red scheduled run rather than a slow build nobody
 # attributes. Its own workflow, not a job in scheduled.yaml, so it can be
 # dispatched alone without starting the nightly build.
+# `push` is the reliable trigger, not the cron: every scheduled workflow in this
+# repository fires ~7 hours late (scheduled.yaml is `17 0 * * *` and has run at
+# 06:49-07:41 UTC every day this week; s3-cache-canary is `47 0 * * *` and runs
+# at 07:31-08:18). A canary that cannot run on time is not a canary, so it also
+# probes whenever master moves -- master pushes are frequent and immediate.
 on:
   workflow_dispatch:
   schedule:
     - cron: 13,43 * * * *
+  push:
+    branches: [master]
 permissions:
   contents: read
 concurrency:
