@@ -85,7 +85,7 @@ def expected_count(packages: list[str]) -> int:
 
 def seed(directory: Path, packages: list[str], budget: int, attempts: int) -> int:
     started = time.monotonic()
-    expected = expected_count(packages) or len(packages)
+    expected = expected_count(packages)
     best = archive_count(directory)
     print(f'archive starts at {best}/{expected} packages', flush=True)
     for attempt in range(1, attempts + 1):
@@ -100,8 +100,11 @@ def seed(directory: Path, packages: list[str], budget: int, attempts: int) -> in
                  '-o', f'Dir::Cache::archives={directory}', *packages],
                 min(INSTALL_BOUND, remaining))
         count = archive_count(directory)
-        print(f'attempt {attempt}: {count}/{expected} packages (+{count - best})', flush=True)
-        if count >= expected:
+        print(f'attempt {attempt}: {count}/{expected or "?"} packages (+{count - best})', flush=True)
+        # Only an exit we can justify: expected is the resolved closure, and 0
+        # means apt would not tell us. Without it, stop on no progress instead
+        # of assuming the first attempt finished (#5556).
+        if expected and count >= expected:
             return count
         if count == best:
             time.sleep(IDLE_SLEEP)
