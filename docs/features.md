@@ -110,6 +110,13 @@ not get a line.
   display was hidden and disabled all outputs. *All*, 2026-10-15. Issue
   [#815](https://github.com/obs-rust/obs-studio/issues/815), PR
   [#816](https://github.com/obs-rust/obs-studio/pull/816).
+- **An unreadable settings location no longer stops OBS from starting.** A
+  saved Configuration, Scene Collections, Profiles or Plugin Manager location
+  that can't be checked (permission denied, an I/O error on a mounted drive)
+  is logged as a warning and the default location is used, where before OBS
+  aborted at every start with an uncaught `filesystem_error` (upstream
+  obsproject/obs-studio#14253). *All*, 2026-11-24. Issue
+  [#5569](https://github.com/obs-rust/obs-studio/issues/5569).
 - **Refused output starts are logged.** A start of streaming, recording, the
   replay buffer or the virtual camera that is refused while outputs are
   disabled writes a log line, where before obs-websocket replied "success"
