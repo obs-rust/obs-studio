@@ -186,35 +186,125 @@ pub trait Host {
 }
 
 /// `obs_in_task_thread(type)`.
-pub fn in_task_thread<H: Host>(_host: &mut H, _task_type: i32) -> bool {
-    todo!("obs_in_task_thread")
+pub fn in_task_thread<H: Host>(host: &mut H, task_type: i32) -> bool {
+    match rules::task_thread(task_type) {
+        TASK_GRAPHICS => host.graphics_thread(),
+        TASK_AUDIO => host.audio_thread(),
+        TASK_UI => host.ui_thread(),
+        TASK_DESTROY => {
+            let queue = host.destruction();
+            host.inside(queue)
+        }
+        _ => false,
+    }
 }
 
-/// `task_wait_callback(info)`.
+/// `task_wait_callback(info)`: the task, if any, then the event signalled,
+/// or `set_done` without an event. Nothing of the waiter is read after the
+/// signal or the flag, since the waiting thread may then return.
 pub fn task_wait_callback<H: Host>(
-    _host: &mut H,
-    _task: Option<H::Task>,
-    _event: Option<H::Event>,
-    _set_done: impl FnOnce(),
+    host: &mut H,
+    task: Option<H::Task>,
+    event: Option<H::Event>,
+    set_done: impl FnOnce(),
 ) {
-    todo!("task_wait_callback")
+    if let Some(task) = task {
+        host.run(task);
+    }
+    match event {
+        Some(event) => host.event_signal(event),
+        None => set_done(),
+    }
 }
 
-/// `task_wait_for_callback(info)`.
-pub fn task_wait_for_callback<H: Host>(
-    _host: &mut H,
-    _event: Option<H::Event>,
-    _done: &AtomicBool,
-) {
-    todo!("task_wait_for_callback")
+/// `task_wait_for_callback(info)`: the event's wait, or, without one,
+/// polling `done` every millisecond and clearing it after.
+pub fn task_wait_for_callback<H: Host>(host: &mut H, event: Option<H::Event>, done: &AtomicBool) {
+    if let Some(event) = event {
+        host.event_wait(event);
+        return;
+    }
+    while !done.load(Ordering::SeqCst) {
+        host.sleep_ms(1);
+    }
+    done.store(false, Ordering::SeqCst);
+}
+
+/// The walk of [`rules::task_step`] as `obs_queue_task()` makes it: each
+/// value is read only on the step that asks for it.
+fn route<H: Host>(host: &mut H, task_type: i32, wait: bool) -> Step {
+    let mut step = rules::task_step(Step::Type, task_type, false);
+    if step == Step::UiHandler {
+        let value = host.has_ui_handler();
+        step = rules::task_step(step, task_type, value);
+    }
+    if step == Step::InThread {
+        let value = in_task_thread(host, task_type);
+        step = rules::task_step(step, task_type, value);
+    }
+    if step == Step::Wait {
+        step = rules::task_step(step, task_type, wait);
+    }
+    step
+}
+
+fn push<H: Host>(host: &mut H, queue: Locked, task: H::Task) {
+    host.lock(queue);
+    host.push(queue, task);
+    host.unlock(queue);
 }
 
 /// `obs_queue_task(type, task, param, wait)`.
-pub fn queue_task<H: Host>(_host: &mut H, _task_type: i32, _task: H::Task, _wait: bool) {
-    todo!("obs_queue_task")
+pub fn queue_task<H: Host>(host: &mut H, task_type: i32, task: H::Task, wait: bool) {
+    match route(host, task_type, wait) {
+        Step::UiCall => host.call_ui_handler(task, wait),
+        Step::UiNone => host.log(Log::UiNone),
+        Step::Run => host.run(task),
+        Step::WaitQueue => {
+            let (failed, event) = host.event_init(OS_EVENT_TYPE_MANUAL);
+            if failed {
+                host.log(Log::QueueEventFailed);
+            }
+            let waiter = Waiter::new(Some(task), event);
+            let wrapped = host.wait_task(&waiter);
+            queue_task(host, task_type, wrapped, false);
+            task_wait_for_callback(host, waiter.event, &waiter.done);
+            host.event_destroy(waiter.event);
+        }
+        Step::PushGraphics => push(host, Locked::Graphics, task),
+        Step::PushAudio => push(host, Locked::Audio, task),
+        Step::PushDestroy => {
+            let queue = host.destruction();
+            host.queue_destroy(queue, task);
+        }
+        Step::Unknown => host.log(Log::Unknown(task_type)),
+        Step::Drop | Step::Type | Step::UiHandler | Step::InThread | Step::Wait => {}
+    }
 }
 
 /// `obs_wait_for_destroy_queue()`.
-pub fn wait_for_destroy_queue<H: Host>(_host: &mut H) -> bool {
-    todo!("obs_wait_for_destroy_queue")
+pub fn wait_for_destroy_queue<H: Host>(host: &mut H) -> bool {
+    let wait_video = host.video_thread_initialized();
+    let wait_audio = host.has_audio();
+    if wait_video || wait_audio {
+        let (failed, event) = host.event_init(OS_EVENT_TYPE_AUTO);
+        if failed {
+            host.log(Log::DestroyEventFailed);
+        }
+        let waiter = Waiter::new(None, event);
+        if wait_video {
+            let wrapped = host.wait_task(&waiter);
+            queue_task(host, TASK_GRAPHICS, wrapped, false);
+            task_wait_for_callback(host, waiter.event, &waiter.done);
+        }
+        if wait_audio {
+            let wrapped = host.wait_task(&waiter);
+            queue_task(host, TASK_AUDIO, wrapped, false);
+            task_wait_for_callback(host, waiter.event, &waiter.done);
+        }
+        host.event_destroy(waiter.event);
+    }
+
+    let queue = host.destruction();
+    host.wait_destroy(queue)
 }

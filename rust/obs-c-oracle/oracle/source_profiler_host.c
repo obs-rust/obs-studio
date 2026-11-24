@@ -4,8 +4,10 @@
  * link and run with no graphics: NULL timers and ranges, no async flag.
  * obs_enter_graphics and obs_leave_graphics are Rust in obs-core (#5464):
  * over oracle/enter_leave_graphics.c's fixture core, whose graphics is NULL,
- * they do nothing, as these stand-ins did. The graphics task queue runs the
- * task at once. The timer and timer-range entry points the shim also calls (gs_timer_destroy, _begin,
+ * they do nothing, as these stand-ins did. obs_queue_task is Rust in obs-core
+ * (#5562): over oracle/task_queue.c's host core it runs a graphics task at
+ * once and hands a UI task to oracle_ui_task_handler_queue, as the stand-in
+ * here did. The timer and timer-range entry points the shim also calls (gs_timer_destroy, _begin,
  * _end, _get_data and their gs_timer_range_* twins) are Rust in
  * obs-graphics, which every binary that links this shim links too; with no
  * graphics context they do nothing and return false, so they are not
@@ -16,18 +18,6 @@
  * renamed stand-ins, not these. */
 
 #include "obs-internal.h"
-
-void oracle_ui_task_handler_queue(obs_task_t task, void *param, bool wait);
-
-void obs_queue_task(enum obs_task_type type, obs_task_t task, void *param, bool wait)
-{
-	if (type == OBS_TASK_UI) {
-		oracle_ui_task_handler_queue(task, param, wait);
-		return;
-	}
-	UNUSED_PARAMETER(wait);
-	task(param);
-}
 
 uint64_t obs_source_get_last_async_ts(const obs_source_t *source)
 {

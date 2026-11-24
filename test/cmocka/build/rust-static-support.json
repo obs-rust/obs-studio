@@ -54,6 +54,7 @@
     "test/cmocka/source-settings-getter-link-support.c",
     "test/cmocka/source-weak-control-link-support.c",
     "test/cmocka/source-weak-refs-link-support.c",
+    "test/cmocka/task-queue-link-support.c",
     "test/cmocka/texture-creators-fields-link-support.c",
     "test/cmocka/video-active-link-support.c",
     "test/cmocka/video-info-query-link-support.c",

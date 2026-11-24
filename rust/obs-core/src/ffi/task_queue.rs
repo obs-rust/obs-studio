@@ -440,3 +440,32 @@ pub unsafe fn queue_task_with<C: Calls>(
 pub unsafe fn wait_for_destroy_queue_with<C: Calls>() -> bool {
     tq::wait_for_destroy_queue(&mut Seam::<C>::new())
 }
+
+/// # Safety
+/// As [`in_task_thread_with`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_in_task_thread(task_type: c_int) -> bool {
+    // SAFETY: the caller's contract is in_task_thread_with's.
+    unsafe { in_task_thread_with::<Libobs>(task_type) }
+}
+
+/// # Safety
+/// As [`queue_task_with`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_queue_task(
+    task_type: c_int,
+    task: ObsTask,
+    param: *mut c_void,
+    wait: bool,
+) {
+    // SAFETY: the caller's contract is queue_task_with's.
+    unsafe { queue_task_with::<Libobs>(task_type, task, param, wait) }
+}
+
+/// # Safety
+/// As [`wait_for_destroy_queue_with`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_wait_for_destroy_queue() -> bool {
+    // SAFETY: the caller's contract is wait_for_destroy_queue_with's.
+    unsafe { wait_for_destroy_queue_with::<Libobs>() }
+}
