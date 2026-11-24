@@ -43,7 +43,7 @@ target_link_libraries(obs-vst3 PRIVATE OBS::frontend-api obs-vst3-discovery Qt::
 if(OBS_LIBOBS_BACKEND STREQUAL HYBRID)
   corrosion_import_crate(
     MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
-    CRATES obs-vst3
+    CRATES obs-vst3-native
     CRATE_TYPES staticlib
     PROFILE release
   )

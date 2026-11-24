@@ -17,6 +17,7 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.core.pch.hpp"
 
+#ifndef OBS_VST3_RUST_HOST
 using namespace Steinberg;
 using namespace Vst;
 
@@ -117,3 +118,4 @@ tresult PLUGIN_API VST3ComponentHolder::queryInterface(const TUID _iid, void **o
 	*obj = nullptr;
 	return kNoInterface;
 }
+#endif

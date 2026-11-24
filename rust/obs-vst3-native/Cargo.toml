@@ -1,0 +1,19 @@
+[package]
+name = "obs-vst3-native"
+version = "0.1.0"
+description = "Native archive for the OBS VST3 host"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "obs_vst3"
+test = false
+crate-type = ["staticlib"]
+
+[dependencies]
+obs-vst3-core = { package = "obs-vst3", path = "../obs-vst3" }

@@ -558,6 +558,7 @@ class QtScopeTest(unittest.TestCase):
         for path in (
             "plugins/obs-vst3/VST3Plugin.cpp.hpp",
             "rust/obs-vst3/src/ffi/engine.rs",
+            "rust/obs-vst3-native/src/lib.rs",
             "rust/obs-vst3-scanner-native/src/lib.rs",
             "test/cmocka/test_vst3_host.c",
             "test/cmocka/tests.d/test_vst3_host.cmake",

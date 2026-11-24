@@ -1,5 +1,6 @@
 #include "plugins/obs-vst3/build/obs-vst3.core.pch.hpp"
 
+#ifdef OBS_VST3_RUST_HOST
 VST3Plugin::VST3Plugin() : hostContext(getHostApp())
 {
 	vst3_prepare_plugin_environment();
@@ -102,3 +103,4 @@ bool VST3Plugin::loadStates(const std::vector<uint8_t> &component, const std::ve
 	return vst3_rust_host_restore(rustHost, component.data(), component.size(), controller.data(),
 				      controller.size());
 }
+#endif

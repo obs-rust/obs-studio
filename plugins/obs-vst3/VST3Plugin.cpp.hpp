@@ -17,6 +17,7 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.core.pch.hpp"
 
+#ifndef OBS_VST3_RUST_HOST
 using namespace Steinberg;
 using namespace Steinberg::Vst;
 
@@ -521,3 +522,4 @@ bool VST3Plugin::loadStates(const std::vector<uint8_t> &comp, const std::vector<
 	}
 	return true;
 }
+#endif
