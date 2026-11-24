@@ -43,6 +43,9 @@ using AtomicSharedPtr =
 
 class VST3HostApp;
 class VST3Plugin;
+struct AudioState;
+struct CaptureState;
+struct RouteState;
 
 VST3HostApp *getHostApp() noexcept;
 
@@ -63,6 +66,10 @@ struct Vst3AudioData {
 	uint64_t lastTimestamp = 0;
 	uint64_t latency = 0;
 
+#ifdef OBS_VST3_RUST_HOST
+	AudioState *rustAudio = nullptr;
+	CaptureState *rustCapture = nullptr;
+#else
 	struct deque infoBuffer;
 	struct deque inputBuffers[kMaxPreprocessorChannels];
 	struct deque outputBuffers[kMaxPreprocessorChannels];
@@ -71,8 +78,9 @@ struct Vst3AudioData {
 	float *copyBuffers[kMaxPreprocessorChannels];
 	float *sidechainCopyBuffers[kMaxPreprocessorChannels];
 
-	struct obs_audio_data outputAudio;
 	DARRAY(float) outputData;
+#endif
+	struct obs_audio_data outputAudio{};
 
 	std::atomic<bool> bypass = true;
 	std::atomic<bool> sidechainEnabled = false;
@@ -80,9 +88,13 @@ struct Vst3AudioData {
 	std::atomic_flag initInProgress = ATOMIC_FLAG_INIT;
 
 	std::atomic<bool> hasSidechain = false;
+#ifdef OBS_VST3_RUST_HOST
+	RouteState *rustRoute = nullptr;
+#else
 	obs_weak_source_t *weakSidechain = nullptr;
 	std::string sidechainName;
 	uint64_t sidechainCheckTime = 0;
+#endif
 	AtomicSharedPtr<audio_resampler> sidechainResampler;
 	size_t sidechainChannels = 0;
 	uint64_t sidechainLastTimestamp = 0;

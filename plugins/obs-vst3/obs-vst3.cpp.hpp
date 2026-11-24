@@ -90,6 +90,9 @@ void unloadHost()
 }
 // -------------------- initial scanning ------------------
 VST3Scanner *list;
+#ifdef OBS_VST3_RUST_HOST
+static AtomicSharedPtr<CatalogState> rustCatalog;
+#endif
 std::atomic<bool> vst3ScanDone;
 static std::thread vst3ScanThread;
 os_process_pipe_t *vst3ScanPipe;
@@ -162,7 +165,17 @@ static bool vst3JSONLoad()
 	obs_data_array_release(jsonPluginList);
 	obs_data_release(root);
 
+#ifdef OBS_VST3_RUST_HOST
+	auto *builder = vst3_filter_catalog_begin();
+	for (const auto &plugin : list->pluginList) {
+		vst3_filter_catalog_add(builder, plugin.id.c_str(), plugin.path.c_str(), plugin.name.c_str(),
+					plugin.pluginName.c_str(), plugin.isFX);
+	}
+	std::shared_ptr<CatalogState> catalog(vst3_filter_catalog_finish(builder), vst3_filter_catalog_destroy);
+	std::atomic_store(&rustCatalog, catalog);
+#else
 	list->sort();
+#endif
 
 	return true;
 }
@@ -273,8 +286,37 @@ void freeVst3List()
 	}
 	delete list;
 	list = nullptr;
+#ifdef OBS_VST3_RUST_HOST
+	std::atomic_store(&rustCatalog, std::shared_ptr<CatalogState>{});
+#endif
 }
 
+#ifdef OBS_VST3_RUST_HOST
+using FilterStatePtr = std::unique_ptr<FilterState, decltype(&vst3_filter_state_destroy)>;
+
+std::string toHex(const std::vector<uint8_t> &data)
+{
+	const FilterStatePtr encoded(vst3_filter_state_transcode(data.data(), data.size(), true),
+				     vst3_filter_state_destroy);
+	size_t size = 0;
+	const auto *bytes = vst3_filter_state_bytes(encoded.get(), &size);
+	return size ? std::string(reinterpret_cast<const char *>(bytes), size) : std::string{};
+}
+
+std::vector<uint8_t> fromHex(const std::string &hex)
+{
+	const FilterStatePtr decoded(vst3_filter_state_transcode(reinterpret_cast<const uint8_t *>(hex.data()),
+								 hex.size(), false),
+				     vst3_filter_state_destroy);
+	if (!decoded) {
+		blog(LOG_INFO, "Corrupted VST3 settings.");
+		return {};
+	}
+	size_t size = 0;
+	const auto *bytes = vst3_filter_state_bytes(decoded.get(), &size);
+	return size ? std::vector<uint8_t>(bytes, bytes + size) : std::vector<uint8_t>{};
+}
+#else
 static bool isValidHex(const std::string &hex)
 {
 	if (hex.empty()) {
@@ -317,6 +359,8 @@ std::vector<uint8_t> fromHex(const std::string &hex)
 
 	return data;
 }
+
+#endif
 
 Steinberg::Vst::SpeakerArrangement obsToVst3SpeakerArrangement(speaker_layout layout)
 {
@@ -365,6 +409,7 @@ static inline enum speaker_layout convertSpeakerLayout(uint8_t channels)
 	}
 }
 
+#ifndef OBS_VST3_RUST_HOST
 //--------------------- deque management --------------------------
 
 static inline void clearDeque(struct deque *buf)
@@ -390,6 +435,8 @@ static void resetSidechainData(struct Vst3AudioData *filterData)
 	}
 }
 
+#endif
+
 // -------------------- main functions -------------------
 
 static const char *vst3Name(void *unused)
@@ -400,12 +447,36 @@ static const char *vst3Name(void *unused)
 
 static void sidechainCapture(void *data, obs_source_t *source, const struct audio_data *audio, bool muted);
 
+#ifdef OBS_VST3_RUST_HOST
+static void detachSidechain(Vst3AudioData *filterData, obs_weak_source_t *weak)
+{
+	if (!weak) {
+		return;
+	}
+	obs_source_t *source = obs_weak_source_get_source(weak);
+	if (source) {
+		obs_source_remove_audio_capture_callback(source, sidechainCapture, filterData);
+		obs_source_release(source);
+	}
+	obs_weak_source_release(weak);
+}
+#endif
+
 static void vst3Destroy(void *data)
 {
 	auto *filterData = static_cast<struct Vst3AudioData *>(data);
 	filterData->bypass.store(true, std::memory_order_relaxed);
 	filterData->sidechainEnabled.store(false, std::memory_order_relaxed);
 
+#ifdef OBS_VST3_RUST_HOST
+	obs_weak_source_t *weak;
+	{
+		std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
+		weak = static_cast<obs_weak_source_t *>(vst3_filter_route_detach(filterData->rustRoute));
+	}
+	detachSidechain(filterData, weak);
+	vst3_filter_route_destroy(filterData->rustRoute);
+#else
 	if (filterData->weakSidechain) {
 		obs_source_t *sidechain = obs_weak_source_get_source(filterData->weakSidechain);
 		if (sidechain) {
@@ -414,10 +485,15 @@ static void vst3Destroy(void *data)
 		}
 		obs_weak_source_release(filterData->weakSidechain);
 	}
+#endif
 
 	std::atomic_store(&filterData->sidechainResampler, std::shared_ptr<audio_resampler>{});
 	filterData->sidechainLastTimestamp = 0;
 
+#ifdef OBS_VST3_RUST_HOST
+	vst3_filter_capture_destroy(filterData->rustCapture);
+	vst3_filter_audio_destroy(filterData->rustAudio);
+#else
 	for (size_t i = 0; i < filterData->channels; ++i) {
 		deque_free(&filterData->inputBuffers[i]);
 		deque_free(&filterData->outputBuffers[i]);
@@ -430,6 +506,7 @@ static void vst3Destroy(void *data)
 	bfree(filterData->sidechainCopyBuffers[0]);
 	deque_free(&filterData->infoBuffer);
 	da_free(filterData->outputData);
+#endif
 
 	auto plugin = std::atomic_exchange(&filterData->plugin, std::shared_ptr<VST3Plugin>{});
 
@@ -443,6 +520,20 @@ static void vst3Destroy(void *data)
 
 static void teardownSidechain(Vst3AudioData *filterData, obs_data *settings)
 {
+#ifdef OBS_VST3_RUST_HOST
+	obs_weak_source_t *weak;
+	{
+		std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
+		weak = static_cast<obs_weak_source_t *>(vst3_filter_route_detach(filterData->rustRoute));
+		if (!weak) {
+			return;
+		}
+		filterData->sidechainEnabled.store(false, std::memory_order_relaxed);
+		vst3_filter_route_select(filterData->rustRoute, "");
+		obs_data_set_string(settings, S_SIDECHAIN_SOURCE, nullptr);
+	}
+	detachSidechain(filterData, weak);
+#else
 	if (!filterData->weakSidechain || filterData->sidechainName.empty()) {
 		return;
 	}
@@ -470,8 +561,13 @@ static void teardownSidechain(Vst3AudioData *filterData, obs_data *settings)
 
 		obs_weak_source_release(oldWeak);
 	}
+#endif
 
+#ifdef OBS_VST3_RUST_HOST
+	vst3_filter_capture_reset_timestamp(filterData->rustCapture);
+#else
 	filterData->sidechainLastTimestamp = 0;
+#endif
 	std::atomic_store(&filterData->sidechainResampler, std::shared_ptr<audio_resampler>{});
 }
 
@@ -490,9 +586,7 @@ static void destroyCurrentVST3Plugin(Vst3AudioData *filterData, obs_data *settin
 	plugin->deactivateComponent();
 	filterData->noview.store(true, std::memory_order_relaxed);
 
-	if (filterData->weakSidechain) {
-		teardownSidechain(filterData, settings);
-	}
+	teardownSidechain(filterData, settings);
 }
 
 static bool createVST3Plugin(Vst3AudioData *filterData)
@@ -570,6 +664,16 @@ static void sidechainSwap(Vst3AudioData *filterData, obs_data *settings)
 
 	filterData->sidechainEnabled.store(false, std::memory_order_relaxed);
 
+#ifdef OBS_VST3_RUST_HOST
+	const char *name = obs_data_get_string(settings, S_SIDECHAIN_SOURCE);
+	obs_weak_source_t *old;
+	{
+		std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
+		old = static_cast<obs_weak_source_t *>(vst3_filter_route_select(filterData->rustRoute, name));
+	}
+	filterData->sidechainEnabled.store(true, std::memory_order_relaxed);
+	detachSidechain(filterData, old);
+#else
 	std::string sidechainName(obs_data_get_string(settings, S_SIDECHAIN_SOURCE));
 	bool validSidechain = sidechainName != "none" && !sidechainName.empty();
 	obs_weak_source_t *oldWeakSidechain = nullptr;
@@ -608,6 +712,7 @@ static void sidechainSwap(Vst3AudioData *filterData, obs_data *settings)
 
 		obs_weak_source_release(oldWeakSidechain);
 	}
+#endif
 }
 
 static void clear_vst3_state(obs_data_t *settings)
@@ -630,7 +735,20 @@ static void vst3Update(void *data, obs_data_t *settings)
 
 	std::string vst3PluginId(obs_data_get_string(settings, S_PLUGIN));
 
+#ifdef OBS_VST3_RUST_HOST
+	auto plugin = std::atomic_load(&filterData->plugin);
+	const auto catalog = std::atomic_load(&rustCatalog);
+	std::pair<std::string, std::string> location;
+	const uint8_t change = vst3_filter_class_change(
+		catalog.get(), filterData->vst3Id.c_str(), !!plugin, vst3PluginId.c_str(),
+		obs_data_get_string(settings, "vst3_path"), obs_data_get_string(settings, "vst3_name"), &location,
+		[](void *context, const char *path, const char *name) {
+			*static_cast<decltype(location) *>(context) = {path, name};
+		});
+	if (change == ClearClass) {
+#else
 	if (vst3PluginId.empty()) {
+#endif
 		filterData->bypass.store(true, std::memory_order_relaxed);
 		filterData->vst3Id.clear();
 		filterData->vst3Path.clear();
@@ -642,9 +760,14 @@ static void vst3Update(void *data, obs_data_t *settings)
 		return;
 	}
 
+#ifdef OBS_VST3_RUST_HOST
+	const bool initialLoad = change == InitialClass;
+	const bool isSwap = change == InitialClass || change == SwapClass;
+#else
 	auto plugin = std::atomic_load(&filterData->plugin);
 	bool initialLoad = filterData->vst3Id.empty() && !plugin;
 	bool isSwap = (filterData->vst3Id != vst3PluginId);
+#endif
 
 	if (isSwap) {
 		if (!initialLoad) {
@@ -655,6 +778,10 @@ static void vst3Update(void *data, obs_data_t *settings)
 		filterData->vst3Id = vst3PluginId;
 		filterData->lastInitFailed = false;
 
+#ifdef OBS_VST3_RUST_HOST
+		filterData->vst3Path = std::move(location.first);
+		filterData->vst3Name = std::move(location.second);
+#else
 		if (vst3ScanDone.load(std::memory_order_acquire) && !list->getPathById(vst3PluginId).empty()) {
 			filterData->vst3Path = list->getPathById(vst3PluginId);
 			filterData->vst3Name = list->getNameById(vst3PluginId);
@@ -662,6 +789,7 @@ static void vst3Update(void *data, obs_data_t *settings)
 			filterData->vst3Path = obs_data_get_string(settings, "vst3_path");
 			filterData->vst3Name = obs_data_get_string(settings, "vst3_name");
 		}
+#endif
 
 		infovst3("filter applied: %s, path: %s", filterData->vst3Name.c_str(), filterData->vst3Path.c_str());
 
@@ -722,7 +850,6 @@ static void *vst3Create(obs_data_t *settings, obs_source_t *filter)
 	filterData->channels = channels;
 	filterData->sampleRate = audio_output_get_sample_rate(audio);
 	filterData->frames = static_cast<size_t>(filterData->sampleRate) * kBufferSizeMilliseconds / 1000;
-	const size_t frames = filterData->frames;
 	filterData->layout = aoi->speakers;
 	filterData->hasSidechain.store(false, std::memory_order_relaxed);
 	filterData->sidechainEnabled.store(false, std::memory_order_relaxed);
@@ -730,6 +857,16 @@ static void *vst3Create(obs_data_t *settings, obs_source_t *filter)
 
 	filterData->latency = kBufferSizeMilliseconds * 1000000000LL / 1000;
 
+#ifdef OBS_VST3_RUST_HOST
+	filterData->rustAudio = vst3_filter_audio_create(channels, filterData->frames, filterData->latency);
+	if (!filterData->rustAudio) {
+		delete filterData;
+		return nullptr;
+	}
+	filterData->rustCapture = vst3_filter_capture_create(filterData->rustAudio);
+	filterData->rustRoute = vst3_filter_route_create();
+#else
+	const size_t frames = filterData->frames;
 	filterData->copyBuffers[0] = static_cast<float *>(bmalloc(frames * channels * sizeof(float)));
 	filterData->sidechainCopyBuffers[0] = static_cast<float *>(bmalloc(frames * channels * sizeof(float)));
 
@@ -743,6 +880,7 @@ static void *vst3Create(obs_data_t *settings, obs_source_t *filter)
 		deque_reserve(&filterData->outputBuffers[i], 8 * frames * sizeof(float));
 		deque_reserve(&filterData->sidechainInputBuffers[i], 8 * frames * sizeof(float));
 	}
+#endif
 
 	filterData->bypass.store(true, std::memory_order_relaxed);
 
@@ -779,6 +917,96 @@ void vst3Save(void *data, obs_data_t *settings)
 }
 
 // -------------- audio processing (incl. sidechain) ---------------
+#ifdef OBS_VST3_RUST_HOST
+struct RustFilterBlock {
+	Vst3AudioData *filter;
+	VST3Plugin *plugin;
+};
+
+static void processRustBlock(void *opaque, float *const *main, const float *const *aux, size_t channels, size_t frames)
+{
+	const auto &block = *static_cast<RustFilterBlock *>(opaque);
+	const size_t auxChannels = block.plugin->sidechainNumberChannels;
+	const float *sidechain[MAX_AV_PLANES] = {};
+	size_t sidechainFrames = 0;
+
+	if (aux && (auxChannels == 1 || auxChannels == 2)) {
+		auto resampler = std::atomic_load(&block.filter->sidechainResampler);
+		if (channels != auxChannels && resampler) {
+			const uint8_t *input[MAX_AV_PLANES] = {};
+			for (size_t channel = 0; channel < channels; ++channel) {
+				input[channel] = reinterpret_cast<const uint8_t *>(aux[channel]);
+			}
+			uint8_t *resampled[2] = {};
+			uint32_t outputFrames;
+			uint64_t offset;
+			if (audio_resampler_resample(resampler.get(), resampled, &outputFrames, &offset, input,
+						     static_cast<uint32_t>(frames))) {
+				sidechainFrames = outputFrames;
+				for (size_t channel = 0; channel < auxChannels; ++channel) {
+					sidechain[channel] = reinterpret_cast<const float *>(resampled[channel]);
+				}
+			}
+		} else {
+			sidechainFrames = frames;
+			for (size_t channel = 0; channel < std::min(auxChannels, channels); ++channel) {
+				sidechain[channel] = aux[channel];
+			}
+		}
+	}
+
+	block.plugin->processBlock(main, channels, sidechain, sidechainFrames, frames);
+}
+
+static struct obs_audio_data *vst3FilterAudio(void *data, struct obs_audio_data *audio)
+{
+	auto *filter = static_cast<Vst3AudioData *>(data);
+	auto plugin = std::atomic_load(&filter->plugin);
+	if (filter->bypass.load(std::memory_order_relaxed) || !plugin || !plugin->numEnabledOutputAudioBuses) {
+		return audio;
+	}
+
+	const float *planes[MAX_AV_PLANES] = {};
+	float *output[MAX_AV_PLANES] = {};
+	for (size_t channel = 0; channel < filter->channels; ++channel) {
+		planes[channel] = reinterpret_cast<const float *>(audio->data[channel]);
+	}
+	const bool auxEnabled = filter->hasSidechain.load(std::memory_order_relaxed) &&
+				filter->sidechainEnabled.load(std::memory_order_relaxed);
+	RustFilterBlock block{filter, plugin.get()};
+	if (!vst3_filter_audio_process(filter->rustAudio, planes, audio->frames, audio->timestamp, auxEnabled, &block,
+				       processRustBlock, output, &filter->outputAudio.frames,
+				       &filter->outputAudio.timestamp)) {
+		return nullptr;
+	}
+
+	for (size_t channel = 0; channel < filter->channels; ++channel) {
+		filter->outputAudio.data[channel] = reinterpret_cast<uint8_t *>(output[channel]);
+	}
+	filter->runningSampleCount += filter->outputAudio.frames;
+	filter->systemTime = os_gettime_ns();
+	return &filter->outputAudio;
+}
+
+static void sidechainCapture(void *data, obs_source_t *source, const struct audio_data *audio, bool muted)
+{
+	UNUSED_PARAMETER(source);
+	UNUSED_PARAMETER(muted);
+	auto *filter = static_cast<Vst3AudioData *>(data);
+	auto plugin = std::atomic_load(&filter->plugin);
+	if (filter->bypass.load(std::memory_order_relaxed) || !plugin ||
+	    !filter->sidechainEnabled.load(std::memory_order_relaxed) ||
+	    (plugin->sidechainNumberChannels != 1 && plugin->sidechainNumberChannels != 2)) {
+		return;
+	}
+
+	const float *planes[MAX_AV_PLANES] = {};
+	for (size_t channel = 0; channel < filter->channels; ++channel) {
+		planes[channel] = reinterpret_cast<const float *>(audio->data[channel]);
+	}
+	vst3_filter_capture_push(filter->rustCapture, planes, audio->frames, audio->timestamp);
+}
+#else
 static inline void processBlock(struct Vst3AudioData *filterData, const std::shared_ptr<VST3Plugin> &plugin)
 {
 	const int numberChannels = static_cast<int>(filterData->channels);
@@ -960,6 +1188,8 @@ static void sidechainCapture(void *data, obs_source_t *source, const struct audi
 	}
 }
 
+#endif
+
 // written after obs-filters/compressor-filter.c for the sidechain logic
 static void vst3Tick(void *data, float seconds)
 {
@@ -984,6 +1214,21 @@ static void vst3Tick(void *data, float seconds)
 		return;
 	}
 
+#ifdef OBS_VST3_RUST_HOST
+	RouteLookup *lookup;
+	{
+		std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
+		lookup = vst3_filter_route_lookup(filterData->rustRoute, os_gettime_ns());
+	}
+	if (lookup) {
+		obs_source_t *sidechain = obs_get_source_by_name(vst3_filter_route_name(lookup));
+		obs_weak_source_t *weak = sidechain ? obs_source_get_weak_source(sidechain) : nullptr;
+		if (weak) {
+			std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
+			if (std::atomic_load(&filterData->plugin) == plugin &&
+			    vst3_filter_route_attach(filterData->rustRoute, lookup, weak)) {
+				weak = nullptr;
+#else
 	std::string newName = {};
 	{
 		std::lock_guard<std::mutex> lock(filterData->sidechainUpdateMutex);
@@ -1008,40 +1253,51 @@ static void vst3Tick(void *data, float seconds)
 			}
 		}
 		if (sidechain) {
-			// downmix or upmix if channel count is mismatched
-			bool needsResampling = filterData->channels != static_cast<size_t>(sidechainChannels);
-			if (needsResampling) {
-				struct resample_info src = {};
-				struct resample_info dst = {};
-				src.samples_per_sec = filterData->sampleRate;
-				src.format = AUDIO_FORMAT_FLOAT_PLANAR;
-				src.speakers = convertSpeakerLayout(static_cast<uint8_t>(filterData->channels));
+#endif
+				// downmix or upmix if channel count is mismatched
+				bool needsResampling = filterData->channels != static_cast<size_t>(sidechainChannels);
+				if (needsResampling) {
+					struct resample_info src = {};
+					struct resample_info dst = {};
+					src.samples_per_sec = filterData->sampleRate;
+					src.format = AUDIO_FORMAT_FLOAT_PLANAR;
+					src.speakers = convertSpeakerLayout(static_cast<uint8_t>(filterData->channels));
 
-				dst.samples_per_sec = filterData->sampleRate;
-				dst.format = AUDIO_FORMAT_FLOAT_PLANAR;
-				dst.speakers = convertSpeakerLayout(static_cast<uint8_t>(sidechainChannels));
+					dst.samples_per_sec = filterData->sampleRate;
+					dst.format = AUDIO_FORMAT_FLOAT_PLANAR;
+					dst.speakers = convertSpeakerLayout(static_cast<uint8_t>(sidechainChannels));
 
-				audio_resampler *rawResampler = audio_resampler_create(&dst, &src);
-				if (!rawResampler) {
+					audio_resampler *rawResampler = audio_resampler_create(&dst, &src);
+					if (!rawResampler) {
+						std::atomic_store(&filterData->sidechainResampler,
+								  std::shared_ptr<audio_resampler>{});
+					} else {
+						std::shared_ptr<audio_resampler> sharedResampler(
+							rawResampler, [](audio_resampler *resampler) {
+								if (resampler) {
+									audio_resampler_destroy(resampler);
+								}
+							});
+						std::atomic_store(&filterData->sidechainResampler, sharedResampler);
+					}
+				} else {
 					std::atomic_store(&filterData->sidechainResampler,
 							  std::shared_ptr<audio_resampler>{});
-				} else {
-					std::shared_ptr<audio_resampler> sharedResampler(
-						rawResampler, [](audio_resampler *resampler) {
-							if (resampler) {
-								audio_resampler_destroy(resampler);
-							}
-						});
-					std::atomic_store(&filterData->sidechainResampler, sharedResampler);
 				}
-			} else {
-				std::atomic_store(&filterData->sidechainResampler, std::shared_ptr<audio_resampler>{});
+				obs_source_add_audio_capture_callback(sidechain, sidechainCapture, filterData);
+#ifdef OBS_VST3_RUST_HOST
 			}
-			obs_source_add_audio_capture_callback(sidechain, sidechainCapture, filterData);
+		}
+		obs_weak_source_release(weak);
+		obs_source_release(sidechain);
+		vst3_filter_route_lookup_destroy(lookup);
+	}
+#else
 			obs_weak_source_release(weakSidechain);
 			obs_source_release(sidechain);
 		}
 	}
+#endif
 	UNUSED_PARAMETER(seconds);
 }
 
@@ -1177,6 +1433,13 @@ static obs_properties_t *vst3Properties(void *data)
 	const bool scanDone = vst3ScanDone.load(std::memory_order_acquire);
 
 	if (scanDone) {
+#ifdef OBS_VST3_RUST_HOST
+		const auto catalog = std::atomic_load(&rustCatalog);
+		vst3_filter_catalog_choices(
+			catalog.get(), vst3list, [](void *property, const char *display, const char *id) {
+				obs_property_list_add_string(static_cast<obs_property_t *>(property), display, id);
+			});
+#else
 		for (const auto &plugin : list->pluginList) {
 			if (!plugin.isFX) {
 				continue;
@@ -1186,6 +1449,7 @@ static obs_properties_t *vst3Properties(void *data)
 			std::string value = plugin.id;
 			obs_property_list_add_string(vst3list, display.c_str(), value.c_str());
 		}
+#endif
 	} else {
 		obs_property_set_enabled(vst3list, false);
 		obs_property_t *scan_err = obs_properties_add_text(props, S_SCAN, TEXT_SCAN, OBS_TEXT_INFO);
