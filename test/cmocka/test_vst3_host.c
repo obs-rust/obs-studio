@@ -137,14 +137,37 @@ static obs_source_t *create_filter(const char *class_id, const char *state)
 	return filter;
 }
 
+static void editor_step(const char *message)
+{
+	fprintf(stderr, "%s\n", message);
+	fflush(stderr);
+}
+
+static bool open_editor(obs_source_t *filter, obs_property_t *button)
+{
+	editor_step("Opening the VST3 editor through the filter property");
+	if (!obs_property_button_clicked(button, filter))
+		return false;
+	editor_step("Checking the visible VST3 editor window");
+	return vst3_test_qt_window_visible();
+}
+
+static bool close_editor(void)
+{
+	editor_step("Sending a close event to the VST3 editor window");
+	if (!vst3_test_qt_close_window())
+		return false;
+	editor_step("Checking that the VST3 editor window closed");
+	return !vst3_test_qt_window_visible();
+}
+
 static bool verify_editor(obs_source_t *filter)
 {
+	editor_step("Reading the VST3 filter's editor property");
 	obs_properties_t *props = obs_source_properties(filter);
 	obs_property_t *button = obs_properties_get(props, "vst3_open_gui");
-	bool passed = button && obs_property_visible(button) && obs_property_button_clicked(button, filter) &&
-		      vst3_test_qt_window_visible() && vst3_test_qt_close_window() && !vst3_test_qt_window_visible() &&
-		      obs_property_button_clicked(button, filter) && vst3_test_qt_window_visible() &&
-		      vst3_test_qt_close_window() && !vst3_test_qt_window_visible();
+	bool passed = button && obs_property_visible(button) && open_editor(filter, button) && close_editor() &&
+		      open_editor(filter, button) && close_editor();
 	obs_properties_destroy(props);
 	if (passed)
 		puts("Opened, closed and reopened the native VST3 editor");

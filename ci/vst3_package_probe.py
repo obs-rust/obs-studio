@@ -23,6 +23,21 @@ def one_match(directory: Path, name: str) -> Path:
     return matches[0]
 
 
+def sample_timed_out_probe(process: subprocess.Popen) -> None:
+    if not host_platform.is_macos() or process.poll() is not None:
+        return
+    print("::group::VST3 package probe timeout sample", flush=True)
+    try:
+        subprocess.run(
+            ["sample", str(process.pid), "3", "-file", "/dev/stdout"],
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"VST3 probe sample unavailable: {error}", flush=True)
+    print("::endgroup::", flush=True)
+
+
 def run_probe(app: Path, archive: Path, work: Path) -> None:
     with tarfile.open(archive) as bundle:
         bundle.extractall(work, filter="data")
@@ -69,13 +84,19 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
     shutil.move(work / "OBSFixture.vst3", vst3_dir)
     config = work / "config"
     config.mkdir()
-    subprocess.run(
-        [executable, module, resources, config, *GAIN_CLASSES, "--editor"],
-        cwd=app.parent,
-        env=env,
-        check=True,
-        timeout=30,
-    )
+    command = [executable, module, resources, config, *GAIN_CLASSES, "--editor"]
+    with subprocess.Popen(command, cwd=app.parent, env=env) as process:
+        try:
+            result = process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            try:
+                sample_timed_out_probe(process)
+            finally:
+                process.kill()
+                process.wait()
+            raise
+    if result:
+        raise subprocess.CalledProcessError(result, command)
 
 
 def main() -> None:
