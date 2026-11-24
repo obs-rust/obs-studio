@@ -8,6 +8,9 @@ mod locale_manifest_contract;
 #[cfg(feature = "bundled-native")]
 mod mcp_stdio;
 mod protocol;
+#[cfg(target_os = "linux")]
+#[path = "../../../obs-vst3/src/ffi/run_loop_registry.rs"]
+mod vst3_editor_run_loop;
 mod vst3_filter;
 mod vst3_host;
 mod vst3_scanner;
