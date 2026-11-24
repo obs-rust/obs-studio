@@ -114,3 +114,22 @@ pub unsafe fn save_sources_filtered_bridge(cb: Option<Filter>, param: *mut c_voi
 pub unsafe fn save_sources_bridge() -> *mut Array {
     save_sources(&mut CoreSources)
 }
+
+/// # Safety
+/// As [`save_sources_filtered_bridge`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_save_sources_filtered(
+    cb: Option<Filter>,
+    param: *mut c_void,
+) -> *mut Array {
+    // SAFETY: the caller's contract is save_sources_filtered_bridge's.
+    unsafe { save_sources_filtered_bridge(cb, param) }
+}
+
+/// # Safety
+/// As [`save_sources_bridge`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_save_sources() -> *mut Array {
+    // SAFETY: the caller's contract is save_sources_bridge's.
+    unsafe { save_sources_bridge() }
+}

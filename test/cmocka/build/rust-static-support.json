@@ -41,6 +41,7 @@
     "test/cmocka/profiler-name-store-link-support.c",
     "test/cmocka/profiler-variadic-link-support.c",
     "test/cmocka/render-canvas-texture-link-support.c",
+    "test/cmocka/save-sources-link-support.c",
     "test/cmocka/sceneitem-addref-link-support.c",
     "test/cmocka/sceneitem-defer-update-link-support.c",
     "test/cmocka/service-find-link-support.c",

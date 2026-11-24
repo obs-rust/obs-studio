@@ -64,17 +64,34 @@ pub trait Sources {
 
 /// `obs_save_sources_filtered(cb, param)` over `sources`, with `keep` the
 /// caller's callback bound to its parameter.
-pub fn save_sources_filtered<S, F>(sources: &mut S, keep: F) -> S::Array
+pub fn save_sources_filtered<S, F>(sources: &mut S, mut keep: F) -> S::Array
 where
     S: Sources,
     F: FnMut(S::Source) -> bool,
 {
-    let _ = (sources, keep);
-    todo!("obs_save_sources_filtered")
+    let array = sources.array_create();
+    sources.lock();
+    let mut source = sources.first();
+    while let Some(current) = source {
+        // The C's `&&` chain: each check only when the ones before it passed.
+        if !sources.is_filter(current)
+            && !sources.removed(current)
+            && !sources.temp_removed(current)
+            && !sources.private(current)
+            && keep(current)
+        {
+            let data = sources.save(current);
+            sources.push(array, data);
+            sources.release(data);
+        }
+        // Read after the source is handled, as the original does.
+        source = sources.next(current);
+    }
+    sources.unlock();
+    array
 }
 
 /// `obs_save_sources()` over `sources`: every candidate kept.
 pub fn save_sources<S: Sources>(sources: &mut S) -> S::Array {
-    let _ = sources;
-    todo!("obs_save_sources")
+    save_sources_filtered(sources, |_| true)
 }
