@@ -755,11 +755,6 @@ void obs_source_remove(obs_source_t *source)
 	}
 }
 
-bool obs_source_removed(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_removed") ? os_atomic_load_bool(&source->removed) : true;
-}
-
 static inline obs_data_t *source_get_defaults(const struct obs_source_info *info)
 {
 	obs_data_t *settings = obs_data_create();
