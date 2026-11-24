@@ -15,7 +15,10 @@ impl Counter {
     /// The public function that reads this counter, named in its NULL
     /// diagnostic.
     pub fn function(self) -> &'static CStr {
-        todo!()
+        match self {
+            Self::Activate => c"obs_source_active",
+            Self::Show => c"obs_source_showing",
+        }
     }
 }
 
@@ -27,6 +30,9 @@ pub fn nonzero(
     source: Option<impl FnOnce(Counter) -> i64>,
     log: impl FnOnce(&'static CStr),
 ) -> bool {
-    let _ = (counter, source, log);
-    todo!()
+    let Some(load) = source else {
+        log(counter.function());
+        return false;
+    };
+    load(counter) != 0
 }

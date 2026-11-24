@@ -11,7 +11,7 @@
  * resolved, used or not, so obs-tests-core needs a definition; libobs has
  * the real ones. The texrender calls, gs_get_color_space(),
  * obs_source_video_render(), obs_source_active()
- * (oracle/audio_callback_links.c) and the reference calls already have
+ * (the obs-source Rust export) and the reference calls already have
  * theirs. Blend-state push/pop, gs_blend_function(), gs_clear(),
  * gs_matrix_push(), gs_matrix_mul() and gs_matrix_pop() now come from the
  * real obs-graphics shims.
