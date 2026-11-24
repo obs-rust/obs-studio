@@ -14806,6 +14806,28 @@
         }
       ]
     },
+    "test_save_sources": {
+      "sources": [
+        "test/cmocka/test_save_sources.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_saved_transition": {
       "sources": [
         "test/cmocka/test_saved_transition.c",
@@ -28316,6 +28338,22 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_save_sources": {
+      "target": "test_save_sources",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_saved_transition": {
       "target": "test_saved_transition"
