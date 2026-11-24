@@ -2070,6 +2070,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_data_paths": {
+      "sources": [
+        "test/cmocka/test_data_paths.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_decl": {
       "sources": [
         "test/cmocka/test_decl.c"
@@ -24228,6 +24237,20 @@
     },
     "test_darray_ops": {
       "target": "test_darray_ops"
+    },
+    "test_data_paths": {
+      "target": "test_data_paths",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_decl": {
       "target": "test_decl",
