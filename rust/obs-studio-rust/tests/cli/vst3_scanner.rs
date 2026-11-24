@@ -18,7 +18,7 @@ fn run(cache: Option<&Path>, roots: &[PathBuf]) -> (ExitCode, String, String) {
 }
 
 fn module_info(root: &Path) -> (PathBuf, PathBuf) {
-    let bundle = root.join("nested/Éffects.vst3");
+    let bundle = root.join("nested").join("Éffects.vst3");
     let metadata = bundle.join("Contents/Resources").join("moduleinfo.json");
     fs::create_dir_all(metadata.parent().unwrap()).unwrap();
     // Windows discovers the .vst3 binary within the bundle.
