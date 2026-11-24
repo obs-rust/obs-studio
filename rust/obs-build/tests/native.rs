@@ -68,6 +68,8 @@ mod parser_import_library;
 #[path = "native/registration/canonical_rust_static_private_renderer_is_registered.rs"]
 mod canonical_rust_static_private_renderer_is_registered;
 
+#[path = "native/registration/canonical_data_paths_swap_is_registered.rs"]
+mod canonical_data_paths_swap_is_registered;
 #[path = "native/registration/canonical_display_audio_is_registered.rs"]
 mod canonical_display_audio_is_registered;
 #[path = "native/registration/canonical_display_media_is_registered.rs"]

@@ -1,9 +1,9 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Separate from actual context initialization
- * since this can be set before startup and persist
- * after shutdown. */
-static DARRAY(struct dstr) core_module_paths = {0};
+/* The list is obs-data-paths-fields.c.h's (#5397), shared with
+ * obs_find_data_file(); these original wrappers reach it through its
+ * accessor. */
+#define core_module_paths (*obs_data_paths_list())
 
 void obs_add_data_path(const char *path)
 {
@@ -25,3 +25,5 @@ bool obs_remove_data_path(const char *path)
 
 	return false;
 }
+
+#undef core_module_paths

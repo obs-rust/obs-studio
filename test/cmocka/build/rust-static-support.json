@@ -10,6 +10,7 @@
     "test/cmocka/context-runtime-link-support.c",
     "test/cmocka/core-initialized-link-support.c",
     "test/cmocka/core-state-link-support.c",
+    "test/cmocka/data-paths-link-support.c",
     "test/cmocka/dstr-variadic-link-support.c",
     "test/cmocka/effect-parser-funcs-link-support.c",
     "test/cmocka/encoder-align-frame-rate-divisor-link-support.c",
