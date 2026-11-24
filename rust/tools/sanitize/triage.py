@@ -46,6 +46,8 @@ KNOWN = {
                                 "failure is never reported and test_pipe_create2_missing_binary gets a pipe back"),
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
+    ("asan", "test_set_cmdline_args"): ("bug", "obs_set_cmdline_args leaks the empty table of a zero-count call "
+                                        "when a later call copies; the C characterization pins it (#5550)"),
 }
 # Kinds that track an issue: a clean run means it is fixed, so the entry goes.
 TRACKED_KINDS = ("bug", "third-party")
