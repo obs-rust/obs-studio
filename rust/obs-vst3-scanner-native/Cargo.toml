@@ -1,0 +1,19 @@
+[package]
+name = "obs-vst3-scanner-native"
+version = "0.1.0"
+description = "Native archive for the packaged OBS VST3 scanner"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "obs_vst3_scanner"
+test = false
+crate-type = ["staticlib"]
+
+[dependencies]
+obs-vst3-scanner-core = { package = "obs-vst3-scanner", path = "../obs-vst3-scanner" }

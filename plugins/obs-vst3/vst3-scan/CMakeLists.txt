@@ -10,7 +10,7 @@ add_executable(obs-vst3-scanner ${scanner_entry_sources})
 if(OBS_LIBOBS_BACKEND STREQUAL HYBRID)
   corrosion_import_crate(
     MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
-    CRATES obs-vst3-scanner
+    CRATES obs-vst3-scanner-native
     CRATE_TYPES staticlib
     PROFILE release
   )

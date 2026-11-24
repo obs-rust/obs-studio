@@ -422,6 +422,7 @@ QT_PREFIXES = (
     "plugins/frontend-tools/",
     "plugins/obs-vst3/",
     "rust/obs-vst3-scanner/",
+    "rust/obs-vst3-scanner-native/",
     "test/cmocka/vst3-test-",
     "ci/linux_qt_frontend",
     # The C++ lint report runs in the Qt job (#5453).
