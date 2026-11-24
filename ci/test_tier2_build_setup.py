@@ -88,7 +88,7 @@ runpath_flags=()
         job = build_job()
         keep = step(job, "Keep apt Downloads 📦")
         self.assertIn('dir="${{ steps.pcache.outputs.apt }}"', keep)
-        self.assertIn('[ -n "$dir" ] || dir="$RUNNER_TEMP/apt-archives"', keep)
+        self.assertIn('[ -n "$dir" ] || dir="$GITHUB_WORKSPACE/.tier2-apt-archives"', keep)
         self.assertNotIn("runner.temp", keep)
         self.assertIn('echo "TIER2_APT_ARCHIVES=$dir" >> "$GITHUB_ENV"', keep)
         self.assertIn('Dir::Cache::archives=$TIER2_APT_ARCHIVES', step(job, "Install Tier 2 Packages 📦"))
@@ -100,7 +100,7 @@ runpath_flags=()
         self.assertIn("github.event_name == 'push' && github.ref == 'refs/heads/master'", save)
         self.assertIn("steps.pcache.outputs.apt == ''", save)
         for cache in (restore, save):
-            self.assertIn("path: ../../_temp/apt-archives/*.deb", cache)
+            self.assertIn("path: .tier2-apt-archives/*.deb", cache)
 
     def test_hosted_zccache_path_and_cache_gates_are_preserved(self):
         job = build_job()

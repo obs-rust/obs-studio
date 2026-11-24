@@ -36,7 +36,7 @@ jobs:
       # and actions/cache versions by that literal path.
       - name: Prepare Archive 📦
         run: |
-          dir="$RUNNER_TEMP/apt-archives"
+          dir="$GITHUB_WORKSPACE/.tier2-apt-archives"
           mkdir -p "$dir"
           chmod a+rwx "$dir"
           echo "TIER2_APT_ARCHIVES=$dir" >> "$GITHUB_ENV"
@@ -44,7 +44,7 @@ jobs:
         id: apt-cache
         with:
           mode: restore
-          path: ../../_temp/apt-archives/*.deb
+          path: .tier2-apt-archives/*.deb
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-complete
           restore-keys: |
             tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-
@@ -61,5 +61,5 @@ jobs:
         uses: ./.github/actions/cache
         with:
           mode: save
-          path: ../../_temp/apt-archives/*.deb
+          path: .tier2-apt-archives/*.deb
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ steps.apt-count.outputs.count }}

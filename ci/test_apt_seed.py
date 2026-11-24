@@ -81,10 +81,10 @@ class ParityTest(unittest.TestCase):
                          base + '-${{ steps.apt-count.outputs.count }}')
 
     def test_seed_writes_the_path_the_builds_read(self):
-        self.assertIn('path: ../../_temp/apt-archives/*.deb', restore_of(self.seed))
-        self.assertIn('path: ../../_temp/apt-archives/*.deb',
+        self.assertIn('path: .tier2-apt-archives/*.deb', restore_of(self.seed))
+        self.assertIn('path: .tier2-apt-archives/*.deb',
                       step(self.seed, 'Save apt Downloads 💾'))
-        self.assertIn('path: ../../_temp/apt-archives/*.deb', self.build)
+        self.assertIn('path: .tier2-apt-archives/*.deb', self.build)
 
     def test_seed_uses_the_sanctioned_cache_action(self):
         self.assertNotIn('actions/cache@', self.seed)
