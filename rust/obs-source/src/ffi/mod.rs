@@ -9,6 +9,7 @@ pub mod source_async_rotation;
 pub mod source_async_upload;
 pub mod source_audio_active;
 pub mod source_audio_active_setter;
+pub mod source_audio_buffer_getters;
 pub mod source_audio_capture_callbacks;
 pub mod source_audio_input;
 pub mod source_audio_mixers_getter;

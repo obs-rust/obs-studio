@@ -1,0 +1,2 @@
+obs_source_get_audio_timestamp
+obs_source_get_audio_mix

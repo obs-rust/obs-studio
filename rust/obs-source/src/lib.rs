@@ -189,6 +189,7 @@ pub mod async_rotation;
 pub mod async_upload;
 pub mod audio_active;
 pub mod audio_active_setter;
+pub mod audio_buffer_getters;
 pub mod audio_capture_callbacks;
 pub mod audio_input;
 pub mod audio_input_path;
