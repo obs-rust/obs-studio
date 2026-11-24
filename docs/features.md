@@ -398,6 +398,12 @@ not get a line.
   [obs-rust/obs-browser#8](https://github.com/obs-rust/obs-browser/pull/8),
   [obs-rust/obs-browser#12](https://github.com/obs-rust/obs-browser/pull/12).
 
+- **VST3 audio effects.** Add VST3 plug-ins as audio filters with their saved
+  state, editor windows and optional sidechain. Existing VST2 filters still
+  open with their saved settings. *Windows x64, macOS, Linux x86-64/X11*,
+  pending merge. Issue [#5532](https://github.com/obs-rust/obs-studio/issues/5532),
+  PR [#5540](https://github.com/obs-rust/obs-studio/pull/5540).
+
 ### Scenes and UI
 
 - **accept C hexadecimal prefixes in config integers.** Configuration integer values accept the optional hexadecimal prefix after the sign, matching C. *All*, 2026-10-20. Issue [#1531](https://github.com/obs-rust/obs-studio/issues/1531), PR [#1532](https://github.com/obs-rust/obs-studio/pull/1532).

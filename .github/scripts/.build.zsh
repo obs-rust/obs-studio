@@ -127,6 +127,7 @@ build() {
       cmake_args+=(
         --preset 'macos-ci'
         -DCMAKE_OSX_ARCHITECTURES:STRING=${target##*-}
+        -DENABLE_VST3:BOOL=ON
       )
 
       if (( debug )) {
@@ -224,6 +225,7 @@ build() {
       cmake_args+=(
         --preset ubuntu-ci
         -DENABLE_BROWSER:BOOL=ON
+        -DENABLE_VST3:BOOL=ON
         -DCEF_ROOT_DIR:PATH="${project_root}/.deps/cef_binary_${CEF_VERSION}_${target//ubuntu-/linux_}"
       )
       # The Rust build of libobs (obs-rust/obs-studio#140): CI sets

@@ -50,6 +50,9 @@ function Build {
     Ensure-Location $ProjectRoot
 
     $CmakeArgs = @('--preset', "windows-ci-${Target}")
+    if ( $Target -eq 'x64' ) {
+        $CmakeArgs += '-DENABLE_VST3:BOOL=ON'
+    }
     if ( $env:ENABLE_RUST_LIBOBS ) {
         if ( $env:ENABLE_RUST_LIBOBS -cnotin @('ON', 'OFF') ) {
             throw 'ENABLE_RUST_LIBOBS must be ON or OFF'

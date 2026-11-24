@@ -3,11 +3,13 @@ use crate::{NativeBuild, SharedLibrary, deps::shared_archive, libobs::add_packag
 use std::path::{Path, PathBuf};
 mod browser;
 mod frontend_tools;
+mod vst3;
 mod websocket;
 pub use browser::{
     Artifacts as BrowserArtifacts, Options as BrowserOptions, build as build_browser,
 };
 pub use frontend_tools::build as build_frontend_tools;
+pub use vst3::{Artifacts as Vst3Artifacts, build as build_vst3};
 pub use websocket::{Options as WebsocketOptions, build as build_websocket};
 
 #[derive(Debug)]

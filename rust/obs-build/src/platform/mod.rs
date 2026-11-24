@@ -1216,6 +1216,26 @@ pub fn configure_frontend_api(
     Ok(())
 }
 
+pub fn validate_vst3_target(target: &str) -> Result<(), String> {
+    if target.starts_with("x86_64-") && target.contains("-linux-") {
+        Ok(())
+    } else {
+        Err(format!(
+            "VST3 native application builds require an x86-64 Linux target, got {target}"
+        ))
+    }
+}
+
+pub fn configure_vst3(library: &mut crate::SharedLibrary, sdk: &str) {
+    library.cpp_standard = Some(crate::CppStandard::Cpp17);
+    library
+        .cpp_compile_options
+        .extend(["-isystem".into(), sdk.into()]);
+    library
+        .link_options
+        .extend(["-pthread".into(), "-ldl".into()]);
+}
+
 pub fn configure_vst(
     target: &str,
     root: &Path,

@@ -554,6 +554,16 @@ class QtScopeTest(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(self.qt(path))
 
+    def test_vst3_runs_in_the_qt_frontend_lane(self):
+        for path in (
+            "plugins/obs-vst3/VST3Plugin.cpp.hpp",
+            "test/cmocka/test_vst3_host.c",
+            "test/cmocka/tests.d/test_vst3_host.cmake",
+            "test/cmocka/vst3-test-gain.cpp",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(self.qt(path))
+
     def test_qt_cache_contract_changes_run_the_job(self):
         for path in ("ci/test_qt_cache_budget.py", "ci/test_qt_cache_identity.py"):
             with self.subTest(path=path):

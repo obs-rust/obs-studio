@@ -58,6 +58,7 @@ pub fn exercise(inputs: Inputs<'_>, variants: &[Variant<'_>]) -> Result<(), Stri
                 renderer: inputs.renderer,
                 ffmpeg: inputs.ffmpeg,
                 nvenc_helper: inputs.nvenc_helper,
+                vst3_scanner: None,
                 modules: &modules,
                 browser: inputs.browser,
                 scripting: inputs.script_artifacts,

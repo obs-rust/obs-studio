@@ -1,0 +1,31 @@
+{
+  "common": [
+    "pluginterfaces/base/coreiids.cpp",
+    "pluginterfaces/base/funknown.cpp",
+    "public.sdk/source/common/commonstringconvert.cpp",
+    "public.sdk/source/common/memorystream.cpp",
+    "public.sdk/source/vst/hosting/connectionproxy.cpp",
+    "public.sdk/source/vst/hosting/eventlist.cpp",
+    "public.sdk/source/vst/hosting/hostclasses.cpp",
+    "public.sdk/source/vst/hosting/module.cpp",
+    "public.sdk/source/vst/hosting/parameterchanges.cpp",
+    "public.sdk/source/vst/hosting/pluginterfacesupport.cpp",
+    "public.sdk/source/vst/hosting/plugprovider.cpp",
+    "public.sdk/source/vst/hosting/processdata.cpp",
+    "public.sdk/source/vst/moduleinfo/moduleinfoparser.cpp",
+    "public.sdk/source/vst/utility/stringconvert.cpp",
+    "public.sdk/source/vst/vstinitiids.cpp"
+  ],
+  "linux": [
+    "public.sdk/source/common/threadchecker_linux.cpp",
+    "public.sdk/source/vst/hosting/module_linux.cpp"
+  ],
+  "macos": [
+    "public.sdk/source/common/threadchecker_mac.mm",
+    "public.sdk/source/vst/hosting/module_mac.mm"
+  ],
+  "windows": [
+    "public.sdk/source/common/threadchecker_win32.cpp",
+    "public.sdk/source/vst/hosting/module_win32.cpp"
+  ]
+}

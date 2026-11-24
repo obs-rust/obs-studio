@@ -353,6 +353,35 @@ def require_windows_modules(log: str) -> None:
         )
 
 
+def check_vst3_scanner(app: Path, platform: str, arch: str | None) -> bool:
+    """Check VST3 availability and launch the packaged helper without scanning."""
+    if platform == "windows" and arch != "x64":
+        return False
+    scanner = app.with_name(
+        "obs-vst3-scanner.exe" if platform == "windows" else "obs-vst3-scanner"
+    )
+    if not scanner.is_file():
+        raise RuntimeError(f"packaged VST3 scanner is missing: {scanner}")
+    result = subprocess.run(
+        [str(scanner)], cwd=app.parent, capture_output=True, text=True,
+        timeout=10, check=False,
+    )
+    if result.returncode != 1 or "Usage: obs-vst3-scanner <vst3list.json>" not in result.stderr:
+        raise RuntimeError(
+            f"packaged VST3 scanner did not show usage (exit {result.returncode}): "
+            f"{result.stderr.strip()}"
+        )
+    print("Packaged VST3 scanner started and reported usage", flush=True)
+    return True
+
+
+def require_vst3_filter(response: dict) -> None:
+    kinds = response.get("sourceFilterKinds")
+    if not isinstance(kinds, list) or "vst3_filter" not in kinds:
+        raise RuntimeError("packaged frontend did not register vst3_filter")
+    print("Packaged VST3 filter registered", flush=True)
+
+
 WATCHDOG_HELPER = "obs-exit-watchdog.exe"
 WATCHDOG_STARTED = "Exit watchdog: helper process started"
 WATCHDOG_LINE = "exit-watchdog: exit did not finish in 1 s"
@@ -743,7 +772,7 @@ def _load(name: str, path: Path):
     return module
 
 async def inspect_running_app(  # noqa: C901
-    proc: subprocess.Popen, port: int, password: str, platform: str
+    proc: subprocess.Popen, port: int, password: str, platform: str, *, expect_vst3: bool
 ) -> None:
     obsws = _load("obsws", Path(__file__).resolve().parent / "websocket-tier4" / "obsws.py")
     ObsWsClient, SUB_NONE = obsws.ObsWsClient, obsws.SUB_NONE
@@ -787,6 +816,8 @@ async def inspect_running_app(  # noqa: C901
             return result.get("responseData", {})
 
         kinds = await wait_until_ready(client, proc, deadline)
+        if expect_vst3:
+            require_vst3_filter(await request("GetSourceFilterKindList"))
         inputs = await request("GetInputList")
         scene = await request("GetSceneList")
         profile = await request("GetProfileList")
@@ -946,6 +977,7 @@ def main() -> None:  # noqa: C901
             raise RuntimeError("Windows packages require --expect-arch")
         require_windows_arch(app, args.expect_arch)
         helper = require_windows_watchdog_helper(app, args.expect_arch)
+    expect_vst3 = check_vst3_scanner(app, args.platform, args.expect_arch)
     with socket.socket() as reservation:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
@@ -980,7 +1012,9 @@ def main() -> None:  # noqa: C901
             command = diagnostics.launch_command(command, args.config_mode)
         proc = subprocess.Popen(command, cwd=app.parent)
         try:
-            asyncio.run(inspect_running_app(proc, port, password, args.platform))
+            asyncio.run(
+                inspect_running_app(proc, port, password, args.platform, expect_vst3=expect_vst3)
+            )
         except Exception as error:
             raise startup_failure(
                 error, args.platform, launched, args.config_mode

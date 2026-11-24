@@ -45,6 +45,7 @@ if(OBS_BRAND_RUST)
   # they take branded names too (#2296). Their callers get the same names.
   set(OBS_FFMPEG_MUX_NAME obs-studio-rust-ffmpeg-mux)
   set(OBS_NVENC_TEST_NAME obs-studio-rust-nvenc-test)
+  set(OBS_VST3_SCANNER_NAME obs-studio-rust-vst3-scanner)
 endif()
 
 # Set additional paths used by OBS for self-discovery

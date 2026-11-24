@@ -420,6 +420,8 @@ QT_PREFIXES = (
     "shared/qt/",
     "shared/properties-view/",
     "plugins/frontend-tools/",
+    "plugins/obs-vst3/",
+    "test/cmocka/vst3-test-",
     "ci/linux_qt_frontend",
     # The C++ lint report runs in the Qt job (#5453).
     "ci/cpp_lint",
@@ -431,6 +433,8 @@ QT_FILES = {
     "ci/test_qt_cache_budget.py",
     "ci/test_qt_cache_identity.py",
     "test/cmocka/CMakeLists.txt",
+    "test/cmocka/test_vst3_host.c",
+    "test/cmocka/tests.d/test_vst3_host.cmake",
     "cmake/finders/FindFFmpeg.cmake",
 }
 TEST_SOURCE = re.compile(r"^test/cmocka/([^/]+)\.(?:cpp|hpp|c|h)$")
@@ -471,6 +475,7 @@ QT_AREAS = (
     "shared/qt/",
     "shared/properties-view/",
     "plugins/frontend-tools/",
+    "plugins/obs-vst3/",
 )
 # Linux CMake targets, one row per module root (#992): the module directory
 # is the target name; CI filters to targets that exist and are Linux-built.

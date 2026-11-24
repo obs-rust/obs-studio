@@ -168,7 +168,7 @@ class LinuxQtFrontendTest(unittest.TestCase):
         self.assertIn(f"-DQt6_DIR={self.qt}/lib/cmake/Qt6", cmake["argv"])
         for flag in ("-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
                      "-DENABLE_UNIT_TESTS=ON", "-DENABLE_RUST_LIBOBS=OFF", "-DENABLE_FRONTEND=ON",
-                     "-DENABLE_SCRIPTING=OFF", "-DENABLE_BROWSER=OFF", "-DENABLE_WEBSOCKET=OFF",
+                     "-DENABLE_SCRIPTING=OFF", "-DENABLE_BROWSER=OFF", "-DENABLE_WEBSOCKET=OFF", "-DENABLE_VST3=ON",
                      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"):
             self.assertIn(flag, cmake["argv"])
         self.assertEqual(cmake["env"]["PKG_CONFIG_PATH"], f"{self.ff}/lib/pkgconfig")

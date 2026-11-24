@@ -57,6 +57,12 @@ def main():
             valid = re.fullmatch(r"20[0-9]{2}\.[1-9][0-9]?\.[1-9][0-9]?", build)
         if not valid or plist["OBSStudioRustVersion"] != version:
             raise RuntimeError("bundle build/product version mismatch")
+        if vst3_probe := os.environ.get("OBS_VST3_PACKAGE_TEST"):
+            run(
+                "uv", "run", "--no-project", "ci/vst3_package_probe.py",
+                "--app", app / "Contents/MacOS/OBS-Studio-Rust",
+                "--archive", vst3_probe,
+            )
         run("uv", "sync", "--script", "test/packaged-startup.py", "--locked")
         for mode in ("fresh", "migrate-default", "migrate-custom", "existing"):
             run(

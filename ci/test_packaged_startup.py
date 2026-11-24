@@ -786,3 +786,47 @@ class ExitWatchdogTest(unittest.TestCase):
         smoke.require_watchdog_started(f"info: {smoke.WATCHDOG_STARTED}\n")
         with self.assertRaisesRegex(RuntimeError, "did not start the exit watchdog"):
             smoke.require_watchdog_started("info: Loaded Modules:\n")
+
+
+class PackagedVst3Test(unittest.TestCase):
+    def test_supported_packages_run_the_scanner_beside_the_app(self):
+        for platform, arch, scanner in (
+            ("windows", "x64", "obs-vst3-scanner.exe"),
+            ("macos", None, "obs-vst3-scanner"),
+        ):
+            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as root:
+                app = Path(root) / "OBS-Studio-Rust"
+                helper = app.with_name(scanner)
+                helper.touch()
+                result = smoke.subprocess.CompletedProcess(
+                    [str(helper)], 1, "", "Usage: obs-vst3-scanner <vst3list.json>\n"
+                )
+                with patch.object(smoke.subprocess, "run", return_value=result) as run:
+                    self.assertTrue(smoke.check_vst3_scanner(app, platform, arch))
+                run.assert_called_once_with(
+                    [str(helper)], cwd=app.parent, capture_output=True, text=True,
+                    timeout=10, check=False,
+                )
+
+    def test_windows_arm64_does_not_expect_vst3(self):
+        with patch.object(smoke.subprocess, "run") as run:
+            self.assertFalse(smoke.check_vst3_scanner(Path("obs64.exe"), "windows", "arm64"))
+        run.assert_not_called()
+
+    def test_missing_or_unlaunchable_scanner_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = Path(root) / "OBS-Studio-Rust"
+            helper = app.with_name("obs-vst3-scanner")
+            with self.assertRaisesRegex(RuntimeError, "scanner.*missing"):
+                smoke.check_vst3_scanner(app, "macos", None)
+            helper.touch()
+            result = smoke.subprocess.CompletedProcess([str(helper)], 1, "", "loader error")
+            with patch.object(smoke.subprocess, "run", return_value=result):
+                with self.assertRaisesRegex(RuntimeError, "scanner.*loader error"):
+                    smoke.check_vst3_scanner(app, "macos", None)
+
+    def test_vst3_filter_registration_required(self):
+        smoke.require_vst3_filter({"sourceFilterKinds": ["vst3_filter"]})
+        for response in ({}, {"sourceFilterKinds": ["vst_filter"]}, {"sourceFilterKinds": "vst3_filter"}):
+            with self.subTest(response=response), self.assertRaisesRegex(RuntimeError, "vst3_filter"):
+                smoke.require_vst3_filter(response)

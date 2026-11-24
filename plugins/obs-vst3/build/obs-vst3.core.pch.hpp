@@ -1,0 +1,60 @@
+#pragma once
+
+#include "plugins/obs-vst3/VST3ComponentHolder.h"
+#include "plugins/obs-vst3/VST3EditorWindow.h"
+#include "plugins/obs-vst3/VST3HostApp.h"
+#include "plugins/obs-vst3/VST3Plugin.h"
+#include "plugins/obs-vst3/VST3Scanner.h"
+#include "plugins/obs-vst3/obs-vst3.h"
+#include "plugins/obs-vst3/vst3-platform.h"
+
+#include <pluginterfaces/base/funknown.h>
+#include <pluginterfaces/base/smartpointer.h>
+#include <pluginterfaces/gui/iplugview.h>
+#include <pluginterfaces/gui/iplugviewcontentscalesupport.h>
+#include <pluginterfaces/vst/ivstattributes.h>
+#include <pluginterfaces/vst/ivstaudioprocessor.h>
+#include <pluginterfaces/vst/ivstcomponent.h>
+#include <pluginterfaces/vst/ivsteditcontroller.h>
+#include <pluginterfaces/vst/ivsthostapplication.h>
+#include <pluginterfaces/vst/ivstmessage.h>
+#include <pluginterfaces/vst/ivstpluginterfacesupport.h>
+#include <pluginterfaces/vst/ivstprocesscontext.h>
+#include <pluginterfaces/vst/vstspeaker.h>
+#include <public.sdk/source/common/memorystream.h>
+#include <public.sdk/source/vst/hosting/hostclasses.h>
+#include <public.sdk/source/vst/hosting/module.h>
+#include <public.sdk/source/vst/hosting/parameterchanges.h>
+#include <public.sdk/source/vst/hosting/plugprovider.h>
+#include <public.sdk/source/vst/hosting/processdata.h>
+#include <public.sdk/source/vst/utility/stringconvert.h>
+
+#include <media-io/audio-io.h>
+#include <media-io/audio-resampler.h>
+#include <obs-frontend-api.h>
+#include <obs-module.h>
+#include <util/bmem.h>
+#include <util/darray.h>
+#include <util/deque.h>
+#include <util/pipe.h>
+#include <util/platform.h>
+
+#include <QCoreApplication>
+#include <QMetaObject>
+#include <QPointer>
+
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <filesystem>
+#include <iomanip>
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <utility>
+#include <vector>

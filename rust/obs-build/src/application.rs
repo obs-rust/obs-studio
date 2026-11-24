@@ -14,6 +14,7 @@ pub struct BuildOptions {
     pub fdk: bool,
     pub qsv: Option<plugins::QsvOptions>,
     pub nvenc: Option<plugins::NvencOptions>,
+    pub vst3_sdk: Option<PathBuf>,
     pub webrtc: Option<(plugins::DataChannelSdk, plugins::WebRtcOptions)>,
 }
 
@@ -30,6 +31,7 @@ impl BuildOptions {
             fdk: false,
             qsv: None,
             nvenc: Some(plugins::NvencOptions::default()),
+            vst3_sdk: None,
             webrtc: None,
         })
     }
@@ -54,6 +56,7 @@ impl BuildOptions {
             (self.fdk, "obs-libfdk"),
             (self.qsv.is_some(), "obs-qsv11"),
             (self.nvenc.is_some(), "obs-nvenc"),
+            (self.vst3_sdk.is_some(), "obs-vst3"),
             (self.webrtc.is_some(), "obs-webrtc"),
             (self.browser.is_some(), "obs-browser"),
         ] {
@@ -93,6 +96,7 @@ pub struct Artifacts {
     pub scripting: Option<scripting::Artifacts>,
     pub browser: Option<plugins::BrowserArtifacts>,
     pub nvenc: Option<plugins::NvencProductionArtifacts>,
+    pub vst3: Option<plugins::Vst3Artifacts>,
 }
 
 impl Artifacts {
@@ -108,6 +112,7 @@ impl Artifacts {
             .chain(std::iter::once(&self.ffmpeg.module))
             .chain(self.browser.as_ref().map(|browser| &browser.module))
             .chain(self.nvenc.as_ref().map(|nvenc| &nvenc.module))
+            .chain(self.vst3.as_ref().map(|vst3| &vst3.module))
             .collect();
         stage_runtime(
             build,
@@ -119,6 +124,7 @@ impl Artifacts {
                 renderer: &self.renderer,
                 ffmpeg: &self.ffmpeg,
                 nvenc_helper: self.nvenc.as_ref().map(|nvenc| nvenc.helper.as_path()),
+                vst3_scanner: self.vst3.as_ref().map(|vst3| vst3.scanner.as_path()),
                 modules: &modules,
                 browser: self.browser.as_ref(),
                 scripting: self.scripting.as_ref(),
@@ -142,6 +148,9 @@ pub fn build(
     options: &BuildOptions,
 ) -> Result<Artifacts, String> {
     crate::platform::validate_application_build(build)?;
+    if options.vst3_sdk.is_some() {
+        crate::platform::validate_vst3_target(&build.target)?;
+    }
     for archive in [&archives.core, &archives.gpu_status]
         .into_iter()
         .chain(options.nvenc.as_ref().map(|_| &archives.nvenc))
@@ -175,6 +184,11 @@ pub fn build(
         modules.push(plugins::build_source(build, root, &core, *source)?);
     }
     modules.push(plugins::build_vst(build, root, &core)?);
+    let vst3 = options
+        .vst3_sdk
+        .as_ref()
+        .map(|sdk| plugins::build_vst3(build, root, &core, &api, sdk))
+        .transpose()?;
     modules.push(plugins::build_x264(build, root, &core)?);
     modules.push(plugins::build_outputs(build, root, &core, &core_options)?);
     let ffmpeg = plugins::build_ffmpeg(
@@ -245,6 +259,7 @@ pub fn build(
         scripting,
         browser,
         nvenc,
+        vst3,
     })
 }
 
@@ -257,6 +272,7 @@ pub struct RuntimeInputs<'a> {
     pub renderer: &'a Path,
     pub ffmpeg: &'a plugins::FfmpegArtifacts,
     pub nvenc_helper: Option<&'a Path>,
+    pub vst3_scanner: Option<&'a Path>,
     pub modules: &'a [&'a plugins::Module],
     pub browser: Option<&'a plugins::BrowserArtifacts>,
     pub scripting: Option<&'a scripting::Artifacts>,
