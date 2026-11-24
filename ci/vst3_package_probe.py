@@ -77,7 +77,7 @@ def run_probe(app: Path, archive: Path, work: Path) -> None:
         )
         module = app.parents[2] / "core/obs-vst3/obs-vst3.dll"
         resources = module.parent / "data"
-        vst3_dir = home / "Programs/Common Files/VST3"
+        vst3_dir = home / "Programs/Common/VST3"
     elif host_platform.is_macos():
         contents = app.parent.parent
         env.update(

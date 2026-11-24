@@ -23,7 +23,6 @@ extern "C" void vst3_test_qt_stop(void *app)
 
 static QWidget *find_editor()
 {
-	QCoreApplication::processEvents();
 	for (QWidget *widget : QApplication::topLevelWidgets()) {
 		if (widget->windowTitle().startsWith(QStringLiteral("Gain: VST3 Plugin - "))) {
 			return widget;
