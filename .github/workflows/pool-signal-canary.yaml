@@ -1,0 +1,42 @@
+name: Pool Signal Canary
+run-name: Pool signal is actionable 🔌
+# pool-select chooses between the Dell pool and hosted from
+# https://signal.forge-ci.com/v1/pool. When an org's `dispatcher` is null the
+# action adds no room and silently falls back to hosted, which is correct for a
+# merge gate and invisible to everyone else. On 2026-11-24 a ~30 minute flap
+# turned a merge-queue Tier 2 build into the 14m48s slow path while the payload
+# still said `state: ok, error: null` (forge-ci/gh-runner#90).
+#
+# This probe fetches the same document and fails when it cannot justify
+# routing, so a flap is a red scheduled run rather than a slow build nobody
+# attributes. Its own workflow, not a job in scheduled.yaml, so it can be
+# dispatched alone without starting the nightly build.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 13,43 * * * *
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  probe:
+    timeout-minutes: 10
+    name: Pool Signal Canary 🔌
+    # A scheduled workflow also fires in every fork (#1258): skip there.
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          enable-cache: false
+      # Exits non-zero when the document cannot justify routing, so the run
+      # itself is the alarm. No token: the endpoint is public by design.
+      - name: Check the Pool Signal 🔌
+        run: |
+          uv run --no-project ci/pool_signal_canary.py --org obs-rust | tee -a "$GITHUB_STEP_SUMMARY"
