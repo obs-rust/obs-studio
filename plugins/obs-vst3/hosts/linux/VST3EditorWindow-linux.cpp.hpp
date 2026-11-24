@@ -82,7 +82,7 @@ void VST3EditorWindow::handleDeferredResize()
 	tresult constraintResult = kResultFalse;
 
 	if (resizable_) {
-		constraintResult = view_->checkSizeConstraint(&constrainedRect);
+		constraintResult = constrainView(&constrainedRect);
 	}
 
 	if (constraintResult == kResultTrue && !sameSize(requestedRect, constrainedRect)) {
@@ -98,8 +98,8 @@ void VST3EditorWindow::handleDeferredResize()
 		correctingHostResize_ = false;
 
 		ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-		view_->onSize(&actualRect);
+		notifyViewSize(&actualRect);
 		return;
 	}
-	view_->onSize(&requestedRect);
+	notifyViewSize(&requestedRect);
 }

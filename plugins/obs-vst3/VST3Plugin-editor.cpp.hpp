@@ -32,17 +32,25 @@ void VST3Plugin::destroyEditor()
 		hideEditor();
 
 		if (view) {
+#ifdef OBS_VST3_RUST_HOST
+			window->detach();
+#else
 			view->removed();
 			view->setFrame(nullptr);
+#endif
 		}
 
 		delete window;
 		window = nullptr;
 	}
 
+#ifdef OBS_VST3_RUST_HOST
+	vst3_rust_editor_destroy(view);
+#endif
 	view = nullptr;
 }
 
+#ifndef OBS_VST3_RUST_HOST
 /* hack ripped from Juce, to create the view even with badly coded VST3s... */
 void VST3Plugin::tryCreatingView()
 {
@@ -62,8 +70,17 @@ void VST3Plugin::tryCreatingView()
 	}
 }
 
+#endif
+
 bool VST3Plugin::createView()
 {
+#ifdef OBS_VST3_RUST_HOST
+	if (view) {
+		return false;
+	}
+	view = vst3_rust_editor_create(rustHost, vst3_editor_platform_type(hostContext->backend()));
+	return view != nullptr;
+#else
 	if (!editController) {
 		infovst3plugin("VST3 does not provide an edit controller");
 		return false;
@@ -88,6 +105,7 @@ bool VST3Plugin::createView()
 	}
 
 	return true;
+#endif
 }
 
 void VST3Plugin::showEditor()
@@ -100,7 +118,11 @@ void VST3Plugin::showEditor()
 		int width = 800;
 		int height = 600;
 		Steinberg::ViewRect rect;
+#ifdef OBS_VST3_RUST_HOST
+		if (vst3_rust_editor_size(view, &rect)) {
+#else
 		if (view->getSize(&rect) == Steinberg::kResultOk) {
+#endif
 			width = rect.getWidth();
 			height = rect.getHeight();
 		} else {
@@ -111,7 +133,7 @@ void VST3Plugin::showEditor()
 
 		window = new VST3EditorWindow(view, windowName);
 
-		if (window->create(width, height)) {
+		if (window->create(width, height, hostContext->getFUnknown())) {
 			window->show();
 			editorVisible = true;
 		} else {
@@ -138,6 +160,11 @@ void VST3Plugin::hideEditor()
 // the user wants to display it, was prone to crashes. This also simplified the coding.
 bool VST3Plugin::isEditorVisible()
 {
+#ifdef OBS_VST3_RUST_HOST
+	if (!window) {
+		editorVisible = false;
+	}
+#endif
 	if (window) {
 		bool wasClosed = window->getClosedState();
 		if (wasClosed && editorVisible) {

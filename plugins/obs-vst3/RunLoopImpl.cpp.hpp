@@ -17,6 +17,7 @@
 
 #include "plugins/obs-vst3/build/obs-vst3.linux.pch.hpp"
 
+#ifndef OBS_VST3_RUST_HOST
 DEF_CLASS_IID(Steinberg::Linux::IRunLoop)
 
 RunLoopImpl::RunLoopImpl() = default;
@@ -240,3 +241,4 @@ RunLoopImpl::~RunLoopImpl()
 
 	pluginTimers.clear();
 }
+#endif

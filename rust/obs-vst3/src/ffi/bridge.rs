@@ -86,12 +86,17 @@ unsafe extern "C" fn vst3_rust_host_sidechain_channels(host: *const RustHost) ->
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn vst3_rust_host_controller(host: *const RustHost) -> *mut c_void {
+unsafe extern "C" fn vst3_rust_editor_create(
+    host: *const RustHost,
+    platform: *const c_char,
+) -> *mut super::editor::Editor {
     // SAFETY: The native owner retains the processor while its Qt editor
     // borrows the thread-affine controller. The returned pointer is borrowed.
-    unsafe { host.as_ref() }
+    let controller = unsafe { host.as_ref() }
         .and_then(|host| host.instance.lock().ok())
-        .map_or(ptr::null_mut(), |instance| instance.controller_ptr().cast())
+        .map_or(ptr::null_mut(), |instance| instance.controller_ptr());
+    // SAFETY: The native owner keeps the live engine through editor destruction.
+    unsafe { super::editor::create_editor(controller, platform) }
 }
 
 #[unsafe(no_mangle)]

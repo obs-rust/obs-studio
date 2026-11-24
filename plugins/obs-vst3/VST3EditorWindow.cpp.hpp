@@ -28,6 +28,7 @@ void reportError(const char *message)
 
 } // namespace
 
+#ifndef OBS_VST3_RUST_HOST
 class VST3EditorWindow::PlugFrameImpl final : public IPlugFrame {
 public:
 	explicit PlugFrameImpl(VST3EditorWindow *window) : window_(window) {}
@@ -60,11 +61,13 @@ private:
 	VST3EditorWindow *window_;
 };
 
-VST3EditorWindow::VST3EditorWindow(IPlugView *view, const std::string &title) : QWidget(nullptr), view_(view)
+#endif
+
+VST3EditorWindow::VST3EditorWindow(VST3EditorView *view, const std::string &title) : QWidget(nullptr), view_(view)
 {
 	viewContainer_ = new QWidget(this);
 
-	resizable_ = view_->canResize() == kResultTrue;
+	resizable_ = canResizeView();
 
 	Qt::WindowFlags flags = Qt::Tool | Qt::WindowTitleHint | Qt::WindowCloseButtonHint |
 				Qt::WindowMinimizeButtonHint;
@@ -81,16 +84,30 @@ VST3EditorWindow::VST3EditorWindow(IPlugView *view, const std::string &title) : 
 	initializePlatformWindow();
 }
 
-VST3EditorWindow::~VST3EditorWindow() = default;
+#ifdef OBS_VST3_RUST_HOST
+VST3EditorWindow::~VST3EditorWindow()
+{
+	detach();
+}
 
-bool VST3EditorWindow::create(int width, int height)
+void VST3EditorWindow::detach()
+{
+	if (std::exchange(attached_, false)) {
+		vst3_rust_editor_detach(view_);
+	}
+}
+#else
+VST3EditorWindow::~VST3EditorWindow() = default;
+#endif
+
+bool VST3EditorWindow::create(int width, int height, [[maybe_unused]] FUnknown *hostContext)
 {
 	if (!view_ || attached_ || width <= 0 || height <= 0) {
 		return false;
 	}
 
 	ViewRect initialSize(0, 0, width, height);
-	view_->checkSizeConstraint(&initialSize);
+	constrainView(&initialSize);
 	const QSize qtInitialSize = vst3ToQtSize(initialSize);
 	if (resizable_) {
 		resize(qtInitialSize);
@@ -112,9 +129,20 @@ bool VST3EditorWindow::create(int width, int height)
 
 	connect(windowHandle(), &QWindow::screenChanged, this, [this] { handleScaleChange(); });
 
+	void *nativeParent = reinterpret_cast<void *>(nativeParentId);
+#ifdef OBS_VST3_RUST_HOST
+	const auto resize = [](void *context, const ViewRect *rect) -> tresult {
+		return static_cast<VST3EditorWindow *>(context)->resizeFromPlugin(*rect);
+	};
+	const bool attached =
+		vst3_rust_editor_attach(view_, nativeParent, platformViewType(), this, resize, hostContext);
+	if (!attached) {
+		reportError("failed to attach the plug-in view");
+		return false;
+	}
+#else
 	frame_ = std::make_unique<PlugFrameImpl>(this);
 	view_->setFrame(frame_.get());
-	void *nativeParent = reinterpret_cast<void *>(nativeParentId);
 	if (view_->attached(nativeParent, platformViewType()) != kResultOk) {
 		view_->setFrame(nullptr);
 		frame_.reset();
@@ -123,10 +151,11 @@ bool VST3EditorWindow::create(int width, int height)
 		return false;
 	}
 
+#endif
 	attached_ = true;
 
 	ViewRect windowSize = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&windowSize);
+	notifyViewSize(&windowSize);
 
 	(void)updateContentScaleFactor();
 
@@ -171,7 +200,7 @@ bool VST3EditorWindow::event(QEvent *event)
 
 		if (scaleChanged && attached_) {
 			ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-			view_->onSize(&actualRect);
+			notifyViewSize(&actualRect);
 		}
 
 		return handled;
@@ -224,9 +253,11 @@ ViewRect VST3EditorWindow::qtToVst3Rect(const QSize &size) const
 
 tresult PLUGIN_API VST3EditorWindow::resizeFromPlugin(const ViewRect &rect)
 {
+#ifndef OBS_VST3_RUST_HOST
 	if (!view_ || resizeViewRecursionGuard_ || rect.getWidth() <= 0 || rect.getHeight() <= 0) {
 		return kResultFalse;
 	}
+#endif
 
 	const QSize targetSize = vst3ToQtSize(rect);
 
@@ -234,7 +265,9 @@ tresult PLUGIN_API VST3EditorWindow::resizeFromPlugin(const ViewRect &rect)
 		return kResultTrue;
 	}
 
+#ifndef OBS_VST3_RUST_HOST
 	resizeViewRecursionGuard_ = true;
+#endif
 	resizingFromPlugin_ = true;
 
 	if (resizable_) {
@@ -246,9 +279,11 @@ tresult PLUGIN_API VST3EditorWindow::resizeFromPlugin(const ViewRect &rect)
 	resizingFromPlugin_ = false;
 
 	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&actualRect);
+	notifyViewSize(&actualRect);
 
+#ifndef OBS_VST3_RUST_HOST
 	resizeViewRecursionGuard_ = false;
+#endif
 
 	return kResultTrue;
 }
@@ -267,11 +302,15 @@ bool VST3EditorWindow::updateContentScaleFactor()
 
 	contentScaleFactor_ = scale;
 
+#ifdef OBS_VST3_RUST_HOST
+	vst3_rust_editor_scale(view_, static_cast<float>(scale));
+#else
 	FUnknownPtr<IPlugViewContentScaleSupport> scaleSupport(view_);
 
 	if (scaleSupport) {
 		scaleSupport->setContentScaleFactor(static_cast<IPlugViewContentScaleSupport::ScaleFactor>(scale));
 	}
+#endif
 
 	return true;
 }
@@ -280,6 +319,33 @@ void VST3EditorWindow::handleScaleChange()
 {
 	if (updateContentScaleFactor() && attached_) {
 		ViewRect currentSize = qtToVst3Rect(viewContainer_->size());
-		view_->onSize(&currentSize);
+		notifyViewSize(&currentSize);
 	}
+}
+
+bool VST3EditorWindow::canResizeView() const
+{
+#ifdef OBS_VST3_RUST_HOST
+	return vst3_rust_editor_can_resize(view_);
+#else
+	return view_->canResize() == kResultTrue;
+#endif
+}
+
+tresult VST3EditorWindow::constrainView(ViewRect *rect) const
+{
+#ifdef OBS_VST3_RUST_HOST
+	return vst3_rust_editor_constrain(view_, rect);
+#else
+	return view_->checkSizeConstraint(rect);
+#endif
+}
+
+void VST3EditorWindow::notifyViewSize(ViewRect *rect) const
+{
+#ifdef OBS_VST3_RUST_HOST
+	(void)vst3_rust_editor_on_size(view_, rect);
+#else
+	view_->onSize(rect);
+#endif
 }

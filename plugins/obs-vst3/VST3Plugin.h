@@ -38,6 +38,9 @@
 #include <obs-module.h>
 
 #include <QObject>
+#ifdef OBS_VST3_RUST_HOST
+#include <QPointer>
+#endif
 
 #include <atomic>
 #include <cstdint>
@@ -56,6 +59,7 @@ using namespace Steinberg;
 using namespace Vst;
 
 class VST3EditorWindow;
+struct Vst3RustEditor;
 class VST3ComponentHolder;
 class VST3HostApp;
 struct Vst3RustHost;
@@ -91,7 +95,11 @@ public:
 	ProcessSetup processSetup = {};
 	ProcessContext processContext = {};
 
+#ifdef OBS_VST3_RUST_HOST
+	Vst3RustEditor *view = nullptr;
+#else
 	IPtr<IPlugView> view = nullptr;
+#endif
 
 	bool loadStates(const std::vector<uint8_t> &comp, const std::vector<uint8_t> &ctrl) const;
 	bool saveStates(std::vector<uint8_t> &compOut, std::vector<uint8_t> &ctrlOut) const;
@@ -112,11 +120,17 @@ public:
 			  size_t frames);
 
 	void destroyEditor();
+#ifndef OBS_VST3_RUST_HOST
 	void tryCreatingView();
+#endif
 	bool createView();
 	void showEditor();
 	void hideEditor();
+#ifdef OBS_VST3_RUST_HOST
+	QPointer<VST3EditorWindow> window;
+#else
 	VST3EditorWindow *window = nullptr;
+#endif
 	bool editorVisible = false;
 	bool isEditorVisible();
 

@@ -57,7 +57,7 @@ void VST3EditorWindow::handlePlatformResize(const QSize &size)
 	ViewRect constrained = requested;
 
 	if (resizable_) {
-		view_->checkSizeConstraint(&constrained);
+		constrainView(&constrained);
 	}
 
 	if (!sameSize(requested, constrained)) {
@@ -67,7 +67,7 @@ void VST3EditorWindow::handlePlatformResize(const QSize &size)
 	}
 
 	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&actualRect);
+	notifyViewSize(&actualRect);
 }
 
 qreal VST3EditorWindow::vst3CoordinateScaleFactor() const

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     Duplicate,
@@ -5,29 +7,116 @@ pub enum Error {
     Stopped,
 }
 
-pub struct Registry<H>(std::marker::PhantomData<H>);
+enum Kind {
+    Fd(i32),
+    Timer,
+}
+
+struct Entry<H> {
+    kind: Kind,
+    handler: H,
+}
+
+pub struct Registry<H> {
+    next: u64,
+    entries: BTreeMap<u64, Entry<H>>,
+    descriptors: BTreeMap<i32, u64>,
+    stopped: bool,
+}
 
 impl<H: Clone + PartialEq> Registry<H> {
     pub fn new() -> Self {
-        todo!()
+        Self {
+            next: 0,
+            entries: BTreeMap::new(),
+            descriptors: BTreeMap::new(),
+            stopped: false,
+        }
     }
-    pub fn register_fd(&mut self, _fd: i32, _handler: H) -> Result<u64, Error> {
-        todo!()
+
+    fn insert(&mut self, kind: Kind, handler: H) -> Result<u64, Error> {
+        if self.stopped {
+            return Err(Error::Stopped);
+        }
+        self.next = self.next.checked_add(1).ok_or(Error::Stopped)?;
+        let token = self.next;
+        if let Kind::Fd(fd) = kind {
+            self.descriptors.insert(fd, token);
+        }
+        self.entries.insert(token, Entry { kind, handler });
+        Ok(token)
     }
-    pub fn register_timer(&mut self, _interval: u64, _handler: H) -> Result<u64, Error> {
-        todo!()
+
+    pub fn register_fd(&mut self, fd: i32, handler: H) -> Result<u64, Error> {
+        if fd < 0 {
+            return Err(Error::Invalid);
+        }
+        if self.descriptors.contains_key(&fd) {
+            return Err(Error::Duplicate);
+        }
+        self.insert(Kind::Fd(fd), handler)
     }
-    pub fn unregister_fd_handler(&mut self, _handler: &H) -> Vec<(u64, H)> {
-        todo!()
+
+    pub fn register_timer(&mut self, interval: u64, handler: H) -> Result<u64, Error> {
+        if interval == 0 {
+            return Err(Error::Invalid);
+        }
+        if self
+            .entries
+            .values()
+            .any(|entry| matches!(entry.kind, Kind::Timer) && entry.handler == handler)
+        {
+            return Err(Error::Duplicate);
+        }
+        self.insert(Kind::Timer, handler)
     }
-    pub fn unregister_timer(&mut self, _handler: &H) -> Option<(u64, H)> {
-        todo!()
+
+    pub fn unregister_fd_handler(&mut self, handler: &H) -> Vec<(u64, H)> {
+        let descriptors: Vec<_> = self
+            .descriptors
+            .iter()
+            .filter_map(|(&fd, &token)| {
+                self.entries
+                    .get(&token)
+                    .filter(|entry| &entry.handler == handler)
+                    .map(|_| (fd, token))
+            })
+            .collect();
+        descriptors
+            .into_iter()
+            .filter_map(|(fd, token)| {
+                self.descriptors.remove(&fd);
+                self.entries
+                    .remove(&token)
+                    .map(|entry| (token, entry.handler))
+            })
+            .collect()
     }
-    pub fn dispatch(&self, _token: u64) -> Option<H> {
-        todo!()
+
+    pub fn unregister_timer(&mut self, handler: &H) -> Option<(u64, H)> {
+        let (&token, _) = self
+            .entries
+            .iter()
+            .find(|(_, entry)| matches!(entry.kind, Kind::Timer) && &entry.handler == handler)?;
+        self.entries
+            .remove(&token)
+            .map(|entry| (token, entry.handler))
     }
+
+    pub fn dispatch(&self, token: u64) -> Option<H> {
+        self.entries.get(&token).map(|entry| entry.handler.clone())
+    }
+
     pub fn stop(&mut self) {
-        todo!()
+        self.stopped = true;
+        self.descriptors.clear();
+        self.entries.clear();
+    }
+}
+
+impl<H: Clone + PartialEq> Default for Registry<H> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

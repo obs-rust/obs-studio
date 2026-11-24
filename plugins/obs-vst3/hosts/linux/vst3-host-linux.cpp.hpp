@@ -2,8 +2,12 @@
 #include "plugins/obs-vst3/build/obs-vst3.linux.pch.hpp"
 
 namespace {
+#ifdef OBS_VST3_RUST_HOST
+std::unique_ptr<QtRunLoop> vst3LinuxRunLoop;
+#else
 std::unique_ptr<RunLoopImpl> vst3LinuxRunLoop;
-}
+#endif
+} // namespace
 
 VST3Backend vst3_host_backend()
 {
@@ -19,14 +23,21 @@ VST3Backend vst3_host_backend()
 
 void vst3_attach_run_loop(VST3HostApp &host)
 {
+#ifdef OBS_VST3_RUST_HOST
+	vst3LinuxRunLoop = std::make_unique<QtRunLoop>();
+	host.setRunLoop(vst3LinuxRunLoop->interface());
+#else
 	vst3LinuxRunLoop = std::make_unique<RunLoopImpl>();
 	host.setRunLoop(vst3LinuxRunLoop.get());
+#endif
 }
 
 void vst3_detach_run_loop(VST3HostApp &host)
 {
 	host.setRunLoop(nullptr);
+#ifndef OBS_VST3_RUST_HOST
 	vst3LinuxRunLoop->stop();
+#endif
 	vst3LinuxRunLoop.reset();
 }
 
