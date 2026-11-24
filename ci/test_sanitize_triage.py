@@ -98,8 +98,8 @@ def triage(*leaks, tool="asan", text=None, test="test_x", summary=None):
         return run.returncode, run.stdout
 
 
-# Entries of each tracked kind, so their rules stay tested while the real list
-# has none (the list's goal is zero entries).
+# Entries of each tracked kind, so their rules stay tested whatever the real
+# list holds (its goal is zero entries).
 SYNTHETIC_KNOWN = {
     ("asan", "test_known_bug"): ("bug", "a synthetic OBS bug (#1)"),
     ("asan", "test_known_upstream"): ("third-party", "a synthetic library leak (#2)"),
@@ -295,7 +295,7 @@ class SkipAndKnownTest(unittest.TestCase):
 
 # The goal is zero. Adding an entry raises this number, so the reviewer sees it;
 # see docs/knowledge/asan-pr-failure.md. Fix the test first.
-KNOWN_ENTRIES = 2
+KNOWN_ENTRIES = 3
 
 
 class KnownListTest(unittest.TestCase):
