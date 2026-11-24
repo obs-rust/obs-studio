@@ -196,6 +196,7 @@ pub mod render_canvas_texture;
 pub mod reset_audio;
 pub mod reset_audio2;
 pub mod reset_source_uuids;
+pub mod save_sources;
 pub mod set_cmdline_args;
 pub mod set_locale;
 pub mod set_output_source;
