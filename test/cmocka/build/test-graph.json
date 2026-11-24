@@ -18721,6 +18721,21 @@
         }
       ]
     },
+    "test_source_signal_handler_getter": {
+      "sources": [
+        "test/cmocka/test_source_signal_handler_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_size_route_steps": {
       "sources": [
         "test/cmocka/test_source_size_route_steps.c",
@@ -29864,6 +29879,12 @@
     },
     "test_source_showing_active": {
       "target": "test_source_showing_active",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_signal_handler_getter": {
+      "target": "test_source_signal_handler_getter",
       "command": [
         "${target}"
       ]
