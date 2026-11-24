@@ -9,6 +9,15 @@ run-name: Seed the Tier 2 apt archive 📦
 # every build run times out.
 on:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: >-
+          Ref whose apt-packages.txt to seed. Defaults to master. A PR head
+          seeds the list the PR will build with; the script itself still runs
+          from master, so PR code never executes in the cache-writing run.
+        required: false
+        default: master
+        type: string
   schedule:
     - cron: 41 */6 * * *
 # Read-only at the top level; the cache save mints its own grant (SEC-002).
@@ -27,6 +36,27 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      # Seed a list that is not master's without running that ref's code. The
+      # cache key is hashFiles('rust/tools/linux-validate/apt-packages.txt'), so
+      # checking the requested ref's copy of that one file into the workspace
+      # makes the key identical to the one the consumer computes. Everything
+      # else in the tree stays master's, so ci/seed_apt_cache.py below is always
+      # the reviewed script -- a PR contributes a list of package names and
+      # nothing else. The fetch passes the token in the URL so it never lands in
+      # .git/config, which persist-credentials: false exists to prevent.
+      - name: Check Out Package List 🧾
+        if: inputs.source_ref != '' && inputs.source_ref != 'master'
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "${SOURCE_REF}"
+          git checkout FETCH_HEAD -- rust/tools/linux-validate/apt-packages.txt
+          echo "seeding the package list from ${SOURCE_REF}:"
+          git diff --stat HEAD -- rust/tools/linux-validate/apt-packages.txt
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
