@@ -421,6 +421,8 @@ QT_PREFIXES = (
     "shared/properties-view/",
     "plugins/frontend-tools/",
     "plugins/obs-vst3/",
+    "rust/obs-vst3-scanner/",
+    "rust/obs-vst3-scanner-native/",
     "test/cmocka/vst3-test-",
     "ci/linux_qt_frontend",
     # The C++ lint report runs in the Qt job (#5453).
@@ -434,6 +436,7 @@ QT_FILES = {
     "ci/test_qt_cache_identity.py",
     "test/cmocka/CMakeLists.txt",
     "test/cmocka/test_vst3_host.c",
+    "test/cmocka/vst3_scanner_parity.cmake",
     "test/cmocka/tests.d/test_vst3_host.cmake",
     "cmake/finders/FindFFmpeg.cmake",
 }
