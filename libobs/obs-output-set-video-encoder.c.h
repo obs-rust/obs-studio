@@ -64,4 +64,3 @@ void obs_output_set_video_encoder(obs_output_t *output, obs_encoder_t *encoder)
 
 	obs_output_set_video_encoder2(output, encoder, 0);
 }
-
