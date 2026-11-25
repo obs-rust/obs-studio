@@ -1,14 +1,17 @@
-/* Original getters and adapter over the real private source layout.
- * No intended behavior differences or exclusions. */
+/* Original getters, unbuffered setter (#5595) and adapter over the real
+ * private source layout. No intended behavior differences or exclusions. */
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #define obs_source_async_unbuffered oracle_obs_source_async_unbuffered
 #define obs_source_async_decoupled oracle_obs_source_async_decoupled
+#define obs_source_set_async_unbuffered oracle_obs_source_set_async_unbuffered
 #include "obs-source-async-flag-getters.c.h"
+#include "obs-source-async-unbuffered-setter.c.h"
 #undef obs_source_async_unbuffered
 #undef obs_source_async_decoupled
+#undef obs_source_set_async_unbuffered
 #include "source_async_flag_fields.inc"
 
 typedef bool (*flag_getter)(const obs_source_t *source);
@@ -43,6 +46,17 @@ void *oracle_source_async_flag_new(bool unbuffered, bool decoupled)
 		memcpy(fixture->snapshot, &fixture->source, sizeof(fixture->source));
 	}
 	return fixture;
+}
+
+/* The fixture changed exactly in its unbuffered byte, which now holds
+ * expected; the snapshot follows, so a later call compares against it. */
+bool oracle_source_async_flag_stored(void *source, bool expected);
+bool oracle_source_async_flag_stored(void *source, bool expected)
+{
+	struct async_flag_fixture *fixture = source;
+	memcpy(fixture->snapshot + offsetof(struct obs_source, async_unbuffered), &expected, sizeof(expected));
+	return fixture->source.async_unbuffered == expected &&
+	       memcmp(&fixture->source, fixture->snapshot, sizeof(fixture->source)) == 0;
 }
 
 bool oracle_source_async_flag_unchanged(const void *source);
@@ -93,4 +107,19 @@ bool oracle_source_async_flag_null_log(flag_getter get_unbuffered, flag_getter g
 	base_set_log_handler(old_handler, old_param);
 	return unbuffered_ok && !decoupled && log.count == 2 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_source_async_decoupled: Null 'source' parameter") == 0;
+}
+
+typedef void (*flag_setter)(obs_source_t *source, bool unbuffered);
+bool oracle_source_async_unbuffered_setter_null_log(flag_setter set_unbuffered, bool requested);
+bool oracle_source_async_unbuffered_setter_null_log(flag_setter set_unbuffered, bool requested)
+{
+	struct async_flag_log log = {0};
+	log_handler_t old_handler;
+	void *old_param;
+	base_get_log_handler(&old_handler, &old_param);
+	base_set_log_handler(async_flag_capture, &log);
+	set_unbuffered(NULL, requested);
+	base_set_log_handler(old_handler, old_param);
+	return log.count == 1 && log.level == LOG_DEBUG &&
+	       strcmp(log.message, "obs_source_set_async_unbuffered: Null 'source' parameter") == 0;
 }

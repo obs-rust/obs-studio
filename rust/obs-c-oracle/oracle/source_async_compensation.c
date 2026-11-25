@@ -1,12 +1,16 @@
-/* Original setter and real-header adapter. No parity exclusions. */
+/* Original setter, getter (#5595) and real-header adapter. No parity
+ * exclusions. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #define obs_source_set_async_compensation oracle_obs_source_set_async_compensation
+#define obs_source_async_compensation oracle_obs_source_async_compensation
 #include "obs-source-async-compensation-setter.c.h"
+#include "obs-source-async-compensation-getter.c.h"
 #undef obs_source_set_async_compensation
+#undef obs_source_async_compensation
 #include "source_async_compensation_fields.inc"
 
 struct async_compensation_fixture {
@@ -95,4 +99,27 @@ bool oracle_source_async_compensation_null_log(async_compensation_setter setter,
 	base_set_log_handler(old_handler, old_param);
 	return log.count == 1 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_source_set_async_compensation: Null 'source' parameter") == 0;
+}
+
+/* The fixture is byte for byte its snapshot: a getter wrote nothing. */
+bool oracle_source_async_compensation_unchanged(const void *source);
+bool oracle_source_async_compensation_unchanged(const void *source)
+{
+	const struct async_compensation_fixture *f = source;
+	return memcmp(&f->source, f->snapshot, sizeof(f->source)) == 0;
+}
+
+typedef bool (*async_compensation_getter)(const obs_source_t *);
+bool oracle_source_async_compensation_getter_null_log(async_compensation_getter getter);
+bool oracle_source_async_compensation_getter_null_log(async_compensation_getter getter)
+{
+	struct async_compensation_log log = {0};
+	log_handler_t old_handler;
+	void *old_param;
+	base_get_log_handler(&old_handler, &old_param);
+	base_set_log_handler(async_compensation_capture, &log);
+	bool answer = getter(NULL);
+	base_set_log_handler(old_handler, old_param);
+	return !answer && log.count == 1 && log.level == LOG_DEBUG &&
+	       strcmp(log.message, "obs_source_async_compensation: Null 'source' parameter") == 0;
 }

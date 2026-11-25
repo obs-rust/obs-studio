@@ -17045,6 +17045,21 @@
         }
       ]
     },
+    "test_source_async_flag_pair": {
+      "sources": [
+        "test/cmocka/test_source_async_flag_pair.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_audio_active": {
       "sources": [
         "test/cmocka/test_source_audio_active.c"
@@ -29345,6 +29360,13 @@
     },
     "test_source_async_flag_getters": {
       "target": "test_source_async_flag_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    },
+    "test_source_async_flag_pair": {
+      "target": "test_source_async_flag_pair",
       "command": [
         "${target}"
       ],

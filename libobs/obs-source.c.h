@@ -3852,21 +3852,6 @@ bool obs_source_audio_pending(const obs_source_t *source)
 	return (is_composite_source(source) || is_audio_source(source)) ? source->audio_pending : true;
 }
 
-void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)
-{
-	if (!obs_source_valid(source, "obs_source_set_async_unbuffered"))
-		return;
-
-	source->async_unbuffered = unbuffered;
-}
-
-bool obs_source_async_compensation(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_async_compensation")
-		       ? os_atomic_load_bool(&source->async_compensation)
-		       : false;
-}
-
 /* hidden/undocumented export to allow source type redefinition for scripts */
 
 EXPORT void obs_enable_source_type(const char *name, bool enable);
