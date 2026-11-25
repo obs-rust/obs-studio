@@ -2,4 +2,4 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "rust/obs-c-oracle/legacy/obs-scene-item-xform-setters.c.h"
+#include "libobs/obs-scene-item-xform-setters-reference.c.h"
