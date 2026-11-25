@@ -19469,6 +19469,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_weak_refs": {
+      "sources": [
+        "test/cmocka/test_source_weak_refs.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_sprite_flip_render": {
       "sources": [
         "test/cmocka/test_sprite_flip_render.c"
@@ -30295,6 +30310,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_weak_refs": {
+      "target": "test_source_weak_refs",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_sprite_flip_render": {
       "target": "test_sprite_flip_render",
