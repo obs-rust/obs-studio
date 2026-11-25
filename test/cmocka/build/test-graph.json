@@ -18932,6 +18932,22 @@
         }
       ]
     },
+    "test_source_reset_settings": {
+      "sources": [
+        "test/cmocka/test_source_reset_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_select_list": {
       "sources": [
         "test/cmocka/test_source_select_list.cpp",
@@ -30289,6 +30305,13 @@
         "${target}"
       ],
       "timeout_seconds": 30
+    },
+    "test_source_reset_settings": {
+      "target": "test_source_reset_settings",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_select_list": {
       "target": "test_source_select_list",
