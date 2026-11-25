@@ -1,16 +1,49 @@
 /* Direct characterization of the three public registry name getters. No media
- * pipeline or external plugin is needed: missing types still have real contexts,
- * registry links, reference controls and destruction paths. */
+ * pipeline or external plugin is needed: fallback output/encoder contexts and
+ * a registered synthetic service use real registries and destruction paths. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
 #include <obs.h>
 
+static const char *service_name(void *data)
+{
+	(void)data;
+	return "Registry service";
+}
+
+static void *service_create(obs_data_t *settings, obs_service_t *service)
+{
+	(void)settings;
+	return service;
+}
+
+static void service_destroy(void *data)
+{
+	(void)data;
+}
+
+static const char *service_protocol(void *data)
+{
+	(void)data;
+	return "RTMP";
+}
+
 static int setup(void **state)
 {
 	(void)state;
-	return obs_startup("en-US", NULL, NULL) ? 0 : -1;
+	if (!obs_startup("en-US", NULL, NULL))
+		return -1;
+	struct obs_service_info info = {
+		.id = "registry-service",
+		.get_name = service_name,
+		.create = service_create,
+		.destroy = service_destroy,
+		.get_protocol = service_protocol,
+	};
+	obs_register_service(&info);
+	return 0;
 }
 
 static int teardown(void **state)
@@ -92,9 +125,9 @@ static void service_lookup(void **state)
 	(void)state;
 	assert_null(obs_get_service_by_name("service name"));
 	assert_null(obs_get_service_by_name(""));
-	obs_service_t *older = obs_service_create("registry-missing-service", "service name", NULL, NULL);
-	obs_service_t *newer = obs_service_create("registry-missing-service", "service name", NULL, NULL);
-	obs_service_t *private = obs_service_create_private("registry-missing-service", "service name", NULL);
+	obs_service_t *older = obs_service_create("registry-service", "service name", NULL, NULL);
+	obs_service_t *newer = obs_service_create("registry-service", "service name", NULL, NULL);
+	obs_service_t *private = obs_service_create_private("registry-service", "service name", NULL);
 	assert_non_null(older);
 	assert_non_null(newer);
 	assert_non_null(private);
@@ -128,7 +161,7 @@ static void separate_registries(void **state)
 	(void)state;
 	obs_output_t *output = obs_output_create("registry-missing-output", "shared name", NULL, NULL);
 	obs_encoder_t *encoder = obs_video_encoder_create("registry-missing-encoder", "shared name", NULL, NULL);
-	obs_service_t *service = obs_service_create("registry-missing-service", "shared name", NULL, NULL);
+	obs_service_t *service = obs_service_create("registry-service", "shared name", NULL, NULL);
 	assert_non_null(output);
 	assert_non_null(encoder);
 	assert_non_null(service);
