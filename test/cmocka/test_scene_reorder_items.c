@@ -33,7 +33,13 @@ static const char *leaf_name(void *unused)
 static void *leaf_create(obs_data_t *settings, obs_source_t *source)
 {
 	(void)settings;
-	return source;
+	(void)source;
+	return bzalloc(1);
+}
+
+static void leaf_destroy(void *data)
+{
+	bfree(data);
 }
 
 static uint32_t leaf_size(void *unused)
@@ -224,6 +230,7 @@ int main(void)
 		.output_flags = OBS_SOURCE_VIDEO,
 		.get_name = leaf_name,
 		.create = leaf_create,
+		.destroy = leaf_destroy,
 		.get_width = leaf_size,
 		.get_height = leaf_size,
 	};
