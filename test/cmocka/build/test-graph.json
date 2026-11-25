@@ -17850,6 +17850,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_enum_filters": {
+      "sources": [
+        "test/cmocka/test_source_enum_filters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_backup": {
       "sources": [
         "test/cmocka/test_source_filter_backup.c"
@@ -29681,6 +29696,12 @@
     "test_source_duplicate_steps_rust": {
       "target": "test_source_duplicate_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_enum_filters": {
+      "target": "test_source_enum_filters",
       "command": [
         "${target}"
       ]
