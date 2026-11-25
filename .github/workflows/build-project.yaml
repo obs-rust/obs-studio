@@ -3348,7 +3348,12 @@ jobs:
         run: |
           case "${OBS_TIER2_TEST_BUILD:-}" in
             "${OBS_TIER2_SCRATCH:-/nonexistent}"/tier2.*)
+              scratch_name=${OBS_TIER2_TEST_BUILD##*/}
+              [[ "$OBS_TIER2_TEST_BUILD" == "$OBS_TIER2_SCRATCH/$scratch_name" ]]
+              [[ -d "$OBS_TIER2_TEST_BUILD" && ! -L "$OBS_TIER2_TEST_BUILD" ]] || exit 0
               df -h "$OBS_TIER2_TEST_BUILD"
+              # CTest creates directories as root inside the jobs container.
+              sudo -n chown -hR -- "$(id -u):$(id -g)" "$OBS_TIER2_TEST_BUILD"
               uv run --no-project python -c 'import shutil, sys; shutil.rmtree(sys.argv[1])' "$OBS_TIER2_TEST_BUILD"
               ;;
           esac
