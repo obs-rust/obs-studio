@@ -1537,7 +1537,9 @@ void obs_source_async_decoupled_invalidate(obs_source_t *source);
 void obs_source_async_decoupled_unlock(obs_source_t *source);
 
 /* Borrowed addresses only; source must be non-NULL and live. No ownership or
- * synchronization changes, and each getter reads only its requested field. */
+ * synchronization changes, and each getter reads only its requested field.
+ * The centered-texture setter (#5599) rejects NULL first and stores through
+ * the texcoords_centered address of its non-const source. */
 struct obs_source_boolean_query_fields {
 	const bool *texcoords_centered;
 	const bool *hidden;
