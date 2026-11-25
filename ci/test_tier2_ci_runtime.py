@@ -19,6 +19,12 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_shared_mount_error_falls_back_before_docker(self):
+        with patch.dict(os.environ, {"OBS_TIER2_ARTIFACT_SOCKET": "/nonexistent/lease.sock"}), \
+                patch.object(runtime, "execute") as execute:
+            self.assertEqual(runtime.execute_shared(argparse.Namespace()), 75)
+            execute.assert_not_called()
+
     def descriptor(self):
         return {'base': runtime.BASE, 'platform': 'linux/amd64', 'inventory': 'a\t1\n',
                 'image_id': 'sha256:' + 'a' * 64, 'compressed_bytes': 4,
