@@ -7,6 +7,9 @@
 
 #include <obs.h>
 
+/* The deprecated symbol is the compatibility contract under test. */
+PRAGMA_DISABLE_DEPRECATION
+
 static const char *lookup_name(void *unused)
 {
 	(void)unused;
@@ -24,6 +27,18 @@ static void lookup_destroy(void *data)
 	(void)data;
 }
 
+static bool lookup_audio_render(void *data, uint64_t *timestamp, struct obs_source_audio_mix *audio, uint32_t mixers,
+				size_t channels, size_t sample_rate)
+{
+	(void)data;
+	(void)timestamp;
+	(void)audio;
+	(void)mixers;
+	(void)channels;
+	(void)sample_rate;
+	return false;
+}
+
 static int setup(void **state)
 {
 	(void)state;
@@ -38,6 +53,8 @@ static int setup(void **state)
 	obs_register_source(&info);
 	info.id = "uuid_lookup_transition";
 	info.type = OBS_SOURCE_TYPE_TRANSITION;
+	/* Transitions are composite sources and require an audio callback. */
+	info.audio_render = lookup_audio_render;
 	obs_register_source(&info);
 	return 0;
 }
