@@ -14,8 +14,13 @@ pub enum Callback {
 
 /// Picks the callback from which of the two the type has.
 pub fn callback(modern: bool, legacy: bool) -> Callback {
-    let _ = (modern, legacy);
-    todo!("#5640")
+    if modern {
+        Callback::Modern
+    } else if legacy {
+        Callback::Legacy
+    } else {
+        Callback::Neither
+    }
 }
 
 /// `obs_get_source_defaults()` once the type is looked up: an unknown type
@@ -26,6 +31,10 @@ pub fn defaults<S>(
     create: impl FnOnce() -> S,
     fill: impl FnOnce(Callback, &S),
 ) -> Option<S> {
-    let _ = (found, create, fill);
-    todo!("#5640")
+    let kind = found?;
+    let settings = create();
+    if kind != Callback::Neither {
+        fill(kind, &settings);
+    }
+    Some(settings)
 }

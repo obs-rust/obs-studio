@@ -68,7 +68,6 @@
 #include "libobs/obs-source-canvas-getter-fields.c.h"
 #include "libobs/obs-source-caption-callback-fields.c.h"
 #include "libobs/obs-source-default-flags-fields.c.h"
-#include "libobs/obs-source-defaults.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace-seam.c.h"
 #include "libobs/obs-source-deinterlace-texture-fields.c.h"
