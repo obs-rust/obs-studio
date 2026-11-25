@@ -58,6 +58,7 @@
 #include "libobs/obs-output-get-name-fields.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
+#include "libobs/obs-output-initialize-encoders.c.h"
 #include "libobs/obs-output-interleave-name-fields.c.h"
 #include "libobs/obs-output-last-error-fields.c.h"
 #include "libobs/obs-output-mixer-getters-fields.c.h"
