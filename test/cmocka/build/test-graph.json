@@ -18819,6 +18819,25 @@
         }
       ]
     },
+    "test_source_texcoords_centered_setter": {
+      "sources": [
+        "test/cmocka/test_source_texcoords_centered_setter.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_transition_access": {
       "sources": [
         "test/cmocka/test_source_transition_access.c"
@@ -29886,6 +29905,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_texcoords_centered_setter": {
+      "target": "test_source_texcoords_centered_setter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_transition_access": {
       "target": "test_source_transition_access",
