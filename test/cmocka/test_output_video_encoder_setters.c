@@ -1,4 +1,4 @@
-/* Direct characterization of the loaded public setters. No copied setter or
+/* Direct characterization of the loaded public setters (#5685). No copied setter or
  * Rust stand-in: real output/encoder handles own every reference and caption.
  * Private state only observes effects or arranges flags/active gates without
  * starting capture. Dying-reference cases remain in test_output_slot_stored_encoder. */
@@ -25,6 +25,9 @@ static void capture_log(int level, const char *format, va_list args, void *param
 static void capture_log(int level, const char *format, va_list args, void *param)
 {
 	(void)param;
+	/* Keep NULL admission diagnostics (DEBUG), but ignore lifecycle chatter. */
+	if (level > LOG_WARNING && !strstr(format, "Null '"))
+		return;
 	log_count++;
 	log_level = level;
 	vsnprintf(log_text, sizeof(log_text), format, args);
@@ -53,7 +56,7 @@ static bool start(void *data)
 	return false;
 }
 
-static void stop(void *data, uint64_t timestamp)
+static void output_stop(void *data, uint64_t timestamp)
 {
 	(void)data;
 	(void)timestamp;
@@ -97,7 +100,7 @@ static int setup(void **state)
 		.create = output_create,
 		.destroy = destroy,
 		.start = start,
-		.stop = stop,
+		.stop = output_stop,
 		.encoded_packet = packet,
 	};
 	obs_register_output(&info);
@@ -146,14 +149,13 @@ static int teardown(void **state)
 
 static long references(obs_encoder_t *encoder)
 {
-	const obs_weak_encoder_t *weak = encoder->context.control;
-	return os_atomic_load_long(&weak->ref.refs);
+	return os_atomic_load_long(&encoder->context.control->ref.refs);
 }
 
-static void expect_log(const char *text)
+static void expect_log(int level, const char *text)
 {
 	assert_int_equal(log_count, 1);
-	assert_int_equal(log_level, LOG_WARNING);
+	assert_int_equal(log_level, level);
 	assert_string_equal(log_text, text);
 	log_count = 0;
 }
@@ -172,21 +174,23 @@ static void null_and_gate_order(void **state)
 {
 	(void)state;
 	obs_output_set_video_encoder(NULL, video[0]);
-	expect_log("obs_output_set_video_encoder: Null 'output' parameter");
+	expect_log(LOG_DEBUG, "obs_output_set_video_encoder: Null 'output' parameter");
 	obs_output_set_video_encoder2(NULL, audio, SIZE_MAX);
-	expect_log("obs_output_set_video_encoder2: Null 'output' parameter");
+	expect_log(LOG_DEBUG, "obs_output_set_video_encoder2: Null 'output' parameter");
 	output->info.flags = 0;
 	os_atomic_set_bool(&output->active, true);
 	obs_output_set_video_encoder2(output, audio, SIZE_MAX);
-	expect_log("Output 'setter output': Tried to use obs_output_set_video_encoder2 on a raw output");
+	expect_log(LOG_WARNING, "Output 'setter output': Tried to use obs_output_set_video_encoder2 on a raw output");
 	output->info.flags = OBS_OUTPUT_ENCODED;
 	obs_output_set_video_encoder2(output, audio, SIZE_MAX);
-	expect_log("Output 'setter output': Tried to use obs_output_set_video_encoder2 on a non-video output");
+	expect_log(LOG_WARNING,
+		   "Output 'setter output': Tried to use obs_output_set_video_encoder2 on a non-video output");
 	output->info.flags |= OBS_OUTPUT_VIDEO;
 	obs_output_set_video_encoder2(output, audio, SIZE_MAX);
-	expect_log("obs_output_set_video_encoder: encoder passed is not a video encoder");
+	expect_log(LOG_WARNING, "obs_output_set_video_encoder: encoder passed is not a video encoder");
 	obs_output_set_video_encoder2(output, video[0], SIZE_MAX);
 	expect_log(
+		LOG_WARNING,
 		"obs_output_set_video_encoder2: tried to set video encoder on output \"setter output\" while the output is still active!");
 	assert_empty();
 }
@@ -282,9 +286,11 @@ static void active_and_delay_gates(void **state)
 	os_atomic_set_bool(&output->active, true);
 	obs_output_set_video_encoder(output, NULL);
 	expect_log(
+		LOG_WARNING,
 		"obs_output_set_video_encoder2: tried to set video encoder on output \"setter output\" while the output is still active!");
 	obs_output_set_video_encoder2(output, video[0], 0);
 	expect_log(
+		LOG_WARNING,
 		"obs_output_set_video_encoder2: tried to set video encoder on output \"setter output\" while the output is still active!");
 	assert_ptr_equal(output->video_encoders[0], video[0]);
 	assert_ptr_equal(output->caption_tracks[0], caption);
