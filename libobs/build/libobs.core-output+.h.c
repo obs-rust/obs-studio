@@ -71,6 +71,7 @@
 #include "libobs/obs-output-reconnect-settings-fields.c.h"
 #include "libobs/obs-output-reconnecting-fields.c.h"
 #include "libobs/obs-output-service-getter-fields.c.h"
+#include "libobs/obs-output-set-audio-encoder.c.h"
 #include "libobs/obs-output-set-media-fields.c.h"
 #include "libobs/obs-output-settings-fields.c.h"
 #include "libobs/obs-output-size-getters-fields.c.h"
