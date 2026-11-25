@@ -59,7 +59,19 @@ pub trait Libobs {
 }
 
 /// `obs_source_get_color_space(source, count, preferred_spaces)`.
-pub fn get<L: Libobs>(lib: &mut L, source: L::Source, preferred: L::Preferred) -> i32 {
-    let _ = (lib, source, preferred, route as fn(Node) -> Route);
-    todo!("#5724")
+pub fn get<L: Libobs>(lib: &mut L, mut source: L::Source, preferred: L::Preferred) -> i32 {
+    loop {
+        if !lib.data_valid(source) {
+            return SRGB;
+        }
+        match route(lib.node(source)) {
+            Route::AskParent => source = lib.filter_parent(source),
+            Route::AskTarget => source = lib.filter_target(source),
+            Route::AsyncPick => {
+                let video_space = lib.async_space(source);
+                return lib.pick(video_space, preferred);
+            }
+            Route::Callback => return lib.callback(source, preferred).unwrap_or(SRGB),
+        }
+    }
 }

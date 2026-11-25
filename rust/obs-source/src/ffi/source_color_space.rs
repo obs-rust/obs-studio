@@ -2,7 +2,7 @@
 //! routing of `obs_source_get_color_space()`, declared in
 //! `libobs/obs-source-color-space.h` without `EXPORT`.
 //!
-//! `obs_source_get_color_space()` in `obs-source.c.h` (still C) checks
+//! `obs_source_get_color_space()` (Rust since #5724, `ffi::source_get_color_space`) checks
 //! `data_valid()`, reads the source's fields into a
 //! [`obs_source_color_space_node`] passed by value, calls
 //! [`obs_source_color_space_route`] and follows the route itself: the
