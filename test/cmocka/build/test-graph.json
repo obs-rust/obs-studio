@@ -16209,6 +16209,25 @@
         }
       ]
     },
+    "test_sceneitem_xform_setters": {
+      "sources": [
+        "test/cmocka/test_sceneitem_xform_setters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_sck_stall": {
       "sources": [
         "test/cmocka/test_sck_stall.c",
@@ -29047,6 +29066,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_sceneitem_xform_setters": {
+      "target": "test_sceneitem_xform_setters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_sck_stall": {
       "target": "test_sck_stall"
