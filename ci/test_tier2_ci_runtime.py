@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import ANY, call, patch
 import urllib.error
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,6 +39,7 @@ class RuntimeTest(unittest.TestCase):
 
             execute.side_effect = run
             self.assertEqual(runtime.execute_shared(argparse.Namespace()), 0)
+            lease.assert_has_calls([call.settimeout(5), call.connect(ANY), call.settimeout(600)])
             execute.assert_called_once()
             connect.return_value.__exit__.assert_called_once()
 
