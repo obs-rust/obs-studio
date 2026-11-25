@@ -53,6 +53,31 @@ MAX_FILE_BYTES = 400_000
 NEVER_AI = re.compile(r"(Cargo\.lock|\.lock$|\.snap$|\.png$|\.bin$)")
 MARKER = re.compile(r"^(<{7}|={7}|>{7}|\|{7})( |$)", re.M)
 
+# #3973 replaced the hand-maintained `#[path] … mod …` registration list in
+# rust/obs-build/tests/native.rs with directory discovery: obs-studio-rust's
+# build script scans tests/native/registration/ and writes the declarations
+# into OUT_DIR. A resolution that keeps the generated include therefore still
+# compiles every fragment on disk, so dropping one of those pairs is a move,
+# not a loss. Without the include the pair is load-bearing and the old rule
+# stands.
+DISCOVERY_INCLUDE = re.compile(
+    r'include!\(\s*concat!\(\s*env!\(\s*"OUT_DIR"\s*\)\s*,\s*"/native-registration\.rs"\s*\)\s*\)')
+REGISTRATION_ATTR = re.compile(r'#\[path\s*=\s*"native/registration/([A-Za-z0-9_]+)\.rs"\]')
+REGISTRATION_MOD = re.compile(r"mod\s+([A-Za-z0-9_]+)\s*;")
+REGISTRATION_DIR = Path("rust/obs-build/tests/native/registration")
+
+
+def discovered_by_scan(line: str) -> bool:
+    """True when *line* declared only a fragment the build script now discovers.
+
+    Both halves of the pair count: `#[path = "native/registration/x.rs"]` and
+    `mod x;`. The fragment has to exist, so a resolution that deletes the file
+    as well is still refused.
+    """
+    stripped = line.strip()
+    match = REGISTRATION_ATTR.fullmatch(stripped) or REGISTRATION_MOD.fullmatch(stripped)
+    return bool(match) and (REGISTRATION_DIR / f"{match.group(1)}.rs").is_file()
+
 
 def plain_env() -> dict[str, str]:
     """The environment with color forcing removed. setup-soldr exports
@@ -166,6 +191,11 @@ def check_resolution(f: str, base: str, ours: str, theirs: str) -> str | None:
     if revived:
         return f"{f}: the PR deleted {sorted(revived)[0]!r} but the resolution keeps it"
     lost = (added_lines(base, ours) | added_lines(base, theirs)) - kept
+    if lost and DISCOVERY_INCLUDE.search(text):
+        # #3973 replaces the hand-maintained registration list with directory
+        # discovery: a fragment still on disk is compiled by name from the
+        # generated include, so dropping its declaration loses nothing.
+        lost = {line for line in lost if not discovered_by_scan(line)}
     if len(lost) > 2:
         return f"{f}: {len(lost)} added lines dropped, e.g. {sorted(lost)[0]!r}"
     return None
