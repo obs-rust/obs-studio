@@ -75,6 +75,7 @@
 #include "libobs/obs-output-settings-fields.c.h"
 #include "libobs/obs-output-size-getters-fields.c.h"
 #include "libobs/obs-output-starting-queries-fields.c.h"
+#include "libobs/obs-output-strong-ref.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
 #include "libobs/obs-output-total-bytes-fields.c.h"
 #include "libobs/obs-output-total-frames-fields.c.h"
