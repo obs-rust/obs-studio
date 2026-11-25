@@ -82,7 +82,7 @@
 #include "libobs/obs-output-video-encoder-getter-fields.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-context-getter-fields.c.h"
-#include "libobs/obs-service-find.c.h"
+#include "libobs/obs-service-find-fields.c.h"
 #include "libobs/obs-service-handler-getters-fields.c.h"
 #include "libobs/obs-service-info-accessors-fields.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
