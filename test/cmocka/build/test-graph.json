@@ -17727,6 +17727,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_defaults": {
+      "sources": [
+        "test/cmocka/test_source_defaults.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_deinterlace": {
       "sources": [
         "test/cmocka/test_source_deinterlace.c"
@@ -29799,6 +29814,13 @@
           "-a"
         ]
       ]
+    },
+    "test_source_defaults": {
+      "target": "test_source_defaults",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_deinterlace": {
       "target": "test_source_deinterlace",
