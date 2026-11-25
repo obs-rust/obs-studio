@@ -94,6 +94,7 @@ mod interaction;
 mod interaction_parity;
 mod media_admission;
 mod media_admission_parity;
+mod media_controls;
 mod missing_files_getter;
 mod missing_files_getter_parity;
 mod monitoring;
