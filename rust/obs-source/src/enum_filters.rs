@@ -32,11 +32,22 @@ pub trait FilterList {
 /// ([`ENUM_FILTERS_FUNCTION`], [`CALLBACK_PARAMETER`]). Otherwise, under the
 /// lock, the count is read once and the callback gets every filter from the
 /// last index to the first, each entry read when it is visited.
-#[expect(clippy::todo, reason = "RED stub for #5605")]
 pub fn enum_filters<L: FilterList>(
-    _source: Option<&L>,
-    _callback: Option<impl FnMut(L::Filter)>,
-    _log: impl FnOnce(&'static CStr, &'static CStr),
+    source: Option<&L>,
+    callback: Option<impl FnMut(L::Filter)>,
+    log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    todo!("#5605")
+    let Some(source) = source else {
+        log(ENUM_FILTERS_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    let Some(mut callback) = callback else {
+        log(ENUM_FILTERS_FUNCTION, CALLBACK_PARAMETER);
+        return;
+    };
+    source.lock();
+    for index in (0..source.count()).rev() {
+        callback(source.filter(index));
+    }
+    source.unlock();
 }
