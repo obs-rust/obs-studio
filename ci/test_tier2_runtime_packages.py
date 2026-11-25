@@ -147,6 +147,15 @@ libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x234)
 
 
 class RuntimeWorkflowTest(unittest.TestCase):
+    def test_tier2_test_uses_selected_scratch_for_unpack_and_docker(self):
+        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        tests = workflow.split('  rust-linux-tier2:', 1)[1].split('  rust-linux-tier2-done:', 1)[0]
+        self.assertIn('build="$RUNNER_TEMP/tier2"', tests)
+        self.assertIn('findmnt -n -M "$OBS_TIER2_SCRATCH" -o FSTYPE', tests)
+        self.assertIn('-C "$OBS_TIER2_TEST_BUILD"', tests)
+        self.assertIn('--build "$OBS_TIER2_TEST_BUILD"', tests)
+        self.assertIn('Release Tier 2 Scratch\n        if: always()', tests)
+
     def test_manifest_is_produced_and_transferred_before_runtime_install(self):
         text = (ROOT / '.github/workflows/build-project.yaml').read_text()
         build = text.split('  rust-linux-tier2-build:', 1)[1].split('  rust-linux-tier2:', 1)[0]
