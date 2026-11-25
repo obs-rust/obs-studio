@@ -5600,6 +5600,8 @@ pub(crate) mod core_module_manifest;
 
 #[path = "native/registration/canonical_source_update_properties_swap_is_registered.rs"]
 mod canonical_source_update_properties_swap_is_registered;
+#[path = "native/registration/canonical_source_update_swap_is_registered.rs"]
+mod canonical_source_update_swap_is_registered;
 #[path = "native/registration/canonical_source_weak_refs_swap_is_registered.rs"]
 mod canonical_source_weak_refs_swap_is_registered;
 
