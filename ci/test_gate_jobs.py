@@ -103,13 +103,13 @@ class GateJobs(unittest.TestCase):
         windows_link = "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)"
         expected = gate_jobs.pr_expected_jobs(selected, files, plan)
         cmocka = {f"Build 🧱 / Tier 2 Link Check 🔗 ({alias})" for alias in ("win-x64", "mac-arm64")}
-        self.assertEqual(expected, {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂", *cmocka})
+        self.assertEqual(expected, {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂"})
+        expected = gate_jobs.pr_expected_jobs(selected, files, {})
         for name in cmocka:
             healthy = [job(n, "success") for n in expected if n != name]
             for conclusion in ("skipped", "cancelled", "failure"):
                 self.assertEqual(blocking([*healthy, job(name, conclusion)], expected=expected), [name])
             self.assertEqual(blocking(healthy, expected=expected), [name])
-        expected = gate_jobs.pr_expected_jobs(selected, files, {})
         healthy = [job(name, "success") for name in expected if name != windows_link]
         self.assertEqual(blocking(healthy, expected=expected), [windows_link])
         self.assertEqual(blocking([*healthy, job(windows_link, "skipped")], expected=expected), [windows_link])

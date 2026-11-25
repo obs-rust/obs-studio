@@ -73,7 +73,7 @@ class MergeQueue(unittest.TestCase):
             self.assertIn("github.event_name == 'pull_request'", header)
             self.assertIn("skip_rust-cross-lint", header)
             self.assertNotIn("cross_hit", header)
-        for name in ("cross-compile", "rust-windows-link", "linux-qt-frontend",
+        for name in ("cross-compile", "rust-windows-link", "cmocka-link", "linux-qt-frontend",
                      "rust-tests-windows", "rust-tests-macos", "rust-tier2-windows",
                      "rust-tier2-macos", "rust-linux-tier2-build"):
             header = job_block(BUILD, name).split("    steps:", 1)[0]
