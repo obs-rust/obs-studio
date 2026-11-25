@@ -73,7 +73,7 @@ static int setup_with(void **state, bool seeded)
 	assert_non_null(canvas);
 	assert_non_null(canvas->context.mutex);
 	core = (struct obs_core *)((unsigned char *)canvas->context.mutex - offsetof(struct obs_core, data) -
-				  offsetof(struct obs_core_data, canvases_mutex));
+				   offsetof(struct obs_core_data, canvases_mutex));
 	assert_ptr_equal(core->data.main_canvas, canvas);
 	assert_ptr_equal(core->signals, obs_get_signal_handler());
 	seeded_tail = false;
@@ -123,7 +123,10 @@ static void prepends_without_calling(void **state)
 	expect_list((struct rendered_callback[]){{rendered_one, &token_a}}, 1);
 	obs_add_main_rendered_callback(rendered_two, &token_a);
 	obs_add_main_rendered_callback(rendered_one, &token_b);
-	expect_list((struct rendered_callback[]){{rendered_one, &token_b}, {rendered_two, &token_a}, {rendered_one, &token_a}}, 3);
+	expect_list((struct rendered_callback[]){{rendered_one, &token_b},
+						 {rendered_two, &token_a},
+						 {rendered_one, &token_a}},
+		    3);
 }
 
 static void duplicates_and_first_match_removal(void **state)
@@ -135,16 +138,22 @@ static void duplicates_and_first_match_removal(void **state)
 	obs_add_main_rendered_callback(rendered_one, &token_a);
 	obs_add_main_rendered_callback(rendered_two, &token_b);
 	expect_list((struct rendered_callback[]){{rendered_two, &token_b},
-					     {rendered_one, &token_a},
-					     {rendered_two, &token_a},
-					     {rendered_one, &token_a}},
+						 {rendered_one, &token_a},
+						 {rendered_two, &token_a},
+						 {rendered_one, &token_a}},
 		    4);
 	obs_remove_main_rendered_callback(rendered_one, &token_a);
-	expect_list((struct rendered_callback[]){{rendered_two, &token_b}, {rendered_two, &token_a}, {rendered_one, &token_a}}, 3);
+	expect_list((struct rendered_callback[]){{rendered_two, &token_b},
+						 {rendered_two, &token_a},
+						 {rendered_one, &token_a}},
+		    3);
 	/* Each component must match; sharing just one component is insufficient. */
 	obs_remove_main_rendered_callback(rendered_one, &token_b);
 	obs_remove_main_rendered_callback(rendered_two, NULL);
-	expect_list((struct rendered_callback[]){{rendered_two, &token_b}, {rendered_two, &token_a}, {rendered_one, &token_a}}, 3);
+	expect_list((struct rendered_callback[]){{rendered_two, &token_b},
+						 {rendered_two, &token_a},
+						 {rendered_one, &token_a}},
+		    3);
 	obs_remove_main_rendered_callback(rendered_one, &token_a);
 	obs_remove_main_rendered_callback(rendered_one, &token_a);
 	expect_list((struct rendered_callback[]){{rendered_two, &token_b}, {rendered_two, &token_a}}, 2);
