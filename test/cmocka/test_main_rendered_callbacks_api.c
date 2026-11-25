@@ -1,5 +1,5 @@
 /* Actual-library characterization of the main-rendered registration exports
- * (Refs #5710, #5173). Unlike test_main_render_callbacks, this never includes
+ * (Refs #5710, #5173). Unlike test_main_rendered_callbacks, this never includes
  * or renames the implementation. No video is started: NULL callback tokens
  * are characterized as stored data, not endorsed as callable functions. */
 #include <stdarg.h>
