@@ -134,3 +134,5 @@ mod refs_parity;
 
 mod transform_states;
 mod transform_states_parity;
+
+mod item_xform_setters;
