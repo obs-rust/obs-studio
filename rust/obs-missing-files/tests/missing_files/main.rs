@@ -1,7 +1,7 @@
 //! Tier 1 mirror of `test/cmocka/test_missing_files.c`.
 //!
-//! The source name uses the production Rust getter and a real-layout C fixture.
-//! Only the missing-file replacement callback remains a test stand-in.
+//! The source name and the missing-file replacement use the production Rust
+//! exports over a real-layout C fixture.
 //!
 //! Not called, because the C crashes or does not return: a null list, a
 //! null file (except `release`), `get_file` past the end, append of a list
@@ -11,7 +11,6 @@
 use std::ffi::{CStr, c_char, c_void};
 use std::process::Command;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicPtr, Ordering};
 
 use obs_missing_files::ffi::missing_files::{
     obs_missing_file_create, obs_missing_file_destroy, obs_missing_file_get_path,
@@ -48,18 +47,19 @@ use obs_source::ffi::source_name::obs_source_get_name;
 unsafe extern "C" {
     fn oracle_source_name_missing_source() -> *mut c_void;
     fn oracle_source_name_missing_set(name: *mut c_char);
+    fn oracle_source_name_missing_set_data(data: *mut c_void);
 }
 
 pub(super) fn source_fixture() -> *mut c_void {
     // SAFETY: returns a static real-layout source, accessed under SOURCE_LOCK.
     unsafe { oracle_source_name_missing_source() }
 }
-static SOURCE_PRIVATE: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
-
 pub(super) fn set_source(name: *const c_char, private: *mut c_void) {
     // SAFETY: SOURCE_LOCK serializes the fixture; the test keeps name alive.
-    unsafe { oracle_source_name_missing_set(name.cast_mut()) };
-    SOURCE_PRIVATE.store(private, Ordering::SeqCst);
+    unsafe {
+        oracle_source_name_missing_set(name.cast_mut());
+        oracle_source_name_missing_set_data(private);
+    }
 }
 
 pub(super) fn allocs() -> i64 {
@@ -103,29 +103,6 @@ pub(super) unsafe extern "C" fn on_replace(
     hit.src = src as usize;
     hit.path = path as usize;
     hit.data = data as usize;
-}
-
-/// `obs_source_replace_missing_file` for cargo tests. A null source returns.
-/// Otherwise the callback is invoked with the private pointer from
-/// [`set_source`], the path argument, and `data`.
-///
-/// # Safety
-/// `cb` is null or a function the test registered. A null `cb` with a live
-/// source is not called from these tests.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_source_replace_missing_file(
-    cb: Option<unsafe extern "C" fn(*mut c_void, *const c_char, *mut c_void)>,
-    source: *mut c_void,
-    new_path: *const c_char,
-    data: *mut c_void,
-) {
-    if source.is_null() {
-        return;
-    }
-    if let Some(cb) = cb {
-        // SAFETY: the test registered `cb` and keeps `data` alive.
-        unsafe { cb(SOURCE_PRIVATE.load(Ordering::SeqCst), new_path, data) };
-    }
 }
 
 fn test_name(test: &str) -> &str {

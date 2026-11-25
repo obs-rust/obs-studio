@@ -66,6 +66,7 @@ pub mod source_push_queries;
 pub mod source_push_to_enable;
 pub mod source_removed;
 pub mod source_render_route;
+pub mod source_replace_missing_file;
 pub mod source_save_load;
 pub mod source_set_name;
 pub mod source_settings_getter;

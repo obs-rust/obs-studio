@@ -8,6 +8,9 @@ pub type Source<D> = Option<Option<D>>;
 /// Calls `call` with the source's private data, once. A NULL source logs
 /// the function name instead; a source without private data does nothing.
 pub fn replace<D>(source: Source<D>, call: impl FnOnce(D), log: impl FnOnce(&'static CStr)) {
-    let _ = (source, call, log);
-    todo!("#5635")
+    match source {
+        None => log(c"obs_source_replace_missing_file"),
+        Some(Some(data)) => call(data),
+        Some(None) => {}
+    }
 }
