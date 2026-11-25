@@ -17796,6 +17796,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_draw": {
+      "sources": [
+        "test/cmocka/test_source_draw.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_draw_plan_steps": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
@@ -29845,6 +29866,23 @@
       "target": "test_source_deinterlace_seam",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_draw": {
+      "target": "test_source_draw",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_source_draw_plan_steps": {
