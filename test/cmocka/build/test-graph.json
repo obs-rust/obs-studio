@@ -18801,6 +18801,21 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
+    "test_source_replace_missing_file": {
+      "sources": [
+        "test/cmocka/test_source_replace_missing_file.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_select_list": {
       "sources": [
         "test/cmocka/test_source_select_list.cpp",
@@ -30055,6 +30070,13 @@
     "test_source_render_route_steps_rust": {
       "target": "test_source_render_route_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_source_replace_missing_file": {
+      "target": "test_source_replace_missing_file",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_select_list": {
       "target": "test_source_select_list",

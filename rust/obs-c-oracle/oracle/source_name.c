@@ -58,6 +58,11 @@ void oracle_source_name_missing_set(char *name)
 {
 	source_name_missing_source.context.name = name;
 }
+void oracle_source_name_missing_set_data(void *data);
+void oracle_source_name_missing_set_data(void *data)
+{
+	source_name_missing_source.context.data = data;
+}
 
 static const char *source_name_original_proc(const obs_source_t *source)
 {

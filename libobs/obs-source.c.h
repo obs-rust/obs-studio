@@ -760,14 +760,6 @@ obs_data_t *obs_get_source_defaults(const char *id)
 	return info ? source_get_defaults(info) : NULL;
 }
 
-void obs_source_replace_missing_file(obs_missing_file_cb cb, obs_source_t *source, const char *new_path, void *data)
-{
-	if (!data_valid(source, "obs_source_replace_missing_file"))
-		return;
-
-	cb(source->context.data, new_path, data);
-}
-
 static void obs_source_deferred_update(obs_source_t *source)
 {
 	if (source->context.data && source->info.update) {

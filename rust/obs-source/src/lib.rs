@@ -248,6 +248,7 @@ pub mod push_queries;
 pub mod push_to_enable;
 pub mod removed;
 pub mod render_route;
+pub mod replace_missing_file;
 pub mod save_load;
 pub mod set_name;
 pub mod settings_getter;
