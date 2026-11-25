@@ -65,15 +65,17 @@ def summary(current: dict, jobs: list[dict], att: tuple[int, list[int]], now: st
         lines.append(f"- rebuilt: master moved under this PR; earlier queue runs: {', '.join(map(str, earlier))}")
     lines += ["", "| Job | min |", "|---|---|"]
     lines += [f"| {name} | {m:.1f} |" for m, name in sorted(timed, reverse=True)[:8]]
-    dispatch = [(duration, job["name"]) for job in jobs
+    dispatch = [(duration, job) for job in jobs
                 if (duration := creation_to_start_seconds(job)) is not None]
     if dispatch:
         lines += ["", "### Job creation-to-start elapsed time", "",
                   "Elapsed job creation to runner start; this may include dependency waiting "
                   "and cannot isolate runner dispatch latency. Missing timestamps remain unknown.", "",
-                  "| Job | seconds |", "|---|---:|"]
-        lines += [f"| {name} | {duration:.1f} |"
-                  for duration, name in sorted(dispatch, reverse=True)[:8]]
+                  "| Job | seconds | Runner | Requested labels |", "|---|---:|---|---|"]
+        for duration, job in sorted(dispatch, key=lambda row: (row[0], row[1]["name"]), reverse=True)[:8]:
+            runner = (job.get("runner_name") or "unknown").replace("|", r"\|")
+            labels = (", ".join(job.get("labels") or []) or "unknown").replace("|", r"\|")
+            lines.append(f"| {job['name']} | {duration:.1f} | {runner} | {labels} |")
     setup_steps = []
     for job in jobs:
         for step in job.get("steps", []):
