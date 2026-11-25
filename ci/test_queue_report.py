@@ -70,10 +70,14 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("3, 6", md)
 
     def test_reports_dispatch_wait_without_calling_it_dependency_wait(self):
-        self.jobs[-1]["created_at"] = "2026-10-16T10:11:01Z"
+        self.jobs[-1].update(
+            created_at="2026-10-16T10:11:01Z",
+            labels=["self-hosted", "forge-quick"],
+            runner_name="quick-obs-rust-123",
+        )
         md = queue_report.summary(self.cur, self.jobs, (1, []), now="2026-10-16T10:12:30Z")
         self.assertIn("Job creation-to-start elapsed time", md)
-        self.assertIn("| CI Gate | 59.0 |", md)
+        self.assertIn("| CI Gate | 59.0 | quick-obs-rust-123 | self-hosted, forge-quick |", md)
         self.assertIn("job creation to runner start", md)
         self.assertIn("may include dependency waiting", md)
         self.assertIn("cannot isolate runner dispatch latency", md)
