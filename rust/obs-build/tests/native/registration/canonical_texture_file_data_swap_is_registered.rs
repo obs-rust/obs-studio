@@ -21,6 +21,14 @@ fn canonical_texture_file_data_swap_is_registered() {
             .unwrap();
         assert_eq!(selected.tests[name].target, name);
         assert!(format!("{:?}", selected.targets[name]).contains("libobs_rust-static"));
+        // A dylib can satisfy the public entry point before the archive member
+        // is extracted, bypassing this executable's recording session on Darwin.
+        let target = &selected.targets[name];
+        assert!(
+            !format!("{:?}", target.libraries).contains("\"OBS::libobs\""),
+            "{os}: the recording fixture must have only the static provider"
+        );
+        assert!(target.header_libraries.iter().any(|name| name == "OBS::libobs"));
     }
     let group =
         fs::read_to_string(root.join("libobs/build/libobs.ported-texture-file-data+.h.c")).unwrap();
