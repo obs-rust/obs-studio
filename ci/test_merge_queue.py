@@ -123,6 +123,8 @@ class MergeQueue(unittest.TestCase):
                     expr = re.sub(r"needs\.check-event\.outputs\.([\w_-]+)",
                                   lambda m: repr(values[m[1]]), expr)
                     expr = re.sub(r"needs\.ci-mode\.outputs\.[\w_-]+", repr("true"), expr)
+                    expr = expr.replace("needs.check-event.result", repr("success"))
+                    expr = expr.replace("needs.ci-mode.result", repr("success"))
                     expr = expr.replace("needs.rust-tests-linux.result", repr("success"))
                     expr = expr.replace("needs.rust-tests-macos-build.result", repr("success"))
                     expr = re.sub(r"inputs\.[\w_-]+", "False", expr)

@@ -79,6 +79,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      id-token: write
 
   # A PR restores the asan archive only from master. Refresh it when it is gone
   # or stale (ci/asan_cache_state.py, #3501), outside build-project so that its

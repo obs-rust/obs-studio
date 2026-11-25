@@ -71,6 +71,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      id-token: write
     if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     secrets: inherit
 

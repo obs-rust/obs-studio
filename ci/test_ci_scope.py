@@ -348,6 +348,14 @@ class CiScopeTest(unittest.TestCase):
                     selected_jobs.add(job)
                     prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
                     fallback = "ubuntu-latest" if job in {"rust-linux-tier2-build", "rust-linux-tier2"} else "ubuntu-26.04"
+                    if job == "rust-linux-tier2-build":
+                        self.assertTrue(runner[1].startswith(
+                            "${{ needs.reserve-tier2-linux-build.outputs.runs-on != '' && "
+                            "fromJSON(needs.reserve-tier2-linux-build.outputs.runs-on) || "
+                        ))
+                        self.assertIn("vars.FORGE_POOL_LEASE_CLASS == ''", runner[1])
+                        self.assertTrue(runner[1].endswith(" || 'ubuntu-latest' }}"))
+                        continue
                     self.assertIn(
                         "runs-on: ${{ " + prefix + "inputs.mq-heavy-labels != '' && "
                         "fromJSON(inputs.mq-heavy-labels) || '" + fallback + "' }}", block,

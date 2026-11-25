@@ -2565,6 +2565,26 @@ jobs:
         if: always() && steps.workspace.outcome == 'success'
         run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
 
+  reserve-tier2-linux-build:
+    name: Reserve Tier 2 Linux Build Runner
+    needs: [check-event, ci-mode]
+    if: ${{ github.event_name == 'merge_group' && needs.check-event.outputs.tier2 == 'true' && vars.FORGE_POOL_LEASE_CLASS != '' && vars.FORGE_POOL_LABELS != '' }}
+    runs-on: ${{ vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
+    timeout-minutes: 2
+    permissions:
+      id-token: write
+    outputs:
+      runs-on: ${{ steps.reserve.outputs.runs-on }}
+    steps:
+      - id: reserve
+        uses: forge-ci/ci.yml/actions/pool-select@52f6ada3ed0cb8622e31f1a16d506fb853b731b0 # ci.yml#569
+        with:
+          source: lease
+          labels: ${{ vars.FORGE_POOL_LABELS }}
+          fallback: ubuntu-latest
+          lease-class: ${{ vars.FORGE_POOL_LEASE_CLASS }}
+          lease-job: rust-linux-tier2-build
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2743,7 +2763,7 @@ jobs:
     name: Rust Tier 2 Linux 🐧 (build)
     # The pinned container supplies Ubuntu 26.04 packages; only the host pool moves.
     # ubuntu-latest currently maps to 24.04 (actions/runner-images, 2026-11-20).
-    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
+    runs-on: ${{ needs.reserve-tier2-linux-build.outputs.runs-on != '' && fromJSON(needs.reserve-tier2-linux-build.outputs.runs-on) || (github.event_name != 'merge_group' || vars.FORGE_POOL_LEASE_CLASS == '' || vars.FORGE_POOL_LABELS == '') && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
     # Maintainer-approved revisit of #966: prebake packages for Dell only.
     # Same base, root user and install commands; keep #982 runtime coverage.
     # GHCR must be public; anonymous probe errors retain stock Ubuntu.
@@ -2760,8 +2780,8 @@ jobs:
     timeout-minutes: 45
     # Compilation consumes no Fast Gate output and can overlap its runner.
     # Keep proof/scope checks here; OFF/ON execution waits only for this build.
-    needs: [check-event, ci-mode]
-    if: ${{ needs.check-event.outputs.tier2 == 'true' && (github.event_name == 'merge_group' || (needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true')) }}
+    needs: [check-event, ci-mode, reserve-tier2-linux-build]
+    if: ${{ !cancelled() && needs.check-event.result == 'success' && needs.ci-mode.result == 'success' && needs.check-event.outputs.tier2 == 'true' && (github.event_name == 'merge_group' || (needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true')) }}
     # Empty unless this job ran (a skipped job has no outputs). CI Gate passes
     # only when every shard below passed, so ci.yml's tier2-lane-proof job
     # publishes the proof after the gate, not on its critical path (#3018).

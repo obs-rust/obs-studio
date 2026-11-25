@@ -652,7 +652,7 @@ class AllowPermissionsTest(unittest.TestCase):
                 self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
 
     def test_build_project_job_scopes_are_granted(self):
-        """build-project.yaml's native-cache-transport job writes caches (SEC-002).
+        """Check grants for cache writes and runner reservation in build-project.yaml.
 
         ci-lint checks the grant with the network; this offline half keeps the
         workflow and ci.toml from drifting apart.
@@ -660,8 +660,10 @@ class AllowPermissionsTest(unittest.TestCase):
         scopes = {entry for entry in job_permission_scopes(WORKFLOWS / "build-project.yaml")
                   if entry[1].endswith(": write")}
         grants = load()["allow"]["permissions"]
-        self.assertEqual(scopes, {("native-cache-transport", "contents: write")},
-                         "native-cache-transport's contents: write is build-project.yaml's only elevated scope")
+        self.assertEqual(scopes, {
+            ("native-cache-transport", "contents: write"),
+            ("reserve-tier2-linux-build", "id-token: write"),
+        })
         for job, scope in sorted(scopes):
             with self.subTest(job=job, scope=scope):
                 self.assertIn(job, grants.get(scope, []), f"{scope} is not granted to job {job}")
@@ -695,6 +697,7 @@ class AllowPermissionsTest(unittest.TestCase):
                 ("cancel-superseded", "actions: write"),
                 ("ci-pre", "actions: write"),
                 ("build-project", "contents: write"),
+                ("build-project", "id-token: write"),
                 ("validate-data", "checks: write"),
             },
             "ci.yml's job-level write scopes")

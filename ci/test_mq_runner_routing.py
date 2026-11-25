@@ -32,10 +32,20 @@ class HostedRunnerRoutingTest(unittest.TestCase):
         job = self.job('ci.yml', 'select-mq-runner')
         self.assertIn(
             "heavy-labels: ${{ steps.select.outputs.pool == 'true' && steps.select.outputs.runs-on || '' }}\n", job)
-        for name in ('rust-linux-tier2-build', 'rust-linux-tier2'):
-            with self.subTest(job=name):
-                self.assert_runner('build-project.yaml', name,
-                    "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
+        self.assert_runner('build-project.yaml', 'rust-linux-tier2',
+            "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
+        build = self.job('build-project.yaml', 'rust-linux-tier2-build')
+        self.assertIn('needs: [check-event, ci-mode, reserve-tier2-linux-build]', build)
+        self.assertIn('fromJSON(needs.reserve-tier2-linux-build.outputs.runs-on)', build)
+        self.assertIn(
+            "(github.event_name != 'merge_group' || vars.FORGE_POOL_LEASE_CLASS == '' "
+            "|| vars.FORGE_POOL_LABELS == '') && inputs.mq-heavy-labels != ''", build,
+        )
+        self.assertIn("|| 'ubuntu-latest'", build)
+        reserve = self.job('build-project.yaml', 'reserve-tier2-linux-build')
+        self.assertIn("github.event_name == 'merge_group' && needs.check-event.outputs.tier2 == 'true'", reserve)
+        self.assertIn('lease-job: rust-linux-tier2-build', reserve)
+        self.assertIn('id-token: write', reserve)
 
     def test_pool_select_reads_signal_behind_kill_switch(self):
         job = self.job('ci.yml', 'select-mq-runner')
