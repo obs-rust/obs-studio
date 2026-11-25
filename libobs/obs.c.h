@@ -1652,17 +1652,6 @@ obs_source_t *obs_canvas_get_source_by_name(obs_canvas_t *canvas, const char *na
 	return get_context_by_name(&canvas->sources, name, &canvas->sources_mutex, obs_source_addref_safe_);
 }
 
-obs_scene_t *obs_canvas_get_scene_by_name(obs_canvas_t *canvas, const char *name)
-{
-	obs_source_t *source = obs_canvas_get_source_by_name(canvas, name);
-	obs_scene_t *scene = obs_scene_from_source(source);
-	if (!scene) {
-		obs_source_release(source);
-		return NULL;
-	}
-	return scene;
-}
-
 obs_source_t *obs_get_transition_by_name(const char *name)
 {
 	struct obs_source **first = &obs->data.sources;
