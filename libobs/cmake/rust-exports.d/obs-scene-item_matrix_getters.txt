@@ -1,0 +1,3 @@
+obs_sceneitem_get_draw_transform
+obs_sceneitem_get_box_transform
+obs_sceneitem_get_box_scale
