@@ -1,0 +1,2 @@
+obs_weak_source_addref
+obs_weak_source_release

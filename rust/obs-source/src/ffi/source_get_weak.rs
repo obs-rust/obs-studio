@@ -1,5 +1,5 @@
 //! Borrow the source's control through a private C adapter and retain it
-//! through the C-owned `obs_weak_source_addref`; release stays in C.
+//! through `obs_weak_source_addref` (`ffi::source_weak_refs`).
 use crate::get_weak::{Host, get_weak_source};
 use core::ffi::c_void;
 use core::ptr::NonNull;

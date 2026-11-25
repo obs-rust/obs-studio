@@ -1,19 +1,24 @@
 /* Tier 3: the original source weak-handle acquisition over the real private
- * layout, beside the Rust export, with the real control adapter. The C addref
- * lives in obs-source.c.h, outside the oracle, so this file defines it under
- * its real name: the original body, plus a per-thread record of its calls. */
+ * layout, beside the Rust export, with the real control adapter. The Rust
+ * export calls the Rust obs_weak_source_addref (#5665); the original calls a
+ * renamed copy of the original addref body that records its calls, so the
+ * Rust side is compared on returns and counts, and the call record pins the
+ * original. */
 #include <stdlib.h>
 #include <string.h>
+/* Renamed before the PCH, so obs.h declares both renamed functions. */
 #define obs_source_get_weak_source oracle_obs_source_get_weak_source
+#define obs_weak_source_addref source_get_weak_original_addref
 #include "libobs/build/libobs.pch.h"
 #include "source-get-weak.inc"
+#undef obs_weak_source_addref
 #undef obs_source_get_weak_source
 #include "source_get_weak_fields.inc"
 
 static _Thread_local unsigned source_get_weak_addrefs;
 static _Thread_local obs_weak_source_t *source_get_weak_last_addref;
 
-void obs_weak_source_addref(obs_weak_source_t *weak)
+void source_get_weak_original_addref(obs_weak_source_t *weak)
 {
 	source_get_weak_addrefs++;
 	source_get_weak_last_addref = weak;
@@ -89,6 +94,5 @@ bool oracle_source_get_weak_check(source_get_weak_entry entry, unsigned flags, u
 	*returned_control = original.returned_control;
 	*addrefs = original.addrefs;
 	*final_weak_refs = original.weak_refs;
-	return ok && rust.returned_control == original.returned_control && rust.addrefs == original.addrefs &&
-	       rust.weak_refs == original.weak_refs;
+	return ok && rust.returned_control == original.returned_control && rust.weak_refs == original.weak_refs;
 }

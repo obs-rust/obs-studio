@@ -1,2 +1,2 @@
-/* Demand-link the unchanged production C runtime implementation. */
-#include "libobs/obs-source-weak-refs.c.h"
+/* The production weak-count accessor for standalone Rust consumers. */
+#include "libobs/obs-source-weak-refs-fields.c.h"

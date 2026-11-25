@@ -1,6 +1,6 @@
 //! Acquire a source's weak handle: borrow its control and add one weak reference.
 
-/// C-owned control read and weak-reference count; release stays in C.
+/// C-owned control read and weak-reference count (`weak_refs`).
 pub trait Host {
     type Source: Copy;
     type Weak: Copy;
