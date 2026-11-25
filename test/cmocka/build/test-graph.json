@@ -4444,6 +4444,21 @@
         "libobs"
       ]
     },
+    "test_encoder_weak_refs": {
+      "sources": [
+        "test/cmocka/test_encoder_weak_refs.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoding_lag_rescale": {
       "sources": [
         "test/cmocka/test_encoding_lag_rescale.c"
@@ -25193,6 +25208,10 @@
         "${target}"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_encoder_weak_refs": {
+      "target": "test_encoder_weak_refs",
+      "run_serial": true
     },
     "test_encoding_lag_rescale": {
       "target": "test_encoding_lag_rescale",
