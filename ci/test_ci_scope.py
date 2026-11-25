@@ -318,15 +318,15 @@ class CiScopeTest(unittest.TestCase):
             "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
         }
         pr_only = {"rust-tests-linux", "cross-compile", "linux-qt-frontend"}
+        queue_only = {"check-event"}
+        routed = heavy | pr_only | queue_only
         light = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
                 "cache-janitor": "ubuntu-latest",
                 "tier2-lane-proof": "ubuntu-latest",
             },
-            "build-project.yaml": dict.fromkeys((
-                "check-event", "ci-mode", "rust-cross-proof",
-            ), "ubuntu-latest"),
+            "build-project.yaml": {"rust-cross-proof": "ubuntu-latest"},
             "check-format.yaml": {"checks": "ubuntu-latest"},
         }
         for name, jobs in light.items():
@@ -343,11 +343,14 @@ class CiScopeTest(unittest.TestCase):
                 if not runner:
                     continue
                 selected = "inputs.mq-heavy-labels" in runner[1]
-                self.assertEqual(selected, name == "build-project.yaml" and job in heavy | pr_only, job)
+                self.assertEqual(selected, name == "build-project.yaml" and job in routed, job)
                 if selected:
                     selected_jobs.add(job)
                     prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
-                    fallback = "ubuntu-latest" if job in {"rust-linux-tier2-build", "rust-linux-tier2"} else "ubuntu-26.04"
+                    if job in queue_only:
+                        prefix = "github.event_name == 'merge_group' && "
+                    fallback = ("ubuntu-latest" if job in queue_only | {"rust-linux-tier2-build", "rust-linux-tier2"}
+                                else "ubuntu-26.04")
                     if job == "rust-linux-tier2-build":
                         self.assertTrue(runner[1].startswith(
                             "${{ needs.reserve-tier2-linux-build.outputs.runs-on != '' && "
@@ -362,7 +365,7 @@ class CiScopeTest(unittest.TestCase):
                     )
                 else:
                     self.assertNotIn("mq-", runner[1])
-            self.assertEqual(selected_jobs, (heavy | pr_only) if name == "build-project.yaml" else set())
+            self.assertEqual(selected_jobs, routed if name == "build-project.yaml" else set())
             self.assertNotIn("mq-runner-labels", text)
             if name == "build-project.yaml":
                 self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
