@@ -360,6 +360,8 @@ class CiScopeTest(unittest.TestCase):
                         "runs-on: ${{ " + prefix + "inputs.mq-heavy-labels != '' && "
                         "fromJSON(inputs.mq-heavy-labels) || '" + fallback + "' }}", block,
                     )
+                elif name == "build-project.yaml" and job == "check-event":
+                    self.assertIn("fromJSON(inputs.mq-event-labels) || 'ubuntu-latest'", runner[1])
                 else:
                     self.assertNotIn("mq-", runner[1])
             self.assertEqual(selected_jobs, routed if name == "build-project.yaml" else set())

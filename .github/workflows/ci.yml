@@ -160,13 +160,34 @@ jobs:
     permissions:
       contents: read
 
+  reserve-event-data:
+    name: Reserve Event Data Runner
+    needs: select-mq-runner
+    if: ${{ github.event_name == 'merge_group' && needs.select-mq-runner.outputs.heavy-labels != '' && vars.FORGE_POOL_LEASE_CLASS != '' }}
+    runs-on: ${{ vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
+    timeout-minutes: 2
+    permissions:
+      id-token: write
+    outputs:
+      runs-on: ${{ steps.reserve.outputs.runs-on }}
+    steps:
+      - id: reserve
+        uses: forge-ci/ci.yml/actions/pool-select@52f6ada3ed0cb8622e31f1a16d506fb853b731b0 # ci.yml#569
+        with:
+          source: lease
+          labels: ${{ needs.select-mq-runner.outputs.heavy-labels }}
+          fallback: ubuntu-latest
+          lease-class: ${{ vars.FORGE_POOL_LEASE_CLASS }}
+          lease-job: check-event
+
   build-project:
     name: Build 🧱
-    needs: select-mq-runner
+    needs: [select-mq-runner, reserve-event-data]
     if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '' && !inputs.native-cache-measurement-only) }}
     uses: ./.github/workflows/build-project.yaml
     with:
       mq-heavy-labels: ${{ needs.select-mq-runner.outputs.heavy-labels }}
+      mq-event-labels: ${{ needs.reserve-event-data.outputs.runs-on }}
       native-cache-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-measurement-only }}
       native-cache-measurement-conflict: ${{ github.event_name == 'workflow_dispatch' && (inputs.flatpak-runtime-reuse-run != '' || inputs.tier2-setup-probe) }}
       flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}

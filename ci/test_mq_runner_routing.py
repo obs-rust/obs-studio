@@ -97,13 +97,16 @@ class HostedRunnerRoutingTest(unittest.TestCase):
             "${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && "
             "fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}")
         self.assert_runner(workflow, 'check-event',
-            "${{ needs.reserve-event-data.outputs.runs-on != '' && "
-            "fromJSON(needs.reserve-event-data.outputs.runs-on) || 'ubuntu-latest' }}")
+            "${{ inputs.mq-event-labels != '' && "
+            "fromJSON(inputs.mq-event-labels) || 'ubuntu-latest' }}")
         event = self.job(workflow, 'check-event')
-        self.assertIn("    needs: reserve-event-data\n", event)
-        self.assertIn("    if: ${{ !cancelled() }}\n", event)
-        reserve = self.job(workflow, 'reserve-event-data')
-        self.assertIn("github.event_name == 'merge_group' && inputs.mq-heavy-labels != ''", reserve)
+        self.assertNotIn("    needs:", event)
+        caller = self.job('ci.yml', 'build-project')
+        self.assertIn("needs: [select-mq-runner, reserve-event-data]", caller)
+        self.assertIn("!cancelled()", caller)
+        self.assertIn("mq-event-labels: ${{ needs.reserve-event-data.outputs.runs-on }}", caller)
+        reserve = self.job('ci.yml', 'reserve-event-data')
+        self.assertIn("github.event_name == 'merge_group' && needs.select-mq-runner.outputs.heavy-labels != ''", reserve)
         self.assertIn("vars.FORGE_POOL_LEASE_CLASS != ''", reserve)
         self.assertIn("    timeout-minutes: 2\n", reserve)
         self.assertIn("      id-token: write\n", reserve)

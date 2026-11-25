@@ -98,7 +98,10 @@ class MergeQueue(unittest.TestCase):
         # ci-pre and the end-of-queue cache-janitor (ci/test_ci_pre.py) are
         # maintenance: a sweep never gates, and the final one runs after it.
         # tier2-lane-proof publishes a proof the gate already vouched for (#3018).
-        self.assertEqual(listed, set(top_level_jobs(PULL)) - {"ci-gate", "ci-pre", "cache-janitor", "tier2-lane-proof"})
+        # The optional lease is consumed by Build, which can fall back to hosted.
+        self.assertEqual(listed, set(top_level_jobs(PULL)) - {
+            "ci-gate", "ci-pre", "cache-janitor", "tier2-lane-proof", "reserve-event-data",
+        })
         self.assertIn("contains(needs.*.result, 'failure')", gate)
         self.assertIn("contains(needs.*.result, 'cancelled')", gate)
 
