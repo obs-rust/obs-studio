@@ -19998,14 +19998,7 @@
     },
     "test_texture_file_data_steps_rust": {
       "sources": [
-        "test/cmocka/test_texture_file_data_steps.c",
-        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
-        "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "libobs/obs-graphics-effect-file-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/util/base-variadic.c.h"
+        "test/cmocka/test_texture_file_data_steps.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
