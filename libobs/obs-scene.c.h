@@ -3006,15 +3006,6 @@ bool obs_scene_reorder_items2(obs_scene_t *scene, struct obs_sceneitem_order_inf
 	return true;
 }
 
-void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
-{
-	if (!item)
-		return;
-
-	if (os_atomic_set_bool(&item->update_transform, false))
-		update_item_transform(item, false);
-}
-
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata)
 {
