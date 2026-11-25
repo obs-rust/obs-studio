@@ -419,7 +419,6 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("needs: [check-event, ci-mode]", block)
         condition = next(line for line in block.splitlines() if line.startswith("    if:"))
         self.assertIn("outputs.cmocka_link == 'true'", condition)
-        self.assertNotIn("fast_path", condition)
         self.assertNotIn("apt-get", block)
         self.assertIn("--with cmake==3.31.10 --with ninja==1.13.0", block)
         self.assertIn("ci/cmocka_link_check.py --alias ${{ matrix.alias }}", block)

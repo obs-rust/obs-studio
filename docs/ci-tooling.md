@@ -289,8 +289,8 @@ four workers. Each alias uses a fresh 512M ccache from the checksum-pinned
 `ci/tier2_front_cache.py` installer to share identical support-file compiles
 within that pass. No cache is uploaded, no relaxed policy is inherited, and
 the cache never stores link results. The matrix disables fail-fast so one failing alias cannot
-cancel the other. Both aliases are independently required by `ci/gate_jobs.py`,
-including attested PRs; CI Gate waits for the entire reusable build workflow.
+cancel the other. `ci/gate_jobs.py` requires each selected alias on fallback
+PRs and merge groups. Fully attested PRs defer both aliases to the merge queue.
 The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.
 The local `ci/windows_link_check.py` default still runs categories and both
 cmocka aliases; CI sets `OBS_CMOCKA_LINK=false` only on the category job.
