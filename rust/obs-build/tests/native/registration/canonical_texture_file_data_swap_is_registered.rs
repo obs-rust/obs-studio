@@ -35,21 +35,35 @@ fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
     let graph: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
-    let adapter = "libobs/build/libobs.media-texture-file-data-adapter+.h.c";
-    let callback = "test/cmocka/texture-file-data-max-size-link-stub.c";
-    let mut consumers = 0;
+    let support: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("test/cmocka/build/rust-static-support.json")).unwrap(),
+    )
+    .unwrap();
+    let sources = support["sources"].as_array().unwrap();
+    for source in [
+        "test/cmocka/texture-file-data-session-link-support.c",
+        "test/cmocka/graphics-image-convert-link-support.c",
+        "test/cmocka/graphics-image-max-size-link-support.c",
+    ] {
+        assert!(sources.contains(&serde_json::json!(source)), "{source}");
+    }
+    let adapter =
+        fs::read_to_string(root.join("test/cmocka/texture-file-data-session-link-support.c"))
+            .unwrap();
+    assert!(adapter.contains("libobs/graphics/graphics-texture-file-data-adapter.c.h"));
+    let callback =
+        fs::read_to_string(root.join("test/cmocka/graphics-image-max-size-link-support.c"))
+            .unwrap();
+    assert!(callback.contains("libobs/graphics/graphics-image-max-size.c.h"));
     for (name, target) in graph["targets"].as_object().unwrap() {
         let sources = target["sources"].as_array().unwrap();
-        if sources.contains(&serde_json::json!(adapter)) {
-            consumers += 1;
-            assert!(sources.contains(&serde_json::json!(callback)), "{name}");
-        }
+        assert!(
+            !sources.contains(&serde_json::json!(
+                "test/cmocka/texture-file-data-max-size-link-stub.c"
+            )),
+            "{name}"
+        );
     }
-    assert!(consumers > 0);
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/texture_file_data_link_support.cmake"))
-            .unwrap();
-    assert!(fragment.contains(callback));
 }
 
 #[test]
@@ -78,7 +92,7 @@ project(image-adapter-link-contract C)
 set(CMAKE_SYSTEM_NAME "{system}")
 set(CMAKE_SOURCE_DIR "{root}")
 set(OS_WINDOWS {windows})
-foreach(dependency IN ITEMS OBS::libobs FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale)
+foreach(dependency IN ITEMS OBS::libobs OBS::caption OBS::w32-pthreads Uthash::Uthash FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale)
   add_library(${{dependency}} INTERFACE IMPORTED)
 endforeach()
 add_library(libobs_rust-static INTERFACE)
@@ -88,13 +102,12 @@ foreach(consumer IN ITEMS test_video_stop_requested_rust test_texture_file_data_
 endforeach()
 add_executable(reference_consumer "${{CMAKE_CURRENT_SOURCE_DIR}}/probe.c")
 include("{root}/test/cmocka/native-test-graph.cmake")
-file(READ "${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" graph)
-_obs_test_graph_sources(video_sources "${{graph}}" test_video_stop_requested_rust)
-if("libobs/util/base-variadic.c.h" IN_LIST video_sources)
-  file(WRITE "${{CMAKE_CURRENT_BINARY_DIR}}/base-variadic-provider.c" "#include \"{root}/libobs/util/base-variadic.c.h\"\n")
-  target_sources(test_video_stop_requested_rust PRIVATE "${{CMAKE_CURRENT_BINARY_DIR}}/base-variadic-provider.c")
+add_library(native_owner INTERFACE)
+if(OS_WINDOWS)
+  target_link_libraries(native_owner INTERFACE winmm rpcrt4)
 endif()
-include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
+include("{root}/test/cmocka/rust-static-link-support.cmake")
+obs_add_rust_static_support("{root}" native_owner)
 "##
             ),
         )
@@ -137,12 +150,12 @@ include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
                 (
                     links("winmm"),
                     links("rpcrt4"),
-                    commands.contains("base-variadic-provider.c")
+                    commands.contains("base-variadic-link-support.c")
                 ),
                 (
                     windows && consumer != "reference_consumer",
                     windows && consumer != "reference_consumer",
-                    windows && consumer == "test_video_stop_requested_rust"
+                    consumer != "reference_consumer"
                 ),
                 "{system}/{consumer}: {commands}"
             );
