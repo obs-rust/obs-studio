@@ -26251,10 +26251,8 @@
           "-a"
         ]
       ],
-      "properties": {
-        "SKIP_RETURN_CODE": 77,
-        "TIMEOUT": 30
-      }
+      "skip_return_code": 77,
+      "timeout_seconds": 30
     },
     "test_hotkey_pair_steps": {
       "target": "test_hotkey_pair_steps",
