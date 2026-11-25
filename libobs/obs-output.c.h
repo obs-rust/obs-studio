@@ -1026,20 +1026,6 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 	obs_encoder_add_output(output->audio_encoders[idx], output);
 }
 
-void obs_output_set_service(obs_output_t *output, obs_service_t *service)
-{
-	if (!obs_output_valid(output, "obs_output_set_service"))
-		return;
-	if (!log_flag_service(output, __func__) || active(output) || !service || service->active)
-		return;
-
-	if (service->output)
-		service->output->service = NULL;
-
-	output->service = service;
-	service->output = output;
-}
-
 void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32_t height, size_t idx)
 {
 	if (!obs_output_valid(output, "obs_output_set_preferred_size2"))
