@@ -43,6 +43,8 @@ mod canonical_source_audio_pending_speaker_layout_swap_is_registered;
 mod canonical_source_canvas_getter_swap_is_registered;
 #[path = "native/registration/canonical_source_configurable_swap_is_registered.rs"]
 mod canonical_source_configurable_swap_is_registered;
+#[path = "native/registration/canonical_source_flags_mixers_swap_is_registered.rs"]
+mod canonical_source_flags_mixers_swap_is_registered;
 #[path = "native/registration/canonical_source_get_weak_swap_is_registered.rs"]
 mod canonical_source_get_weak_swap_is_registered;
 #[path = "native/registration/canonical_source_missing_files_getter_swap_is_registered.rs"]
