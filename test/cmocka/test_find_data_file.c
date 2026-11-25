@@ -57,10 +57,14 @@ static int setup(void **state)
 static int teardown(void **state)
 {
 	(void)state;
-	while (obs_remove_data_path(FIRST)) {}
-	while (obs_remove_data_path(SECOND)) {}
-	while (obs_remove_data_path(ROOT "absent/")) {}
-	while (obs_remove_data_path(FIRST "obs_find_data_file_")) {}
+	while (obs_remove_data_path(FIRST)) {
+	}
+	while (obs_remove_data_path(SECOND)) {
+	}
+	while (obs_remove_data_path(ROOT "absent/")) {
+	}
+	while (obs_remove_data_path(FIRST "obs_find_data_file_")) {
+	}
 	os_unlink(FIRST PROBE);
 	os_unlink(SECOND PROBE);
 	os_unlink(SECOND "default.effect");
