@@ -6,3 +6,4 @@ pub mod output_list;
 pub mod packet_ownership;
 pub mod type_info;
 pub mod video_tex_active;
+pub mod weak_refs;

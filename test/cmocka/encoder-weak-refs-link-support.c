@@ -1,2 +1,2 @@
-/* Demand-link the unchanged production C runtime implementation. */
-#include "libobs/obs-encoder-weak-refs.c.h"
+/* Demand-link the real private projections for the Rust-owned operations. */
+#include "libobs/obs-encoder-weak-refs-fields.c.h"

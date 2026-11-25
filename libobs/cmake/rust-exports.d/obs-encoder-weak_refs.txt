@@ -1,0 +1,3 @@
+obs_weak_encoder_addref
+obs_weak_encoder_release
+obs_encoder_get_weak_encoder
