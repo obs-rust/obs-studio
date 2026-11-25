@@ -3226,63 +3226,14 @@ void obs_source_enum_full_tree(obs_source_t *source, obs_source_enum_proc_t enum
 	enum_source_full_tree(source, enum_callback, param, NULL);
 }
 
-struct descendant_info {
-	bool exists;
-	obs_source_t *target;
-};
-
-static void check_descendant(obs_source_t *parent, obs_source_t *child, void *param)
+/* The walk with a stop source, for obs_source_add_active_child()
+ * (obs-source-active-child.c.h). Hidden: no EXPORT. */
+void obs_source_active_child_enum_full_tree(obs_source_t *source, obs_source_enum_proc_t enum_callback, void *param,
+					    obs_source_t *stop_source);
+void obs_source_active_child_enum_full_tree(obs_source_t *source, obs_source_enum_proc_t enum_callback, void *param,
+					    obs_source_t *stop_source)
 {
-	struct descendant_info *info = param;
-	if (child == info->target || parent == info->target)
-		info->exists = true;
-}
-
-bool obs_source_add_active_child(obs_source_t *parent, obs_source_t *child)
-{
-	struct descendant_info info = {false, parent};
-
-	if (!obs_ptr_valid(parent, "obs_source_add_active_child"))
-		return false;
-	if (!obs_ptr_valid(child, "obs_source_add_active_child"))
-		return false;
-	if (parent == child) {
-		blog(LOG_WARNING, "obs_source_add_active_child: "
-				  "parent == child");
-		return false;
-	}
-
-	enum_source_full_tree(child, check_descendant, &info, parent);
-	if (info.exists)
-		return false;
-
-	/* Other threads change the counts atomically (#2081). */
-	long show_refs = os_atomic_load_long(&parent->show_refs);
-	long activate_refs = os_atomic_load_long(&parent->activate_refs);
-	for (long i = 0; i < show_refs; i++) {
-		enum view_type type;
-		type = (i < activate_refs) ? MAIN_VIEW : AUX_VIEW;
-		obs_source_activate(child, type);
-	}
-
-	return true;
-}
-
-void obs_source_remove_active_child(obs_source_t *parent, obs_source_t *child)
-{
-	if (!obs_ptr_valid(parent, "obs_source_remove_active_child"))
-		return;
-	if (!obs_ptr_valid(child, "obs_source_remove_active_child"))
-		return;
-
-	/* Other threads change the counts atomically (#2081). */
-	long show_refs = os_atomic_load_long(&parent->show_refs);
-	long activate_refs = os_atomic_load_long(&parent->activate_refs);
-	for (long i = 0; i < show_refs; i++) {
-		enum view_type type;
-		type = (i < activate_refs) ? MAIN_VIEW : AUX_VIEW;
-		obs_source_deactivate(child, type);
-	}
+	enum_source_full_tree(source, enum_callback, param, stop_source);
 }
 
 _Static_assert(OBS_SOURCE_MONITORING_AUDIO == OBS_SOURCE_AUDIO, "OBS_SOURCE_AUDIO");
