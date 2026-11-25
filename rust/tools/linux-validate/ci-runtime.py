@@ -10,6 +10,7 @@ bytes, image identities and inventory mismatches fail instead of falling back.
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -22,6 +23,7 @@ import subprocess
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 BASE = 'ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7'
@@ -266,6 +268,43 @@ def cached_pins(packages: list[str], output: str, archives: Path | None) -> list
     return result
 
 
+LAUNCHPAD = 'https://api.launchpad.net/1.0/ubuntu/+archive/primary'
+
+
+def missing_pins(output: str, packages: list[str]) -> list[tuple[str, str, str]]:
+    """(name, version, architecture) of each pin apt reports as not found."""
+    arches = {}
+    for package in packages:
+        name, _, version = package.partition('=')
+        base, _, arch = name.partition(':')
+        arches[base, version] = arch or 'amd64'
+    return [(name.partition(':')[0], version, arches.get((name.partition(':')[0], version), 'amd64'))
+            for version, name in MISSING_PIN.findall(output)]
+
+
+def snapshot_before_supersession(pins: list[tuple[str, str, str]]) -> str:
+    """The snapshot.ubuntu.com ID one second before the first of `pins` left
+    the archive index (#5578). The build resolved every pin against an index
+    that still listed it, so at that time each pin was still published and
+    none of them had been replaced yet."""
+    times = []
+    for name, version, arch in pins:
+        # Launchpad lists an architecture-independent binary on every architecture.
+        arch = 'amd64' if arch == 'all' else arch
+        query = urllib.parse.urlencode({'ws.op': 'getPublishedBinaries', 'binary_name': name,
+                                        'version': version, 'exact_match': 'true'})
+        with urllib.request.urlopen(f'{LAUNCHPAD}?{query}', timeout=30) as reply:
+            entries = json.load(reply)['entries']
+        gone = [entry['date_superseded'] or entry['date_removed'] for entry in entries
+                if entry['distro_arch_series_link'].rstrip('/').endswith('/' + arch)]
+        gone = [datetime.datetime.fromisoformat(stamp) for stamp in gone if stamp]
+        if not gone:
+            raise ValueError(f'Launchpad has no supersession of {name} {version} on {arch}')
+        times.append(max(gone))
+    before = min(times).replace(microsecond=0) - datetime.timedelta(seconds=1)
+    return before.astimezone(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+
+
 def install_prepared_delta(ident: str, packages: list[str], archives: Path | None = None) -> None:
     # Normal delta setup is about 45 s (#5237); allow 4x that per apt command.
     # apt.conf(5) delegates per-transport Timeout to apt-transport-http/https(1).
@@ -295,12 +334,29 @@ def install_prepared_delta(ident: str, packages: list[str], archives: Path | Non
             try:
                 install_once(install, recover, next_mirror)
             except subprocess.CalledProcessError as still:
-                cached = cached_pins(packages, still.output or '', archives) if still.returncode == 100 else None
-                if cached is None:
+                if still.returncode != 100:
                     raise
-                print('Runtime delta pin still unavailable; installing the cached .deb of that exact version: '
-                      + ' '.join(c for c in cached if c not in packages), flush=True)
-                install_once((*apt, 'install', '-y', '--no-install-recommends', *cached), recover, next_mirror)
+                cached = cached_pins(packages, still.output or '', archives)
+                if cached is not None:
+                    print('Runtime delta pin still unavailable; installing the cached .deb of that exact version: '
+                          + ' '.join(c for c in cached if c not in packages), flush=True)
+                    install_once((*apt, 'install', '-y', '--no-install-recommends', *cached), recover, next_mirror)
+                    return
+                # No cached .deb (the build fetched it from a mirror that had
+                # not synced yet): take the same pins from the Ubuntu snapshot
+                # just before they were superseded (#5578).
+                pins = missing_pins(still.output or '', packages)
+                if not pins:
+                    raise
+                try:
+                    snapshot = snapshot_before_supersession(pins)
+                except (OSError, ValueError) as lookup:
+                    print(f'Runtime delta snapshot lookup failed: {lookup}', flush=True)
+                    raise still from lookup
+                print(f'Runtime delta pins superseded: {pins}; installing them from snapshot {snapshot}', flush=True)
+                at = (*apt, '--snapshot', snapshot)
+                command(*at, 'update', '-qq', capture_stderr=True)
+                command(*at, *install[len(apt):], capture_stderr=True)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
                            f'{" ".join(packages)}:\n{error.output or ""}') from error
