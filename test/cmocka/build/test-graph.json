@@ -17066,6 +17066,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_active_child": {
+      "sources": [
+        "test/cmocka/test_source_active_child.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_async_flag_getters": {
       "sources": [
         "test/cmocka/test_source_async_flag_getters.c"
@@ -29498,6 +29513,19 @@
     },
     "test_slideshow_size": {
       "target": "test_slideshow_size"
+    },
+    "test_source_active_child": {
+      "target": "test_source_active_child",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_source_async_flag_getters": {
       "target": "test_source_async_flag_getters",
