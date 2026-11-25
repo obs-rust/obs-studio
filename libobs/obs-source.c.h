@@ -3384,28 +3384,6 @@ void obs_source_draw(gs_texture_t *texture, int x, int y, uint32_t cx, uint32_t 
 	gs_enable_framebuffer_srgb(previous);
 }
 
-void obs_source_enum_filters(obs_source_t *source, obs_source_enum_proc_t callback, void *param)
-{
-	if (!obs_source_valid(source, "obs_source_enum_filters"))
-		return;
-	union {
-		void *obj;
-		obs_source_enum_proc_t fn;
-	} callback_obj = {.fn = callback};
-
-	if (!obs_ptr_valid(callback_obj.obj, "obs_source_enum_filters"))
-		return;
-
-	pthread_mutex_lock(&source->filter_mutex);
-
-	for (size_t i = source->filters.num; i > 0; i--) {
-		struct obs_source *filter = source->filters.array[i - 1];
-		callback(source, filter, param);
-	}
-
-	pthread_mutex_unlock(&source->filter_mutex);
-}
-
 obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *name)
 {
 	obs_source_t *filter = NULL;
