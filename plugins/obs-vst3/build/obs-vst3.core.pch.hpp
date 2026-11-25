@@ -8,6 +8,7 @@
 #include "plugins/obs-vst3/obs-vst3.h"
 #include "plugins/obs-vst3/vst3-platform.h"
 #include "plugins/obs-vst3/vst3-rust-host.h"
+#include "plugins/obs-vst3/vst3-filter-audio.h"
 
 #include <pluginterfaces/base/funknown.h>
 #include <pluginterfaces/base/smartpointer.h>

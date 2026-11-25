@@ -11,3 +11,5 @@ pub use ffi::{Engine, NativeClass, enumerate};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Error(pub(crate) &'static str);
+
+pub mod filter;
