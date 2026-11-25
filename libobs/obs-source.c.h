@@ -3841,17 +3841,6 @@ void obs_source_audio_render(obs_source_t *source, uint32_t mixers, size_t chann
 	process_audio_source_tick(source, mixers, channels, sample_rate, size);
 }
 
-bool obs_source_audio_pending(const obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_audio_pending"))
-		return true;
-
-	if (obs_source_removed(source))
-		return true;
-
-	return (is_composite_source(source) || is_audio_source(source)) ? source->audio_pending : true;
-}
-
 /* hidden/undocumented export to allow source type redefinition for scripts */
 
 EXPORT void obs_enable_source_type(const char *name, bool enable);
@@ -3865,14 +3854,6 @@ EXPORT void obs_enable_source_type(const char *name, bool enable)
 		info->output_flags &= ~(uint32_t)OBS_SOURCE_CAP_DISABLED;
 	else
 		info->output_flags |= OBS_SOURCE_CAP_DISABLED;
-}
-
-enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_get_audio_channels"))
-		return SPEAKERS_UNKNOWN;
-
-	return source->sample_info.speakers;
 }
 
 _Static_assert(OBS_SOURCE_MEDIA_CONTROLLABLE == OBS_SOURCE_CONTROLLABLE_MEDIA, "OBS_SOURCE_CONTROLLABLE_MEDIA");

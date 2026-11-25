@@ -17231,6 +17231,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_audio_pending_speaker_layout": {
+      "sources": [
+        "test/cmocka/test_source_audio_pending_speaker_layout.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_audio_place_steps": {
       "sources": [
         "test/cmocka/test_source_audio_place_steps.c",
@@ -29446,6 +29461,12 @@
           "xvfb-run",
           "-a"
         ]
+      ]
+    },
+    "test_source_audio_pending_speaker_layout": {
+      "target": "test_source_audio_pending_speaker_layout",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_audio_place_steps": {
