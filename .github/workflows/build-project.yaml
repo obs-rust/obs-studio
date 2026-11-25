@@ -3280,10 +3280,29 @@ jobs:
           name: tier2-tree
           path: ${{ runner.temp }}/tier2-pack
 
+      - name: Select Tier 2 Scratch
+        run: |
+          build="$RUNNER_TEMP/tier2"
+          if [[ -n "${OBS_TIER2_SCRATCH:-}" ]]; then
+            if [[ "$(findmnt -n -M "$OBS_TIER2_SCRATCH" -o FSTYPE)" != tmpfs ]]; then
+              echo "::error::Tier 2 pilot scratch is not mounted as tmpfs"
+              exit 1
+            fi
+            build=$(mktemp -d "$OBS_TIER2_SCRATCH/tier2.XXXXXXXX")
+            chmod 0755 "$build"
+            echo "Tier 2 scratch filesystem and capacity:"
+            df -h "$build"
+          fi
+          echo "OBS_TIER2_TEST_BUILD=$build" >> "$GITHUB_ENV"
+
       - name: Unpack Tier 2 Tree 📂
         run: |
-          mkdir -p "$RUNNER_TEMP/tier2"
-          tar --zstd -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$RUNNER_TEMP/tier2"
+          mkdir -p "$OBS_TIER2_TEST_BUILD"
+          if ! tar --zstd -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$OBS_TIER2_TEST_BUILD"; then
+            df -h "$OBS_TIER2_TEST_BUILD"
+            echo "::error::Tier 2 tree extraction failed. Check the tar error and available scratch capacity."
+            exit 1
+          fi
 
       # ctest starts the longest tests first only when it has their past
       # times; with none, the 59 s and 35 s tests started last and one shard
@@ -3302,7 +3321,7 @@ jobs:
             --descriptor rust/tools/linux-validate/prepared-runtime.json \
             --prebaked-image "${{ needs.check-event.outputs.tier2_prebaked == 'true' && needs.check-event.outputs.tier2_image || '' }}" \
             --packages "$RUNNER_TEMP/tier2-pack/runtime-packages.txt" \
-            --source "$GITHUB_WORKSPACE" --build "$RUNNER_TEMP/tier2" \
+            --source "$GITHUB_WORKSPACE" --build "$OBS_TIER2_TEST_BUILD" \
             --cost "$GITHUB_WORKSPACE/.tier2-cost" --uv "$(command -v uv)" \
             --archives "$GITHUB_WORKSPACE/.tier2-apt-archives" \
             --state "$RUNNER_TEMP/tier2-runtime" --mode '${{ matrix.mode }}' --part '${{ matrix.part }}'
@@ -3323,6 +3342,16 @@ jobs:
           include-hidden-files: true
           retention-days: 1
           if-no-files-found: error
+
+      - name: Release Tier 2 Scratch
+        if: always()
+        run: |
+          case "${OBS_TIER2_TEST_BUILD:-}" in
+            "${OBS_TIER2_SCRATCH:-/nonexistent}"/tier2.*)
+              df -h "$OBS_TIER2_TEST_BUILD"
+              python3 -c 'import shutil, sys; shutil.rmtree(sys.argv[1])' "$OBS_TIER2_TEST_BUILD"
+              ;;
+          esac
 
   rust-linux-tier2-done:
     name: Rust Tier 2 Linux 🐧
