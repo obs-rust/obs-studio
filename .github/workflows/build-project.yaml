@@ -166,7 +166,8 @@ jobs:
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    runs-on: ubuntu-latest
+    # Full history and scope scripts need a build runner. Keep hosted fallback.
+    runs-on: ${{ github.event_name == 'merge_group' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
     defaults:
       run:
         shell: bash
@@ -1711,8 +1712,9 @@ jobs:
   # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
     name: CI Mode 🛂
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Keep the successful dependency node on merge groups without a checkout.
+    runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
+    timeout-minutes: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && 2 || 5 }}
     outputs:
       rust-test_hit: 'false'
       cross_hit: 'false'
@@ -1742,13 +1744,15 @@ jobs:
       HEAD: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && !inputs.full
         with:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 0
       - name: Set Up uv 🐍
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        if: github.event_name == 'pull_request' && !inputs.full
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}

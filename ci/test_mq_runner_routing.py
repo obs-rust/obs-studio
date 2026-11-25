@@ -91,9 +91,22 @@ class HostedRunnerRoutingTest(unittest.TestCase):
             with self.subTest(action=action):
                 self.assertEqual(sha, self.FORGE_QUICK_ALLOWLIST[action])
 
+    def test_queue_setup_uses_sized_runners_with_hosted_fallback(self):
+        workflow = 'build-project.yaml'
+        self.assert_runner(workflow, 'ci-mode',
+            "${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && "
+            "fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}")
+        self.assert_runner(workflow, 'check-event',
+            "${{ github.event_name == 'merge_group' && inputs.mq-heavy-labels != '' && "
+            "fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
+        mode = self.job(workflow, 'ci-mode')
+        steps = mode.split('    steps:\n', 1)[1].split('      - ')
+        for step in steps[1:]:
+            self.assertIn("if: github.event_name == 'pull_request' && !inputs.full\n", step)
+
     def test_light_jobs_use_latest(self):
         for workflow, names in (
-            ('build-project.yaml', ('check-event', 'ci-mode', 'rust-cross-proof')),
+            ('build-project.yaml', ('rust-cross-proof',)),
             ('ci.yml', ('update-documentation', 'native-cache-consumer', 'tier2-lane-proof')),
         ):
             for name in names:

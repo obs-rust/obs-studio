@@ -1427,9 +1427,11 @@ Rust Tier 2 Linux build, its OFF/ON test jobs, Rust Cross Lint
 (two main targets plus the release-target job), and the Linux macOS Rust artifact
 producer and Windows Link Check use that selection.
 Build and tests share the selected pool so local handoff remains valid.
-Event Data, CI Mode, Format, Fast Gate, Cross Compile,
-Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
-runners. Empty outputs and probe/setup errors keep every heavy job hosted.
+On merge groups, Event Data uses the selected build pool because it needs a
+full history checkout. CI Mode uses the quick runner when configured and
+skips PR-only admission steps. Both use hosted runners when their routing
+inputs are absent. Format, Fast Gate, Cross Compile, Qt, app builds, proof
+publication, queue cancellation and CI Gate use hosted runners.
 
 On `merge_group` the selector job itself runs on the org's `forge-quick` admin
 runners when the repository variable `FORGE_QUICK_LABELS` holds their labels
@@ -1499,8 +1501,8 @@ PR routing; allow existing PR jobs to drain before relying on queue-only census.
 
 Existing heavy Linux jobs accept the selected labels on PR events. Fast Gate,
 Cross Compile and Qt Frontend Linux also accept them for PRs only; their queue
-and other-event placement is unchanged. Event Data, CI Mode and lightweight
-admission/gate jobs stay hosted, and macOS/Windows jobs keep their native hosts.
+and other-event placement is unchanged. On PRs, Event Data, CI Mode and
+lightweight admission/gate jobs stay hosted. macOS/Windows jobs keep their native hosts.
 The reusable workflow caller passes empty repository secrets to Dell-routed PR
 runs, and selected jobs also suppress credential inputs on that path. They retain
 only the event's `GITHUB_TOKEN`, with `contents: read` and `actions: read`; no
