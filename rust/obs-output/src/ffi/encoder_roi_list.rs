@@ -11,7 +11,7 @@ pub struct RoiListFields {
     pub caps: *const u32,
     pub scaled_width: *const u32,
     pub scaled_height: *const u32,
-    pub media: *mut c_void,
+    pub media: *const *mut c_void,
     pub mutex: *mut c_void,
     pub lock: unsafe extern "C" fn(*mut c_void),
     pub unlock: unsafe extern "C" fn(*mut c_void),
@@ -59,8 +59,9 @@ impl RoiList for Borrowed {
     }
     fn video_size(&self) -> (u32, u32) {
         let (mut width, mut height) = (0, 0);
-        // SAFETY: real C video getters accept the encoder's media, including NULL.
-        unsafe { (self.0.video_size)(self.0.media, &mut width, &mut height) };
+        // SAFETY: the live media field is read only here, with C's synchronization;
+        // real C video getters accept its current value, including NULL.
+        unsafe { (self.0.video_size)(self.0.media.read(), &mut width, &mut height) };
         (width, height)
     }
     fn with_locked(&mut self, action: impl FnOnce(&mut dyn Entries)) {

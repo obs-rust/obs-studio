@@ -20,7 +20,7 @@ struct obs_encoder_roi_list_fields obs_encoder_roi_list_fields(obs_encoder_t *en
 {
 	return (struct obs_encoder_roi_list_fields){&encoder->roi.da,        &encoder->roi_increment,
 						    &encoder->info.caps,     &encoder->scaled_width,
-						    &encoder->scaled_height, encoder->media,
+						    &encoder->scaled_height, &encoder->media,
 						    &encoder->roi_mutex,     encoder_roi_list_lock,
 						    encoder_roi_list_unlock, encoder_roi_list_video_size};
 }

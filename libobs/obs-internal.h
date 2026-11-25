@@ -2520,7 +2520,7 @@ struct obs_encoder_roi_list_fields {
 	const uint32_t *caps;
 	const uint32_t *scaled_width;
 	const uint32_t *scaled_height;
-	void *media;
+	void *const *media;
 	void *mutex;
 	void (*lock)(void *mutex);
 	void (*unlock)(void *mutex);
