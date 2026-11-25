@@ -9,7 +9,7 @@
  * resolved, used or not, so obs-tests-core needs a definition; libobs has
  * the real one. obs_source_get_ref() and obs_source_release()
  * (oracle/view.c), the active-child add and remove
- * (oracle/source_active_child_links.c), obs_source_get_name() (the
+ * (the obs-source shims), obs_source_get_name() (the
  * obs-missing-files tests), os_gettime_ns() and the seam's accessors
  * (oracle/source_transition_settings.c) already have theirs, and the shims
  * define obs_transition_set(), which the transition access shims call.
