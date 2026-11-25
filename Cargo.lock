@@ -790,6 +790,7 @@ name = "obs-source"
 version = "0.1.0"
 dependencies = [
  "obs-callback",
+ "obs-media-io",
  "obs-util",
 ]
 

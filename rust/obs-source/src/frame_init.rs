@@ -23,12 +23,22 @@ pub trait Destination {
 
 /// Allocate before updating the destination; NULL logs once without allocation.
 pub fn init<D: Destination>(
-    _frame: Option<&mut D>,
-    _format: i32,
-    _width: u32,
-    _height: u32,
-    _allocate: impl FnOnce(i32, u32, u32) -> Planes<D::Plane>,
-    _log: impl FnOnce(i32, &'static CStr),
+    frame: Option<&mut D>,
+    format: i32,
+    width: u32,
+    height: u32,
+    allocate: impl FnOnce(i32, u32, u32) -> Planes<D::Plane>,
+    log: impl FnOnce(i32, &'static CStr),
 ) {
-    todo!("obs_source_frame_init Rust swap")
+    let Some(frame) = frame else {
+        log(400, c"obs_source_frame_init: Null 'frame' parameter");
+        return;
+    };
+    let planes = allocate(format, width, height);
+    frame.store(Initialized {
+        format,
+        width,
+        height,
+        planes,
+    });
 }
