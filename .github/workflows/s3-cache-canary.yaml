@@ -28,9 +28,11 @@ jobs:
     # A scheduled workflow also fires in every fork (#1258): skip there.
     if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-latest
-    # A cache probe that cannot authenticate is information, not a build
-    # failure: the summary says which case it hit.
-    continue-on-error: true
+    # No continue-on-error: with the job-level flag the run reports success even
+    # when this job fails, so a dead bucket would look green forever. An
+    # unconfigured cache is still not a failure -- ci/s3_cache_canary.sh exits 0
+    # with a warning when the credentials are absent -- but a configured bucket
+    # that will not take a write must go red.
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Probe the soldr S3 cache
