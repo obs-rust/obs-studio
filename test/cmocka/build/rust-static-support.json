@@ -59,6 +59,7 @@
     "test/cmocka/task-queue-link-support.c",
     "test/cmocka/texture-creators-fields-link-support.c",
     "test/cmocka/texture-file-data-session-link-support.c",
+    "test/cmocka/vertexbuffer-destroy-link-support.c",
     "test/cmocka/video-active-link-support.c",
     "test/cmocka/video-info-query-link-support.c",
     "test/cmocka/video-scaler-ffmpeg-link-support.c",
