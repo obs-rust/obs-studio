@@ -183,6 +183,7 @@ mod volume_mul;
 mod volume_mul_parity;
 mod weak_predicates;
 mod weak_predicates_parity;
+mod weak_refs;
 
 mod type_id_getters;
 

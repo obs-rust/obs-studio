@@ -281,6 +281,7 @@ pub mod video_tick;
 pub mod volume_apply;
 pub mod volume_mul;
 pub mod weak_predicates;
+pub mod weak_refs;
 
 mod platform;
 
