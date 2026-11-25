@@ -3046,7 +3046,7 @@ jobs:
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: forge-ci/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
