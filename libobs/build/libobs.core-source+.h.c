@@ -86,6 +86,7 @@
 #include "libobs/obs-source-info-lookup-fields.c.h"
 #include "libobs/obs-source-init-context-fields.c.h"
 #include "libobs/obs-source-interaction-fields.c.h"
+#include "libobs/obs-source-media-controls-fields.c.h"
 #include "libobs/obs-source-media-getter-fields.c.h"
 #include "libobs/obs-source-missing-files-getter-fields.c.h"
 #include "libobs/obs-source-module-fields.c.h"

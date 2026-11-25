@@ -233,6 +233,7 @@ pub mod info_lookup;
 pub mod init_context;
 pub mod interaction;
 pub mod media_admission;
+pub mod media_controls;
 pub mod missing_files_getter;
 pub mod monitoring;
 pub mod mute_monitor_hotkeys;

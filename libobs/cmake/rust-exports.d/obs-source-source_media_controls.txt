@@ -1,0 +1,8 @@
+obs_source_media_ended
+obs_source_media_next
+obs_source_media_play_pause
+obs_source_media_previous
+obs_source_media_restart
+obs_source_media_set_time
+obs_source_media_started
+obs_source_media_stop
