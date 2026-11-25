@@ -1697,21 +1697,6 @@ obs_source_t *obs_get_transition_by_uuid(const char *uuid)
 	return NULL;
 }
 
-obs_output_t *obs_get_output_by_name(const char *name)
-{
-	return get_context_by_name(&obs->data.first_output, name, &obs->data.outputs_mutex, obs_output_addref_safe_);
-}
-
-obs_encoder_t *obs_get_encoder_by_name(const char *name)
-{
-	return get_context_by_name(&obs->data.first_encoder, name, &obs->data.encoders_mutex, obs_encoder_addref_safe_);
-}
-
-obs_service_t *obs_get_service_by_name(const char *name)
-{
-	return get_context_by_name(&obs->data.first_service, name, &obs->data.services_mutex, obs_service_addref_safe_);
-}
-
 /* obs-source-load.h copies these */
 _Static_assert(OBS_SOURCE_LOAD_MONITOR_ONLY_BEFORE == MAKE_SEMANTIC_VERSION(23, 2, 2), "23.2.2");
 _Static_assert(OBS_SOURCE_LOAD_MONITORING_ENABLED_BEFORE == MAKE_SEMANTIC_VERSION(33, 0, 0), "33.0.0");
