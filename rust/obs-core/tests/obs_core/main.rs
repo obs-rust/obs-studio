@@ -37,6 +37,7 @@ mod canvas_ref;
 mod canvas_ref_parity;
 mod canvas_release;
 mod canvas_release_parity;
+mod canvas_remove;
 mod canvas_render;
 mod canvas_render_parity;
 mod canvas_rules;
