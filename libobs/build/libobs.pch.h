@@ -11,6 +11,7 @@
 #include <inttypes.h>
 
 #include "obs-internal.h"
+#include "obs-context-name-lookup.h"
 
 /* obs-missing-files.c */
 #include "util/threading.h"

@@ -1552,34 +1552,6 @@ static int obs_reset_video_internal(struct obs_video_info *ovi)
 _Static_assert(OBS_CORE_SETUP_RULES_AUDIO_OUTPUT_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
 _Static_assert(OBS_CORE_SETUP_RULES_SEC_TO_MSEC == SEC_TO_MSEC, "SEC_TO_MSEC");
 
-static inline void *get_context_by_name(void *vfirst, const char *name, pthread_mutex_t *mutex, void *(*addref)(void *))
-{
-	struct obs_context_data **first = vfirst;
-	struct obs_context_data *context;
-
-	pthread_mutex_lock(mutex);
-
-	/* If context list head has a hash table, look the name up in there */
-	if (*first && (*first)->hh.tbl) {
-		HASH_FIND_STR(*first, name, context);
-	} else {
-		context = *first;
-		while (context) {
-			if (!context->private && strcmp(context->name, name) == 0) {
-				break;
-			}
-
-			context = context->next;
-		}
-	}
-
-	if (context)
-		addref(context);
-
-	pthread_mutex_unlock(mutex);
-	return context;
-}
-
 static void *get_context_by_uuid(void *ptable, const char *uuid, pthread_mutex_t *mutex, void *(*addref)(void *))
 {
 	struct obs_context_data **ht = ptable;
@@ -1598,21 +1570,6 @@ static void *get_context_by_uuid(void *ptable, const char *uuid, pthread_mutex_t
 static inline void *obs_source_addref_safe_(void *ref)
 {
 	return obs_source_get_ref(ref);
-}
-
-static inline void *obs_output_addref_safe_(void *ref)
-{
-	return obs_output_get_ref(ref);
-}
-
-static inline void *obs_encoder_addref_safe_(void *ref)
-{
-	return obs_encoder_get_ref(ref);
-}
-
-static inline void *obs_service_addref_safe_(void *ref)
-{
-	return obs_service_get_ref(ref);
 }
 
 static inline void *obs_canvas_addref_safe_(void *ref)
