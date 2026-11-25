@@ -91,10 +91,38 @@ pub trait Frames {
 /// for the destination's range (the source's, just written), height and
 /// line sizes: the colour range when the plan says so, then each planned
 /// plane in order.
-#[expect(clippy::todo)]
 pub fn copy_frame_data(frames: &mut impl Frames, src: &Source, dst: Destination) {
-    let _ = (frames, src, dst, frame_copy::copy_plan);
-    todo!("#5714")
+    frames.write_metadata(src.metadata);
+    let plan = frame_copy::copy_plan(
+        src.format,
+        src.metadata.full_range,
+        dst.height,
+        src.linesize,
+        dst.linesize,
+    );
+    if plan.color_range {
+        frames.write_color_range(src.color_range);
+    }
+    for (plane, copy) in plan.planes.iter().take(plan.count).enumerate() {
+        frames.copy_plane(plane, copy);
+    }
+}
+
+/// `size_t` of a `u32`.
+#[allow(clippy::as_conversions)]
+const fn size(value: u32) -> usize {
+    value as usize
+}
+
+/// The greatest `y * stride` (in `u32`, wrapping) over the rows `0..rows`.
+fn last_row(rows: u32, stride: u32) -> u32 {
+    let Some(last) = rows.checked_sub(1) else {
+        return 0;
+    };
+    match last.checked_mul(stride) {
+        Some(offset) => offset,
+        None => (0..rows).map(|y| y.wrapping_mul(stride)).max().unwrap_or(0),
+    }
 }
 
 /// The bytes of the destination and of the source plane one copy touches,
@@ -102,10 +130,15 @@ pub fn copy_frame_data(frames: &mut impl Frames, src: &Source, dst: Destination)
 /// else up to the end of the row that starts furthest in (in `u32`, as the
 /// C computes each row's start); `(0, 0)` when nothing is copied.
 #[must_use]
-#[expect(clippy::todo)]
 pub fn plane_extent(copy: &PlaneCopy) -> (usize, usize) {
-    let _ = copy;
-    todo!("#5714")
+    if copy.whole {
+        return (copy.bytes, copy.bytes);
+    }
+    if copy.bytes == 0 || copy.rows == 0 {
+        return (0, 0);
+    }
+    let end = |stride| size(last_row(copy.rows, stride)).saturating_add(copy.bytes);
+    (end(copy.dst_stride), end(copy.src_stride))
 }
 
 /// `copy_frame_data_plane()`: one copy of the plan's bytes when the line
@@ -113,8 +146,24 @@ pub fn plane_extent(copy: &PlaneCopy) -> (usize, usize) {
 /// dst_stride` (each in `u32`), the plan's bytes each. `dst` and `src` start
 /// at the planes' starts and hold [`plane_extent`]'s bytes; a row outside
 /// them is not copied (the shim's slices always hold every row).
-#[expect(clippy::todo)]
 pub fn copy_plane(dst: &mut [u8], src: &[u8], copy: &PlaneCopy) {
-    let _ = (dst, src, copy);
-    todo!("#5714")
+    if copy.whole {
+        if let (Some(to), Some(from)) = (dst.get_mut(..copy.bytes), src.get(..copy.bytes)) {
+            to.copy_from_slice(from);
+        }
+        return;
+    }
+    for y in 0..copy.rows {
+        let pos_src = size(y.wrapping_mul(copy.src_stride));
+        let pos_dst = size(y.wrapping_mul(copy.dst_stride));
+        let (Some(src_end), Some(dst_end)) = (
+            pos_src.checked_add(copy.bytes),
+            pos_dst.checked_add(copy.bytes),
+        ) else {
+            continue;
+        };
+        if let (Some(to), Some(from)) = (dst.get_mut(pos_dst..dst_end), src.get(pos_src..src_end)) {
+            to.copy_from_slice(from);
+        }
+    }
 }
