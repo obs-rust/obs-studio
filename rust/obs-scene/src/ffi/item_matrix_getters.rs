@@ -24,8 +24,8 @@ impl<const N: usize> FieldAccess<N> for Access<N> {
         unsafe { obs_sceneitem_fields_lock(self.item) }
     }
     fn read(&self) -> [u32; N] {
-        // SAFETY: initialized matrix/vec2 storage has identical size/alignment
-        // to these integer cells; all bit patterns are valid, under the lock.
+        // SAFETY: initialized matrix/vec2 storage has the same size as these
+        // integer cells and sufficient alignment; all bits are valid, under lock.
         unsafe { self.field.read() }
     }
     fn write(&mut self, bits: [u32; N]) {
@@ -46,12 +46,19 @@ impl<const N: usize> FieldAccess<N> for Access<N> {
 /// non-NULL item, output must be writable matrix4 storage, as in the C API.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_sceneitem_get_draw_transform(
-    item: *const SceneItemPrefix, output: *mut matrix4,
+    item: *const SceneItemPrefix,
+    output: *mut matrix4,
 ) {
-    if item.is_null() { return; }
+    if item.is_null() {
+        return;
+    }
     // SAFETY: forming a field address does not read it; item is live.
     let field = unsafe { ptr::addr_of!((*item).draw_transform) }.cast();
-    copy_field(Some(&mut Access::<16> { item, field, output: output.cast() }));
+    copy_field(Some(&mut Access::<16> {
+        item,
+        field,
+        output: output.cast(),
+    }));
 }
 
 /// Copy the stored box matrix. A NULL item leaves output untouched.
@@ -60,12 +67,19 @@ pub unsafe extern "C" fn obs_sceneitem_get_draw_transform(
 /// Same lifecycle and writable-output contract as get_draw_transform.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_sceneitem_get_box_transform(
-    item: *const SceneItemPrefix, output: *mut matrix4,
+    item: *const SceneItemPrefix,
+    output: *mut matrix4,
 ) {
-    if item.is_null() { return; }
+    if item.is_null() {
+        return;
+    }
     // SAFETY: forming a field address does not read it; item is live.
     let field = unsafe { ptr::addr_of!((*item).box_transform) }.cast();
-    copy_field(Some(&mut Access::<16> { item, field, output: output.cast() }));
+    copy_field(Some(&mut Access::<16> {
+        item,
+        field,
+        output: output.cast(),
+    }));
 }
 
 /// Copy the stored box scale. A NULL item leaves output untouched.
@@ -75,10 +89,17 @@ pub unsafe extern "C" fn obs_sceneitem_get_box_transform(
 /// storage. A NULL output is permitted only when item is NULL.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_sceneitem_get_box_scale(
-    item: *const SceneItemPrefix, output: *mut vec2,
+    item: *const SceneItemPrefix,
+    output: *mut vec2,
 ) {
-    if item.is_null() { return; }
+    if item.is_null() {
+        return;
+    }
     // SAFETY: forming a field address does not read it; item is live.
     let field = unsafe { ptr::addr_of!((*item).box_scale) }.cast();
-    copy_field(Some(&mut Access::<2> { item, field, output: output.cast() }));
+    copy_field(Some(&mut Access::<2> {
+        item,
+        field,
+        output: output.cast(),
+    }));
 }

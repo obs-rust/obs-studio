@@ -12,6 +12,10 @@ pub trait FieldAccess<const N: usize> {
 
 /// A missing item is a no-op; live fields are copied bit for bit while locked.
 pub fn copy_field<const N: usize>(access: Option<&mut impl FieldAccess<N>>) {
-    let _ = access;
-    todo!("scene matrix getter port")
+    if let Some(access) = access {
+        let parent = access.lock();
+        let bits = access.read();
+        access.write(bits);
+        access.unlock(parent);
+    }
 }

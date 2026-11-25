@@ -9,27 +9,43 @@ type MatrixGetter = unsafe extern "C" fn(*const SceneItemPrefix, *mut matrix4);
 type ScaleGetter = unsafe extern "C" fn(*const SceneItemPrefix, *mut vec2);
 unsafe extern "C" {
     fn oracle_scene_item_matrix_probe(
-        bits: *const u32, flags: u32, draw: MatrixGetter, box_get: MatrixGetter, scale: ScaleGetter,
+        bits: *const u32,
+        flags: u32,
+        draw: MatrixGetter,
+        box_get: MatrixGetter,
+        scale: ScaleGetter,
     ) -> u32;
 }
 
 fn check(bits: [u32; 34], flags: u32) {
     // SAFETY: C owns complete items, live parent mutexes and guarded outputs,
     // and invokes these callbacks only within those storage lifetimes.
-    assert_eq!(unsafe {
-        oracle_scene_item_matrix_probe(bits.as_ptr(), flags,
-            obs_sceneitem_get_draw_transform, obs_sceneitem_get_box_transform,
-            obs_sceneitem_get_box_scale)
-    }, 0, "flags={flags} bits={bits:08x?}");
+    assert_eq!(
+        unsafe {
+            oracle_scene_item_matrix_probe(
+                bits.as_ptr(),
+                flags,
+                obs_sceneitem_get_draw_transform,
+                obs_sceneitem_get_box_transform,
+                obs_sceneitem_get_box_scale,
+            )
+        },
+        0,
+        "flags={flags} bits={bits:08x?}"
+    );
 }
 
 #[test]
 fn characterized_float_edges() {
-    let edges = [0, 0x80000000, 0x7fc00001, 0xffc12345, 0x7f800000,
-        0xff800000, 1, 0x3f800000, 0x7f801234];
+    let edges = [
+        0, 0x80000000, 0x7fc00001, 0xffc12345, 0x7f800000, 0xff800000, 1, 0x3f800000, 0x7f801234,
+    ];
     for start in 0..edges.len() {
         for flags in 0..4 {
-            check(core::array::from_fn(|i| edges[(start + i) % edges.len()]), flags);
+            check(
+                core::array::from_fn(|i| edges[(start + i) % edges.len()]),
+                flags,
+            );
         }
     }
 }

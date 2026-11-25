@@ -17,6 +17,9 @@ impl<const N: usize> FieldAccess<N> for Access<N> {
         assert_ne!(self.output, self.stored);
         self.phase = 1;
         self.captured = self.parent;
+        if self.captured.is_some() {
+            self.caller_holds += 1;
+        }
         self.parent = Some(99);
         self.captured
     }
@@ -32,6 +35,9 @@ impl<const N: usize> FieldAccess<N> for Access<N> {
         assert_eq!(parent, self.captured);
         assert_eq!(self.output, self.stored);
         assert_eq!(self.phase, 1);
+        if parent.is_some() {
+            self.caller_holds -= 1;
+        }
         self.phase = 2;
     }
 }
@@ -48,12 +54,19 @@ const EDGES: [u32; 8] = [
 
 fn check<const N: usize>(seed: usize, parent: Option<u32>, caller_holds: u32) {
     let stored = core::array::from_fn(|i| {
-        if i % 2 == 0 { EDGES[(i / 2 + seed) % 8] }
-        else { 0x40000000 + seed as u32 * 97 + i as u32 }
+        if i % 2 == 0 {
+            EDGES[(i / 2 + seed) % 8]
+        } else {
+            0x40000000 + seed as u32 * 97 + i as u32
+        }
     });
     let mut access = Access {
-        stored, output: [0xa5a5a5a5; N], parent, captured: None,
-        phase: 0, caller_holds,
+        stored,
+        output: [0xa5a5a5a5; N],
+        parent,
+        captured: None,
+        phase: 0,
+        caller_holds,
     };
     copy_field(Some(&mut access));
     assert_eq!(access.output, stored);
