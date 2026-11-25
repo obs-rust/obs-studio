@@ -64,7 +64,7 @@ static int setup_with(void **state, bool seeded)
 	assert_non_null(canvas);
 	assert_non_null(canvas->context.mutex);
 	core = (struct obs_core *)((unsigned char *)canvas->context.mutex - offsetof(struct obs_core, data) -
-				  offsetof(struct obs_core_data, canvases_mutex));
+				   offsetof(struct obs_core_data, canvases_mutex));
 	assert_ptr_equal(core->data.main_canvas, canvas);
 	assert_ptr_equal(core->signals, obs_get_signal_handler());
 	seeded_tail = false;
