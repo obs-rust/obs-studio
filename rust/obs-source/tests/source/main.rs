@@ -55,6 +55,7 @@ mod conversion_plan;
 mod conversion_plan_parity;
 mod default_flags;
 mod default_flags_parity;
+mod defaults;
 mod deinterlace;
 mod deinterlace_draw;
 mod deinterlace_draw_parity;

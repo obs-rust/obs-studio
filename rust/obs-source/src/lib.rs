@@ -211,6 +211,7 @@ pub mod color_space;
 pub mod configurable;
 pub mod conversion_plan;
 pub mod default_flags;
+pub mod defaults;
 pub mod deinterlace;
 pub mod deinterlace_draw;
 pub mod deinterlace_getters;
