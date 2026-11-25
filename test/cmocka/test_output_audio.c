@@ -1,6 +1,6 @@
 /* Direct actual-library characterization of obs_output_audio (Refs #5655).
  * The output and encoder structs borrow real audio handles; this read-only API
- * needs no registered plugin, core startup, mutexes, or encoder initialization.
+ * needs no registered plugin, mutexes, or encoder initialization.
  * Keep unchanged through the later Rust swap. */
 #include <stdarg.h>
 #include <stddef.h>
@@ -139,6 +139,8 @@ static bool input_audio(void *param, uint64_t start, uint64_t end, uint64_t *tim
 static int setup(void **state)
 {
 	(void)state;
+	if (!obs_startup("en-US", NULL, NULL))
+		return -1;
 	struct audio_output_info info = {
 		.name = "output audio characterization",
 		.samples_per_sec = 48000,
@@ -150,6 +152,7 @@ static int setup(void **state)
 		if (audio_output_open(&media[i], &info) != AUDIO_OUTPUT_SUCCESS) {
 			for (size_t j = 0; j < i; j++)
 				audio_output_close(media[j]);
+			obs_shutdown();
 			return -1;
 		}
 	}
@@ -161,6 +164,7 @@ static int teardown(void **state)
 	(void)state;
 	for (size_t i = 0; i < 2; i++)
 		audio_output_close(media[i]);
+	obs_shutdown();
 	return 0;
 }
 
