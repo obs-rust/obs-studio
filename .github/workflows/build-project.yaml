@@ -3261,10 +3261,42 @@ jobs:
           restore-keys: |
             tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-
 
+      # ctest starts the longest tests first only when it has their past
+      # times; with none, the 59 s and 35 s tests started last and one shard
+      # took 168 s for 228 s of -j4 work (run 38892442457). Start from the
+      # timings the last master run merged (rust-linux-tier2-done, #930).
+      - uses: ./.github/actions/cache
+        with:
+          mode: restore
+          path: .tier2-cost
+          key: tier2-ctest-cost-${{ github.sha }}
+          restore-keys: tier2-ctest-cost-
+
+      - name: Test Tier 2 From Shared Artifact
+        id: shared-tier2
+        env:
+          OBS_TIER2_ARTIFACT_TOKEN: ${{ github.token }}
+        run: |
+          [[ -S "${OBS_TIER2_ARTIFACT_SOCKET:-}" ]] || exit 0
+          status=0
+          uv run --no-project rust/tools/linux-validate/ci-runtime.py \
+            --shared-artifact \
+            --descriptor rust/tools/linux-validate/prepared-runtime.json \
+            --prebaked-image "${{ needs.check-event.outputs.tier2_prebaked == 'true' && needs.check-event.outputs.tier2_image || '' }}" \
+            --source "$GITHUB_WORKSPACE" --cost "$GITHUB_WORKSPACE/.tier2-cost" --uv "$(command -v uv)" \
+            --archives "$GITHUB_WORKSPACE/.tier2-apt-archives" \
+            --state "$RUNNER_TEMP/tier2-runtime" --mode '${{ matrix.mode }}' --part '${{ matrix.part }}' || status=$?
+          case "$status" in
+            0) echo "used=true" >> "$GITHUB_OUTPUT" ;;
+            75) ;;
+            *) exit "$status" ;;
+          esac
+
       # On the Dell the build job left the pack in the host's handoff dir
       # (#4954 P7); a missing or unverifiable one falls back to the artifact.
       - name: Take Tier 2 Tree Handoff 🤝
         id: handoff
+        if: steps.shared-tier2.outputs.used != 'true'
         run: |
           root=/var/cache/obs-runner/handoff
           if [ -d "$root" ]; then
@@ -3275,12 +3307,13 @@ jobs:
           fi
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        if: steps.handoff.outputs.hit != 'true'
+        if: steps.shared-tier2.outputs.used != 'true' && steps.handoff.outputs.hit != 'true'
         with:
           name: tier2-tree
           path: ${{ runner.temp }}/tier2-pack
 
       - name: Select Tier 2 Scratch
+        if: steps.shared-tier2.outputs.used != 'true'
         run: |
           build="$RUNNER_TEMP/tier2"
           if [[ -n "${OBS_TIER2_SCRATCH:-}" ]]; then
@@ -3296,6 +3329,7 @@ jobs:
           echo "OBS_TIER2_TEST_BUILD=$build" >> "$GITHUB_ENV"
 
       - name: Unpack Tier 2 Tree 📂
+        if: steps.shared-tier2.outputs.used != 'true'
         run: |
           mkdir -p "$OBS_TIER2_TEST_BUILD"
           if ! tar --zstd -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$OBS_TIER2_TEST_BUILD"; then
@@ -3304,18 +3338,8 @@ jobs:
             exit 1
           fi
 
-      # ctest starts the longest tests first only when it has their past
-      # times; with none, the 59 s and 35 s tests started last and one shard
-      # took 168 s for 228 s of -j4 work (run 38892442457). Start from the
-      # timings the last master run merged (rust-linux-tier2-done, #930).
-      - uses: ./.github/actions/cache
-        with:
-          mode: restore
-          path: .tier2-cost
-          key: tier2-ctest-cost-${{ github.sha }}
-          restore-keys: tier2-ctest-cost-
-
       - name: Test Tier 2 (${{ matrix.mode }}) ✅
+        if: steps.shared-tier2.outputs.used != 'true'
         run: |
           uv run --no-project rust/tools/linux-validate/ci-runtime.py \
             --descriptor rust/tools/linux-validate/prepared-runtime.json \

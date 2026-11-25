@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import ANY, call, patch
 import urllib.error
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +19,30 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_shared_mount_error_falls_back_before_docker(self):
+        with patch.dict(os.environ, {"OBS_TIER2_ARTIFACT_SOCKET": "/nonexistent/lease.sock"}), \
+                patch.object(runtime, "execute") as execute:
+            self.assertEqual(runtime.execute_shared(argparse.Namespace()), 75)
+            execute.assert_not_called()
+
+    def test_shared_mount_remains_leased_through_runtime(self):
+        path = "/run/obs-tier2-artifacts/sessions/tier2-job-example/merged"
+        response = json.dumps({"path": path, "packages": "libc6=1\n"}).encode() + b"\n"
+        with patch.object(runtime.socket, 'socket') as connect, patch.object(runtime, 'execute') as execute:
+            lease = connect.return_value.__enter__.return_value
+            lease.makefile.return_value = io.BytesIO(response)
+
+            def run(args):
+                self.assertEqual(args.build, Path(path))
+                self.assertEqual(args.packages.read_text(), "libc6=1\n")
+                connect.return_value.__exit__.assert_not_called()
+
+            execute.side_effect = run
+            self.assertEqual(runtime.execute_shared(argparse.Namespace()), 0)
+            lease.assert_has_calls([call.settimeout(5), call.connect(ANY), call.settimeout(600)])
+            execute.assert_called_once()
+            connect.return_value.__exit__.assert_called_once()
+
     def descriptor(self):
         return {'base': runtime.BASE, 'platform': 'linux/amd64', 'inventory': 'a\t1\n',
                 'image_id': 'sha256:' + 'a' * 64, 'compressed_bytes': 4,
