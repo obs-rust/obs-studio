@@ -125,6 +125,7 @@ mod removed;
 mod removed_parity;
 mod render_route;
 mod render_route_parity;
+mod replace_missing_file;
 mod save_load;
 mod save_load_parity;
 mod set_name;
