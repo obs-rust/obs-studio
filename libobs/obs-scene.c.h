@@ -2212,62 +2212,6 @@ _Static_assert(OBS_ORDER_MOVE_TOP == 2, "OBS_ORDER_MOVE_TOP");
 _Static_assert(OBS_ORDER_MOVE_BOTTOM == 3, "OBS_ORDER_MOVE_BOTTOM");
 _Static_assert(sizeof(struct obs_sceneitem_order_info) == 2 * sizeof(void *), "struct obs_sceneitem_order_info");
 
-void obs_sceneitem_set_order(obs_sceneitem_t *item, enum obs_order_movement movement)
-{
-	if (!item)
-		return;
-
-	struct obs_scene_item *next, *prev;
-	struct obs_scene *scene = obs_scene_get_ref(item->parent);
-
-	if (!scene)
-		return;
-
-	full_lock(scene);
-
-	next = item->next;
-	prev = item->prev;
-
-	int anchor = obs_scene_item_order_anchor((int)movement, prev != NULL, next != NULL);
-
-	if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_STAY) {
-		full_unlock(scene);
-		obs_scene_release(scene);
-		return;
-	}
-
-	detach_sceneitem(item);
-
-	if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_PREV_PREV) {
-		attach_sceneitem(scene, item, prev->prev);
-
-	} else if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_NEXT) {
-		attach_sceneitem(scene, item, next);
-
-	} else if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_PREV) {
-		attach_sceneitem(scene, item, prev);
-
-	} else if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_LAST) {
-		struct obs_scene_item *last = next;
-		if (!last) {
-			last = prev;
-		} else {
-			while (last->next)
-				last = last->next;
-		}
-
-		attach_sceneitem(scene, item, last);
-
-	} else if (anchor == OBS_SCENE_ITEM_ORDER_ANCHOR_BOTTOM) {
-		attach_sceneitem(scene, item, NULL);
-	}
-
-	full_unlock(scene);
-
-	signal_reorder(item);
-	obs_scene_release(scene);
-}
-
 void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 {
 	if (!item)
