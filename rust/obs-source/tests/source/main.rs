@@ -145,6 +145,7 @@ mod showing_active;
 mod showing_active_parity;
 mod size_route;
 mod size_route_parity;
+mod source_draw;
 mod source_duplicate;
 mod source_duplicate_parity;
 mod source_filter_chain;
