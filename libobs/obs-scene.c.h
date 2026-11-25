@@ -2143,44 +2143,6 @@ static void scene_item_bounds_update_transform(obs_sceneitem_t *item)
 	do_update_transform(item);
 }
 
-void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		if (!item->absolute_coordinates)
-			pos_from_absolute(&item->pos, pos, item);
-		else
-			vec2_copy(&item->pos, pos);
-		item_fields_unlock(scene);
-
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_rot(obs_sceneitem_t *item, float rot)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->rot = rot;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_scale(obs_sceneitem_t *item, const struct vec2 *scale)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		if (!item->absolute_coordinates)
-			item_relative_scale(&item->scale, scale, item);
-		else
-			vec2_copy(&item->scale, scale);
-		item_fields_unlock(scene);
-
-		do_update_transform(item);
-	}
-}
-
 static inline void signal_reorder(struct obs_scene_item *item)
 {
 	const char *command = NULL;
