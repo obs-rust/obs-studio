@@ -44,6 +44,7 @@ fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
         "test/cmocka/texture-file-data-session-link-support.c",
         "test/cmocka/graphics-image-convert-link-support.c",
         "test/cmocka/graphics-image-max-size-link-support.c",
+        "test/cmocka/vertexbuffer-destroy-link-support.c",
     ] {
         assert!(sources.contains(&serde_json::json!(source)), "{source}");
     }
