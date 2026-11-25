@@ -17,8 +17,6 @@
 
 #include "libobs/build/libobs.pch.h"
 
-extern const char *get_module_extension(void);
-
 extern obs_module_t *loadingModule;
 
 static inline int req_func_not_found(const char *name, const char *path)
@@ -64,11 +62,6 @@ static int load_module_exports(struct obs_module *mod, const char *path)
 	LOAD_MODULE_SYMBOL(author, "obs_module_author");
 	LOAD_MODULE_SYMBOL(get_string, "obs_module_get_string");
 	return MODULE_SUCCESS;
-}
-
-static inline char *get_module_name(const char *file)
-{
-	return obs_module_names_module_name(file, get_module_extension());
 }
 
 int obs_open_module(obs_module_t **module, const char *path, const char *data_path)
@@ -136,31 +129,6 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 		mod.set_locale(obs->locale);
 
 	return MODULE_SUCCESS;
-}
-
-bool obs_create_disabled_module(obs_module_t **module, const char *path, const char *data_path,
-				enum obs_module_load_state state)
-{
-	struct obs_module mod = {0};
-
-	mod.bin_path = bstrdup(path);
-	mod.file = obs_module_names_file_name(mod.bin_path);
-	mod.mod_name = get_module_name(mod.file);
-	mod.data_path = bstrdup(data_path);
-	mod.next = obs->first_disabled_module;
-	mod.load_state = state;
-
-	da_init(mod.sources);
-	da_init(mod.outputs);
-	da_init(mod.encoders);
-	da_init(mod.services);
-
-	obs_module_load_metadata(&mod);
-
-	*module = bmemdup(&mod, sizeof(mod));
-	obs->first_disabled_module = (*module);
-
-	return true;
 }
 
 extern void get_plugin_info(const char *path, bool *is_obs_plugin);
