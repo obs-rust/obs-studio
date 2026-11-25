@@ -100,6 +100,7 @@
 #include "libobs/obs-source-settings-getter-fields.c.h"
 #include "libobs/obs-source-showing-active-fields.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
+#include "libobs/obs-source-texcoords-centered-setter.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-type-data-fields.c.h"
 #include "libobs/obs-source-type-id-fields.c.h"

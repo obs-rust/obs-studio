@@ -805,11 +805,6 @@ void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
 	obs_source_update(source, settings);
 }
 
-void obs_source_set_texcoords_centered(obs_source_t *source, bool centered)
-{
-	source->texcoords_centered = centered;
-}
-
 static void activate_source(obs_source_t *source)
 {
 	if (source->context.data && source->info.activate)
