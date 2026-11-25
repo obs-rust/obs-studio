@@ -3349,7 +3349,7 @@ jobs:
           case "${OBS_TIER2_TEST_BUILD:-}" in
             "${OBS_TIER2_SCRATCH:-/nonexistent}"/tier2.*)
               df -h "$OBS_TIER2_TEST_BUILD"
-              python3 -c 'import shutil, sys; shutil.rmtree(sys.argv[1])' "$OBS_TIER2_TEST_BUILD"
+              uv run --no-project python -c 'import shutil, sys; shutil.rmtree(sys.argv[1])' "$OBS_TIER2_TEST_BUILD"
               ;;
           esac
 
