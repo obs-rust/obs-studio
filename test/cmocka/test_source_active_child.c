@@ -189,6 +189,9 @@ static int fixture_teardown(void **state)
 		os_atomic_set_long(&fx.source[i]->activate_refs, 0);
 		obs_source_release(fx.source[i]);
 	}
+	/* Sources are destroyed on the destruction thread, which logs. Let it
+	 * finish here, so those lines never land in the next test's capture. */
+	obs_wait_for_destroy_queue();
 	memset(&fx, 0, sizeof(fx));
 	return 0;
 }
