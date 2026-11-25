@@ -5,6 +5,10 @@ Tier 2 (cmocka against libobs and the explicit C reference, in Docker). Named
 
     ./unittest [gate arguments]
 
+This launcher runs the local test lanes and does not publish CI evidence.
+Use `PUSH_REQUIRE_ATTESTATION=1 ./push` to require complete signed client
+evidence before pushing.
+
 A Python (not `sh`) launcher, so GEN-005 has no shell shebang to flag.
 """
 
