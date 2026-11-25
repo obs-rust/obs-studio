@@ -13,6 +13,12 @@ pub trait Host {
 }
 
 /// Reset a canvas's video; `info` is `None` for a NULL pointer.
-pub fn reset_video<H: Host>(_host: &mut H, _canvas: H::Canvas, _info: Option<H::Info>) -> bool {
-    false
+pub fn reset_video<H: Host>(host: &mut H, canvas: H::Canvas, info: Option<H::Info>) -> bool {
+    let Some(info) = info else {
+        return false;
+    };
+    if !crate::canvas_rules::resets(host.flags(canvas)) || host.video_active() {
+        return false;
+    }
+    host.reset_internal(canvas, info)
 }

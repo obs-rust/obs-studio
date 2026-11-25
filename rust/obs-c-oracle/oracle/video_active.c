@@ -225,3 +225,20 @@ bool oracle_video_active_adapters(void)
 	pthread_mutex_destroy(&vact_core.video.mixes_mutex);
 	return ok;
 }
+
+/* For callers' differential fixtures (canvas_reset_video.c): arm one listed
+ * mix with the given raw count, and report how many trace events the
+ * fixture core has seen since, so a skipped activity query shows. */
+void oracle_video_active_arm_one(long raw_count);
+void oracle_video_active_arm_one(long raw_count)
+{
+	static const uint8_t list[] = {0};
+	long raw[VACT_POOL] = {0}, gpu[VACT_POOL] = {0};
+	raw[0] = raw_count;
+	vact_arm(list, 1, raw, gpu);
+}
+size_t oracle_video_active_events(void);
+size_t oracle_video_active_events(void)
+{
+	return vact_trace_len;
+}
