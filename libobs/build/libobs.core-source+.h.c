@@ -40,6 +40,7 @@
 #include "libobs/obs-scene-item-order-position-fields.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-select-fields.c.h"
+#include "libobs/obs-scene-item-set-order.c.h"
 #include "libobs/obs-scene-item-set-visibility-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
