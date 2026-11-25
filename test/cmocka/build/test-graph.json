@@ -27238,7 +27238,16 @@
       "target": "test_output_audio",
       "command": [
         "${target}"
-      ]
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_output_before_video": {
       "target": "test_output_before_video",
