@@ -17921,6 +17921,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_flags_mixers": {
+      "sources": [
+        "test/cmocka/test_source_flags_mixers.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_frame_copy_steps": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
@@ -29642,6 +29657,12 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_source_flags_mixers": {
+      "target": "test_source_flags_mixers",
+      "command": [
+        "${target}"
+      ]
     },
     "test_source_frame_copy_steps": {
       "target": "test_source_frame_copy_steps",
