@@ -57,6 +57,33 @@ class RustStaticLinkSupport(unittest.TestCase):
     def test_non_msvc_preserves_declared_static_binding(self):
         self.check_fixture(False, False, True)
 
+    def test_isolated_recording_fixture_selects_only_needed_support(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            for name, body in {
+                "main.c": "int rust_entry(void); int main(void) { return rust_entry() != 22; }\n",
+                "rust.c": "int adapter_value(void); int rust_entry(void) { return adapter_value(); }\n",
+                "fallback.c": "int adapter_value(void) { return 99; }\n",
+                "recording-link-support.c": "int adapter_value(void) { return 22; }\n",
+                "unused-link-support.c": "int unavailable(void); int unused_adapter(void) { return unavailable(); }\n",
+            }.items():
+                (source / name).write_text(body)
+            (source / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.28)\nproject(isolated_recording C)\n"
+                "set(MSVC FALSE)\n"
+                "add_library(libobs_rust-static STATIC rust.c)\n"
+                "add_library(support STATIC fallback.c)\n"
+                "add_executable(test_texture_file_data_steps_rust main.c recording-link-support.c unused-link-support.c)\n"
+                "target_link_libraries(test_texture_file_data_steps_rust PRIVATE libobs_rust-static)\n"
+                f'include("{(ROOT / "test/cmocka/tests.d/test_texture_file_data_steps.cmake").as_posix()}")\n'
+                f'include("{HELPER.as_posix()}")\n'
+                "obs_rust_static_consumers(support missing_owner)\n"
+            )
+            build = source / "build"
+            self.run_command(["cmake", "-S", str(source), "-B", str(build)])
+            self.run_command(["cmake", "--build", str(build)])
+            self.run_command([str(build / "test_texture_file_data_steps_rust")])
+
     def test_real_logger_members_preserve_fixture_owned_guards(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
