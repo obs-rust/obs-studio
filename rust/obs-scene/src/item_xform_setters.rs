@@ -19,6 +19,15 @@ pub trait Item: Fields {
 }
 
 /// NULL items do nothing; every live write updates, including unchanged values.
-pub fn set<I: Item>(_item: Option<&mut I>) {
-    todo!()
+pub fn set<I: Item>(item: Option<&mut I>) {
+    let Some(item) = item else { return };
+    crate::item_bounds_setters::set(item, |item| {
+        let value = item.input();
+        let stored = if !matches!(value, Value::Rotation(_)) && !item.absolute() {
+            item.relative(value)
+        } else {
+            value
+        };
+        item.store(stored);
+    });
 }

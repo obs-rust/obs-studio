@@ -1,0 +1,3 @@
+obs_sceneitem_set_pos
+obs_sceneitem_set_rot
+obs_sceneitem_set_scale

@@ -1,20 +1,18 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Dependencies stay in obs-scene.c.h in this same unity group. */
-static inline obs_scene_t *item_fields_lock(const obs_sceneitem_t *item);
-static inline void item_fields_unlock(obs_scene_t *scene);
-static inline void pos_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
-static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
-static void update_item_transform(struct obs_scene_item *item, bool update_tex);
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item);
+void obs_sceneitem_fields_unlock(obs_scene_t *scene);
+void obs_sceneitem_xform_pos_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+void obs_sceneitem_xform_relative_scale(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+void obs_sceneitem_bounds_update_transform(obs_sceneitem_t *item);
 
-#define do_update_transform(item)                                          \
-	do {                                                               \
-		if (!item->parent || item->parent->is_group)               \
-			os_atomic_set_bool(&item->update_transform, true); \
-		else                                                       \
-			update_item_transform(item, false);                \
-	} while (false)
+#define item_fields_lock obs_sceneitem_fields_lock
+#define item_fields_unlock obs_sceneitem_fields_unlock
+#define pos_from_absolute obs_sceneitem_xform_pos_from_absolute
+#define item_relative_scale obs_sceneitem_xform_relative_scale
+#define do_update_transform(item) obs_sceneitem_bounds_update_transform(item)
 
+/* clang-format off: preserve the extracted C oracle bodies verbatim. */
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
 	if (item) {
@@ -53,4 +51,10 @@ void obs_sceneitem_set_scale(obs_sceneitem_t *item, const struct vec2 *scale)
 	}
 }
 
+/* clang-format on */
+
 #undef do_update_transform
+#undef item_relative_scale
+#undef pos_from_absolute
+#undef item_fields_unlock
+#undef item_fields_lock
