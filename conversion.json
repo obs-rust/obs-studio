@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83618,
-      "libobs": 100219,
-      "plugins": 152557,
+      "libobs": 100490,
+      "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.48,
-    "ported_lines": 61584,
-    "total_lines": 352362
+    "percent": 17.57,
+    "ported_lines": 61994,
+    "total_lines": 352897
   },
-  "commit": "4c10a6b5",
-  "date": "2026-11-24",
+  "commit": "8a195424",
+  "date": "2026-11-25",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 52.5,
-          "ported_lines": 35643,
-          "total_lines": 67889
+          "percent": 52.87,
+          "ported_lines": 36024,
+          "total_lines": 68137
         },
         "graphics": {
-          "percent": 72.14,
-          "ported_lines": 11168,
-          "total_lines": 15482
+          "percent": 72.22,
+          "ported_lines": 11197,
+          "total_lines": 15505
         },
         "media-io": {
           "percent": 83.37,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 993,
-      "hybrid_lines": 38635,
-      "percent": 61.45,
-      "ported_lines": 61584,
-      "total_lines": 100219
+      "files": 1010,
+      "hybrid_lines": 38496,
+      "percent": 61.69,
+      "ported_lines": 61994,
+      "total_lines": 100490
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 54.52,
-            "ported_lines": 34290,
-            "total_lines": 62900
+            "percent": 54.9,
+            "ported_lines": 34671,
+            "total_lines": 63148
           },
           "graphics": {
-            "percent": 72.66,
-            "ported_lines": 11108,
-            "total_lines": 15288
+            "percent": 72.74,
+            "ported_lines": 11137,
+            "total_lines": 15311
           },
           "media-io": {
             "percent": 83.37,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 958,
-        "hybrid_lines": 34316,
-        "percent": 62.58,
+        "files": 975,
+        "hybrid_lines": 34177,
+        "percent": 62.85,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -107,6 +107,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-active-shader-queries.c.h",
+          "graphics/graphics-device-identity.c.h",
           "graphics/graphics-device-load.c.h",
           "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
@@ -292,6 +293,7 @@
           "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
+          "obs-get-latest-input-type-id.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-main-texture.c.h",
           "obs-get-output-source.c.h",
@@ -481,6 +483,7 @@
           "obs-scene-item-info-getters.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
+          "obs-scene-item-matrix-getters.c.h",
           "obs-scene-item-names.c.h",
           "obs-scene-item-order-position.c.h",
           "obs-scene-item-order.c.h",
@@ -511,6 +514,7 @@
           "obs-sceneitem-defer-update.c.h",
           "obs-sceneitem-private-settings.c.h",
           "obs-service-context-getters.c.h",
+          "obs-service-find.c.h",
           "obs-service-getters.c.h",
           "obs-service-handler-getters.c.h",
           "obs-service-info-accessors.c.h",
@@ -523,11 +527,13 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
+          "obs-source-async-unbuffered-setter.c.h",
           "obs-source-async-upload.c.h",
           "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
@@ -538,6 +544,7 @@
           "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-pause-callbacks.c.h",
+          "obs-source-audio-pending-speaker-layout.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
           "obs-source-audio-settings.c.h",
@@ -559,11 +566,13 @@
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
+          "obs-source-enum-filters.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
@@ -576,6 +585,7 @@
           "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-controls.c.h",
           "obs-source-media-getters.c.h",
           "obs-source-missing-files-getter.c.h",
           "obs-source-module.c.h",
@@ -595,9 +605,12 @@
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
+          "obs-source-show-active-counters.c.h",
           "obs-source-showing-active.c.h",
+          "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
+          "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
           "obs-source-transition-access.c.h",
           "obs-source-transition-clock.c.h",
@@ -685,20 +698,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 57398,
-        "total_lines": 91714
+        "ported_lines": 57808,
+        "total_lines": 91985
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 53.91,
-            "ported_lines": 30690,
-            "total_lines": 56926
+            "percent": 54.34,
+            "ported_lines": 31071,
+            "total_lines": 57174
           },
           "graphics": {
-            "percent": 72.66,
-            "ported_lines": 11108,
-            "total_lines": 15288
+            "percent": 72.74,
+            "ported_lines": 11137,
+            "total_lines": 15311
           },
           "media-io": {
             "percent": 83.37,
@@ -711,9 +724,9 @@
             "total_lines": 9978
           }
         },
-        "files": 936,
-        "hybrid_lines": 31942,
-        "percent": 62.71,
+        "files": 953,
+        "hybrid_lines": 31803,
+        "percent": 62.99,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -737,6 +750,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-active-shader-queries.c.h",
+          "graphics/graphics-device-identity.c.h",
           "graphics/graphics-device-load.c.h",
           "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
@@ -923,6 +937,7 @@
           "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
+          "obs-get-latest-input-type-id.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-main-texture.c.h",
           "obs-get-output-source.c.h",
@@ -1098,6 +1113,7 @@
           "obs-scene-item-info-getters.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
+          "obs-scene-item-matrix-getters.c.h",
           "obs-scene-item-names.c.h",
           "obs-scene-item-order-position.c.h",
           "obs-scene-item-order.c.h",
@@ -1128,6 +1144,7 @@
           "obs-sceneitem-defer-update.c.h",
           "obs-sceneitem-private-settings.c.h",
           "obs-service-context-getters.c.h",
+          "obs-service-find.c.h",
           "obs-service-getters.c.h",
           "obs-service-handler-getters.c.h",
           "obs-service-info-accessors.c.h",
@@ -1140,11 +1157,13 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
+          "obs-source-async-unbuffered-setter.c.h",
           "obs-source-async-upload.c.h",
           "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
@@ -1155,6 +1174,7 @@
           "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-pause-callbacks.c.h",
+          "obs-source-audio-pending-speaker-layout.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
           "obs-source-audio-settings.c.h",
@@ -1176,11 +1196,13 @@
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
+          "obs-source-enum-filters.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
@@ -1193,6 +1215,7 @@
           "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-controls.c.h",
           "obs-source-media-getters.c.h",
           "obs-source-missing-files-getter.c.h",
           "obs-source-module.c.h",
@@ -1212,9 +1235,12 @@
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
+          "obs-source-show-active-counters.c.h",
           "obs-source-showing-active.c.h",
+          "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
+          "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
           "obs-source-transition-access.c.h",
           "obs-source-transition-clock.c.h",
@@ -1300,20 +1326,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 53719,
-        "total_lines": 85661
+        "ported_lines": 54129,
+        "total_lines": 85932
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 54.02,
-            "ported_lines": 31631,
-            "total_lines": 58557
+            "percent": 54.44,
+            "ported_lines": 32012,
+            "total_lines": 58805
           },
           "graphics": {
-            "percent": 72.21,
-            "ported_lines": 11168,
-            "total_lines": 15467
+            "percent": 72.29,
+            "ported_lines": 11197,
+            "total_lines": 15490
           },
           "media-io": {
             "percent": 83.37,
@@ -1326,9 +1352,9 @@
             "total_lines": 10704
           }
         },
-        "files": 947,
-        "hybrid_lines": 33300,
-        "percent": 62.24,
+        "files": 964,
+        "hybrid_lines": 33161,
+        "percent": 62.52,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1353,6 +1379,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-active-shader-queries.c.h",
+          "graphics/graphics-device-identity.c.h",
           "graphics/graphics-device-load.c.h",
           "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
@@ -1540,6 +1567,7 @@
           "obs-enum-sources.c.h",
           "obs-find-modules.c.h",
           "obs-get-audio.c.h",
+          "obs-get-latest-input-type-id.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-main-texture.c.h",
           "obs-get-output-source.c.h",
@@ -1715,6 +1743,7 @@
           "obs-scene-item-info-getters.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
+          "obs-scene-item-matrix-getters.c.h",
           "obs-scene-item-names.c.h",
           "obs-scene-item-order-position.c.h",
           "obs-scene-item-order.c.h",
@@ -1745,6 +1774,7 @@
           "obs-sceneitem-defer-update.c.h",
           "obs-sceneitem-private-settings.c.h",
           "obs-service-context-getters.c.h",
+          "obs-service-find.c.h",
           "obs-service-getters.c.h",
           "obs-service-handler-getters.c.h",
           "obs-service-info-accessors.c.h",
@@ -1757,11 +1787,13 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
+          "obs-source-async-unbuffered-setter.c.h",
           "obs-source-async-upload.c.h",
           "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
@@ -1772,6 +1804,7 @@
           "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-pause-callbacks.c.h",
+          "obs-source-audio-pending-speaker-layout.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
           "obs-source-audio-settings.c.h",
@@ -1793,11 +1826,13 @@
           "obs-source-draw-plan.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
+          "obs-source-enum-filters.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
@@ -1810,6 +1845,7 @@
           "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-controls.c.h",
           "obs-source-media-getters.c.h",
           "obs-source-missing-files-getter.c.h",
           "obs-source-module.c.h",
@@ -1829,9 +1865,12 @@
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
+          "obs-source-show-active-counters.c.h",
           "obs-source-showing-active.c.h",
+          "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
+          "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
           "obs-source-transition-access.c.h",
           "obs-source-transition-clock.c.h",
@@ -1922,12 +1961,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 54897,
-        "total_lines": 88197
+        "ported_lines": 55307,
+        "total_lines": 88468
       }
     }
   },
   "rust": {
-    "lines": 239803
+    "lines": 242167
   }
 }
