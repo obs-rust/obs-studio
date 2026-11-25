@@ -63,8 +63,38 @@ pub fn enumerate<L: Libobs>(
     source: Option<L::Source>,
     sink: L::Sink,
 ) {
-    let _ = (libobs, function, source, sink);
-    todo!("#5729")
+    let Some(source) = valid(libobs, function, source) else {
+        return;
+    };
+    let is_transition = libobs.is_transition(source);
+    if !is_transition && !libobs.has_enum_active(source) {
+        return;
+    }
+    let held = libobs.get_ref(source);
+    let Some(source) = valid(libobs, function, held) else {
+        return;
+    };
+    if is_transition {
+        libobs.transition_enum(source, sink);
+    }
+    if libobs.has_enum_active(source) {
+        libobs.enum_active(source, sink);
+    }
+    libobs.release(source);
+}
+
+/// `data_valid()`: a NULL source is logged; one without context data is
+/// refused silently.
+fn valid<L: Libobs>(
+    libobs: &mut L,
+    function: &'static CStr,
+    source: Option<L::Source>,
+) -> Option<L::Source> {
+    let Some(source) = source else {
+        libobs.log_null(function);
+        return None;
+    };
+    libobs.has_data(source).then_some(source)
 }
 
 /// `enum_source_active_tree_callback()` up to the caller's callback: a
@@ -72,6 +102,10 @@ pub fn enumerate<L: Libobs>(
 /// and data reports its own children, both through the tree walk's `sink`.
 /// The caller then reports the edge itself.
 pub fn tree_edge<L: Libobs>(libobs: &mut L, child: L::Source, sink: L::Sink) {
-    let _ = (libobs, child, sink);
-    todo!("#5729")
+    if libobs.is_transition(child) {
+        libobs.transition_enum(child, sink);
+    }
+    if libobs.has_enum_active(child) && libobs.has_data(child) {
+        libobs.enum_active(child, sink);
+    }
 }

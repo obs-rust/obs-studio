@@ -49,6 +49,8 @@ mod canonical_source_configurable_swap_is_registered;
 mod canonical_source_defaults_swap_is_registered;
 #[path = "native/registration/canonical_source_draw_swap_is_registered.rs"]
 mod canonical_source_draw_swap_is_registered;
+#[path = "native/registration/canonical_source_enum_active_swap_is_registered.rs"]
+mod canonical_source_enum_active_swap_is_registered;
 #[path = "native/registration/canonical_source_enum_filters_swap_is_registered.rs"]
 mod canonical_source_enum_filters_swap_is_registered;
 #[path = "native/registration/canonical_source_flags_mixers_swap_is_registered.rs"]
