@@ -86,6 +86,8 @@ on:
         required: false
       RESTREAM_HASH:
         required: false
+      FLEET_CACHE_TOKEN:
+        required: false
       SOLDR_S3_CACHE_ACCESS_KEY:
         required: false
       SOLDR_S3_CACHE_SECRET_KEY:
