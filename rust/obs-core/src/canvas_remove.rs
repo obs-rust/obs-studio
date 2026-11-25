@@ -12,6 +12,14 @@ pub trait Host {
 }
 
 /// Remove a non-null borrowed canvas according to the existing canvas rules.
-pub fn remove<H: Host>(_host: &mut H, _canvas: H::Canvas) {
-    todo!()
+pub fn remove<H: Host>(host: &mut H, canvas: H::Canvas) {
+    if !crate::canvas_rules::removable(host.flags(canvas)) {
+        return;
+    }
+    if let Some(retained) = host.retain(canvas) {
+        let flags = crate::canvas_rules::mark_removed(host.flags(retained));
+        host.set_flags(retained, flags);
+        host.signal(retained);
+        host.release(retained);
+    }
 }

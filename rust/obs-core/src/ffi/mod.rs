@@ -16,6 +16,7 @@ pub mod canvas_move;
 pub mod canvas_readonly_getters;
 pub mod canvas_ref;
 pub mod canvas_release;
+pub mod canvas_remove;
 pub mod canvas_render;
 pub mod canvas_rules;
 pub mod canvas_scene;
