@@ -68,6 +68,7 @@ mod draw_plan;
 mod draw_plan_parity;
 mod enabled_setter;
 mod enabled_setter_parity;
+mod enum_filters;
 mod filter_backup;
 mod filter_backup_parity;
 mod filter_count;
