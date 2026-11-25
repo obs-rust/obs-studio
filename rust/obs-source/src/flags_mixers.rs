@@ -48,8 +48,14 @@ pub trait Source {
 /// `None` is a NULL source, logged as [`SET_FLAGS_FUNCTION`]. Otherwise an
 /// unchanged value does nothing more; a change is stored, then signalled.
 pub fn set_flags(source: Option<&impl Source>, flags: u32, log_null: impl FnOnce(&'static CStr)) {
-    let _ = (source, flags, log_null);
-    todo!("#5610")
+    let Some(source) = source else {
+        log_null(SET_FLAGS_FUNCTION);
+        return;
+    };
+    if crate::monitoring::changes(source.flags(), flags) {
+        source.store_flags(flags);
+        source.signal_update_flags();
+    }
 }
 
 /// `None` is a NULL source, logged as [`SET_AUDIO_MIXERS_FUNCTION`].
@@ -62,6 +68,16 @@ pub fn set_audio_mixers(
     mixers: u32,
     log_null: impl FnOnce(&'static CStr),
 ) {
-    let _ = (source, mixers, log_null);
-    todo!("#5610")
+    let Some(source) = source else {
+        log_null(SET_AUDIO_MIXERS_FUNCTION);
+        return;
+    };
+    if !source.owns_info_id() && !crate::monitoring::has_audio(source.output_flags()) {
+        return;
+    }
+    if !crate::monitoring::changes(source.audio_mixers(), mixers) {
+        return;
+    }
+    let left = source.signal_audio_mixers(i64::from(mixers));
+    source.store_audio_mixers(crate::monitoring::mixers_store(left));
 }

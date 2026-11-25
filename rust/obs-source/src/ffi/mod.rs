@@ -39,6 +39,7 @@ pub mod source_filter_chain;
 pub mod source_filter_count;
 pub mod source_filter_index;
 pub mod source_filter_relationship_getters;
+pub mod source_flags_mixers;
 pub mod source_frame_copy;
 pub mod source_get_weak;
 pub mod source_handler_getters;
