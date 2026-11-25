@@ -86,6 +86,8 @@ mod flags_mixers;
 mod flags_mixers_parity;
 mod frame_copy;
 mod frame_copy_parity;
+mod frame_init;
+mod frame_init_parity;
 mod get_weak;
 mod get_weak_parity;
 mod handler_getters;

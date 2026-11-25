@@ -15,5 +15,6 @@ workspace = true
 test = false
 
 [dependencies]
+obs-media-io = { path = "../obs-media-io" }
 obs-callback = { path = "../obs-callback" }
 obs-util = { path = "../obs-util" }
