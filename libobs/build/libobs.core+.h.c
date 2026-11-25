@@ -57,6 +57,7 @@
 #include "libobs/obs-load-sources-fields.c.h"
 #include "libobs/obs-main-render-callbacks.c.h"
 #include "libobs/obs-main-rendered-callbacks.c.h"
+#include "libobs/obs-module-create-disabled.c.h"
 #include "libobs/obs-module-init-fields.c.h"
 #include "libobs/obs-module-lists-seam.c.h"
 #include "libobs/obs-module-load-metadata-fields.c.h"
