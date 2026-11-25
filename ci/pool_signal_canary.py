@@ -121,7 +121,7 @@ def main() -> int:
     orgs = tuple(args.orgs or DEFAULT_ORGS)
     try:
         payload = fetch()
-    except Exception as error:  # noqa: BLE001 - a canary reports, it does not crash
+    except Exception as error:
         print(f'FAIL cannot read {URL}: {type(error).__name__}: {error}')
         return 1
     lines, problems = summarise(payload, orgs, args.max_age)
