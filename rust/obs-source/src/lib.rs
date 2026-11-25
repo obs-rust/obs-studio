@@ -236,6 +236,7 @@ pub mod frame_copy;
 pub mod frame_copy_data;
 pub mod frame_init;
 pub mod frame_wrappers;
+pub mod get_size;
 pub mod get_weak;
 pub mod handler_getters;
 pub mod hidden_setter;
