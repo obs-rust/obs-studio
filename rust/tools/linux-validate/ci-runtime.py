@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
@@ -381,18 +382,55 @@ def execute(args: argparse.Namespace) -> None:
         command('docker', 'stop', '--timeout', '1', ident)
 
 
-def main() -> None:
+def execute_shared(args: argparse.Namespace) -> int:
+    """Run under a host lease, or return EX_TEMPFAIL before starting tests."""
+    token = os.environ.pop('OBS_TIER2_ARTIFACT_TOKEN', '')
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lease, tempfile.TemporaryDirectory() as temp:
+        try:
+            lease.settimeout(300)
+            lease.connect(os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', ''))
+            request = dict(run=os.environ.get('GITHUB_RUN_ID', ''), head=os.environ.get('GITHUB_SHA', ''), token=token)
+            lease.sendall((json.dumps(request) + '\n').encode())
+            with lease.makefile('rb') as response:
+                reply = json.loads(response.readline(2 << 20))
+            if not isinstance(reply, dict):
+                raise ValueError('invalid shared Tier 2 lease')
+            path = reply.get('path')
+            packages = reply.get('packages')
+            if (not isinstance(path, str)
+                    or not re.fullmatch(r'/run/obs-tier2-artifacts/sessions/tier2-job-[a-z0-9_]+/merged', path)
+                    or not isinstance(packages, str) or len(packages) > 1 << 20):
+                raise ValueError('shared Tier 2 lease was unavailable')
+            args.build = Path(path)
+            args.packages = Path(temp) / 'runtime-packages.txt'
+            args.packages.write_text(packages)
+        except (OSError, ValueError):
+            print('Tier 2 shared artifact unavailable. Using normal artifact delivery.', flush=True)
+            return 75
+        execute(args)
+    return 0
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('descriptor', 'packages', 'source', 'build', 'cost', 'uv', 'archives', 'state'):
+    for name in ('descriptor', 'source', 'cost', 'uv', 'archives', 'state'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--packages', type=Path)
+    parser.add_argument('--build', type=Path)
+    parser.add_argument('--shared-artifact', action='store_true')
     parser.add_argument('--prebaked-image', default='', help='Selected public Dell image, pinned by digest')
     parser.add_argument('--mode', choices=('OFF', 'ON'), required=True)
     parser.add_argument('--part', required=True, help='all, suite, serial or serial-<i>-of-<n>')
     args = parser.parse_args()
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         parser.error('Docker execution requires a disposable CI runner; local Docker work uses bosn')
+    if args.shared_artifact:
+        return execute_shared(args)
+    if args.packages is None or args.build is None:
+        parser.error('--packages and --build are required for normal artifact delivery')
     execute(args)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
