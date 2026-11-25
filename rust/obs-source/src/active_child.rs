@@ -64,30 +64,80 @@ pub trait Libobs {
 
 /// The view type of activation `index` (0-based) when the parent has
 /// `activate_refs` active references: `MAIN_VIEW` below it, else `AUX_VIEW`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn view_type(_index: c_long, _activate_refs: c_long) -> u32 {
-    todo!("#5622")
+pub fn view_type(index: c_long, activate_refs: c_long) -> u32 {
+    if index < activate_refs {
+        MAIN_VIEW
+    } else {
+        AUX_VIEW
+    }
 }
 
 /// Whether a walk edge names `target`, as its parent or as its child
 /// (`check_descendant()`).
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn names<S: PartialEq>(_parent: Option<S>, _child: Option<S>, _target: S) -> bool {
-    todo!("#5622")
+pub fn names<S: PartialEq>(parent: Option<S>, child: Option<S>, target: S) -> bool {
+    child.is_some_and(|child| child == target) || parent.is_some_and(|parent| parent == target)
+}
+
+/// The NULL checks both calls start with: the parent first, then the
+/// child. `None` after logging the first one missing.
+fn both<L: Libobs>(
+    libobs: &mut L,
+    function: &'static CStr,
+    parent: Option<L::Source>,
+    child: Option<L::Source>,
+) -> Option<(L::Source, L::Source)> {
+    let Some(parent) = parent else {
+        libobs.log_null(function, PARENT);
+        return None;
+    };
+    let Some(child) = child else {
+        libobs.log_null(function, CHILD);
+        return None;
+    };
+    Some((parent, child))
+}
+
+/// Loads the parent's two counters once each, show first (other threads
+/// change them atomically, #2081), then calls `step` once per show
+/// reference with its view type.
+fn each_view<L: Libobs>(libobs: &mut L, parent: L::Source, mut step: impl FnMut(&mut L, u32)) {
+    let show_refs = libobs.show_refs(parent);
+    let activate_refs = libobs.activate_refs(parent);
+    for index in 0..show_refs {
+        step(libobs, view_type(index, activate_refs));
+    }
 }
 
 /// `obs_source_add_active_child(parent, child)`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn add<L: Libobs>(
-    _libobs: &mut L,
-    _parent: Option<L::Source>,
-    _child: Option<L::Source>,
-) -> bool {
-    todo!("#5622")
+pub fn add<L: Libobs>(libobs: &mut L, parent: Option<L::Source>, child: Option<L::Source>) -> bool {
+    let Some((parent, child)) = both(libobs, ADD_FUNCTION, parent, child) else {
+        return false;
+    };
+    if parent == child {
+        libobs.warn_self();
+        return false;
+    }
+    let mut exists = false;
+    libobs.enum_full_tree(child, parent, &mut |edge_parent, edge_child| {
+        if names(edge_parent, edge_child, parent) {
+            exists = true;
+        }
+    });
+    if exists {
+        return false;
+    }
+    each_view(libobs, parent, |libobs, view_type| {
+        libobs.activate(child, view_type)
+    });
+    true
 }
 
 /// `obs_source_remove_active_child(parent, child)`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn remove<L: Libobs>(_libobs: &mut L, _parent: Option<L::Source>, _child: Option<L::Source>) {
-    todo!("#5622")
+pub fn remove<L: Libobs>(libobs: &mut L, parent: Option<L::Source>, child: Option<L::Source>) {
+    let Some((parent, child)) = both(libobs, REMOVE_FUNCTION, parent, child) else {
+        return;
+    };
+    each_view(libobs, parent, |libobs, view_type| {
+        libobs.deactivate(child, view_type)
+    });
 }

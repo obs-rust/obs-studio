@@ -6,7 +6,7 @@
  * and macOS linkers want every symbol an object names resolved, used or not,
  * so obs-tests-core needs a definition; libobs has the real one.
  * obs_source_release() (oracle/view.c), the active-child add and remove
- * (oracle/source_active_child_links.c) and the obs_data reads (obs-data)
+ * (the obs-source shims) and the obs_data reads (obs-data)
  * already have theirs.
  *
  * The tests never reach it: they run the shim with Calls of their own. */

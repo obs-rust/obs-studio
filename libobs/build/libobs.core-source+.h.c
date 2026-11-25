@@ -49,7 +49,7 @@
 #include "libobs/obs-sceneitem-addref-fields.c.h"
 #include "libobs/obs-sceneitem-defer-update-fields.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
-#include "libobs/obs-source-active-child.c.h"
+#include "libobs/obs-source-active-child-fields.c.h"
 #include "libobs/obs-source-async-compensation-fields.c.h"
 #include "libobs/obs-source-async-decoupled-fields.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"
