@@ -181,6 +181,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod active_child;
 pub mod async_compensation;
 pub mod async_decoupled;
 pub mod async_flag_getters;
