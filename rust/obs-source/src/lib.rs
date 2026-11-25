@@ -278,6 +278,7 @@ pub mod transition_switch;
 pub mod transition_video;
 pub mod type_data;
 pub mod type_info;
+pub mod update;
 pub mod update_properties;
 pub mod video_tick;
 pub mod volume_apply;
