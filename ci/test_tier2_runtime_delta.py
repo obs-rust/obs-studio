@@ -14,12 +14,14 @@ to stock.
 import argparse
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+import urllib.parse
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / 'rust/tools/linux-validate'
@@ -42,6 +44,8 @@ STOCK = (
     'Components: main universe\n')
 OLD = '1:1.3.dfsg+really1.3.1-1ubuntu3.1'
 NEW = '1:1.3.dfsg+really1.3.1-1ubuntu3.2'
+# One second before pipewire-pulse 1.6.2-1ubuntu1.2 left resolute-updates (#5578).
+SNAPSHOT = '20261124T110707Z'
 
 
 class DeltaTest(unittest.TestCase):
@@ -105,10 +109,12 @@ class AptInstallTest(unittest.TestCase):
             (*self.prefix, 'install', '-y', '--no-install-recommends', *self.packages)] * 2)
 
     def test_unavailable_pin_after_refresh_fails_with_delta_packages(self):
+        # A pin missing from the snapshot too still fails, with the apt output.
         missing = (100, "E: Version '2.43-2ubuntu2.7' for 'libc6:amd64' was not found")
-        with self.assertRaises(RuntimeError) as error:
-            self.install([None, missing, None, missing])
-        self.assertEqual(len(self.calls), 4)
+        with patch.object(runtime, 'snapshot_before_supersession', return_value=SNAPSHOT), \
+                self.assertRaises(RuntimeError) as error:
+            self.install([None, missing, None, missing, None, missing])
+        self.assertEqual(len(self.calls), 6)
         for package in self.packages:
             self.assertIn(package, str(error.exception))
         self.assertIn(missing[1], str(error.exception))
@@ -130,7 +136,9 @@ class AptInstallTest(unittest.TestCase):
         missing = (100, f"E: Version '{NEW}' for 'zlib1g' was not found")
         archives = self.cached(f'zlib1g_{NEW.replace(":", "%3a")}_amd64.deb',
                                'zlib1g_1%3a1.3.dfsg+really1.3.1-1ubuntu3.1_amd64.deb')
-        self.install([None, missing, None, missing], archives=archives)
+        with patch.object(runtime, 'snapshot_before_supersession') as before:
+            self.install([None, missing, None, missing], archives=archives)
+        before.assert_not_called()
         install = (*self.prefix, 'install', '-y', '--no-install-recommends')
         self.assertEqual(self.calls, [
             (*self.prefix, 'update', '-qq'), (*install, *self.packages),
@@ -138,13 +146,74 @@ class AptInstallTest(unittest.TestCase):
             (*install, self.packages[0],
              f'/var/cache/apt/archives/zlib1g_{NEW.replace(":", "%3a")}_amd64.deb')])
 
-    def test_a_lost_pin_without_its_cached_deb_still_fails(self):
+    def test_a_lost_pin_without_its_cached_deb_or_a_snapshot_still_fails(self):
+        # Launchpad unreachable, or no supersession on record: apt's own error.
         missing = (100, f"E: Version '{NEW}' for 'zlib1g:amd64' was not found")
         archives = self.cached('zlib1g_1%3a1.3.dfsg+really1.3.1-1ubuntu3.1_amd64.deb')
-        with self.assertRaises(RuntimeError) as error:
+        for lookup in (ValueError('no supersession'), OSError('unreachable')):
+            with self.subTest(lookup=lookup), \
+                    patch.object(runtime, 'snapshot_before_supersession', side_effect=lookup), \
+                    self.assertRaises(RuntimeError) as error:
+                self.install([None, missing, None, missing], archives=archives)
+            self.assertEqual(len(self.calls), 4)
+            self.assertIn(missing[1], str(error.exception))
+
+    def test_a_lost_pin_without_its_cached_deb_installs_the_same_versions_from_the_snapshot(self):
+        # #5578, master run 45400822340: Ubuntu superseded pipewire-pulse
+        # 1.6.2-1ubuntu1.2 in resolute-updates at 11:07:08 UTC. A build that
+        # fetched it from a mirror that had not synced yet leaves no cached
+        # .deb when the archive cache is not restored. The snapshot from just
+        # before the supersession has every pin, with signed indexes.
+        missing = (100, "Package pipewire-pulse is not available, but is referred to by another package.\n"
+                        "E: Version '1.6.2-1ubuntu1.2' for 'pipewire-pulse' was not found")
+        self.packages = ['libc6:amd64=2.43-2ubuntu2.7', 'pipewire-pulse:amd64=1.6.2-1ubuntu1.2']
+        archives = self.cached('pipewire-pulse_1.6.2-1ubuntu1.3_amd64.deb')
+        with patch.object(runtime, 'snapshot_before_supersession', return_value=SNAPSHOT) as before:
             self.install([None, missing, None, missing], archives=archives)
-        self.assertEqual(len(self.calls), 4)
-        self.assertIn(missing[1], str(error.exception))
+        before.assert_called_once_with([('pipewire-pulse', '1.6.2-1ubuntu1.2', 'amd64')])
+        install = ('install', '-y', '--no-install-recommends', *self.packages)
+        self.assertEqual(self.calls, [(*self.prefix, 'update', '-qq'), (*self.prefix, *install),
+                                      (*self.prefix, 'update', '-qq'), (*self.prefix, *install),
+                                      (*self.prefix, '--snapshot', SNAPSHOT, 'update', '-qq'),
+                                      (*self.prefix, '--snapshot', SNAPSHOT, *install)])
+
+    def test_the_snapshot_is_one_second_before_the_earliest_supersession(self):
+        # Launchpad lists one publication per architecture and pocket; the
+        # last supersession on the pin's architecture is when it left the index.
+        def entries(arch_times):
+            return {'entries': [{'distro_arch_series_link':
+                                 f'https://api.launchpad.net/1.0/ubuntu/resolute/{arch}',
+                                 'date_superseded': stamp, 'date_removed': None}
+                                for arch, stamp in arch_times]}
+        replies = {
+            'pipewire-pulse': entries([('amd64', '2026-09-20T02:58:21.906056+00:00'),
+                                       ('amd64', '2026-11-24T11:07:08.225920+00:00'),
+                                       ('arm64', '2026-11-23T01:00:00+00:00')]),
+            'libfoo1': entries([('amd64', '2026-11-24T12:00:00.5+00:00')]),
+        }
+        urls = []
+
+        def urlopen(url, timeout):
+            urls.append(url)
+            name = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)['binary_name'][0]
+            return io.BytesIO(json.dumps(replies[name]).encode())
+
+        with patch.object(runtime.urllib.request, 'urlopen', side_effect=urlopen):
+            snapshot = runtime.snapshot_before_supersession(
+                [('pipewire-pulse', '1.6.2-1ubuntu1.2', 'amd64'), ('libfoo1', '2', 'all')])
+        self.assertEqual(snapshot, SNAPSHOT)
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(urls[0]).query)
+        self.assertEqual(query, {'ws.op': ['getPublishedBinaries'], 'binary_name': ['pipewire-pulse'],
+                                 'version': ['1.6.2-1ubuntu1.2'], 'exact_match': ['true']})
+        self.assertTrue(urls[0].startswith('https://api.launchpad.net/'), urls[0])
+
+    def test_a_pin_that_was_never_superseded_has_no_snapshot(self):
+        reply = {'entries': [{'distro_arch_series_link': 'https://api.launchpad.net/1.0/ubuntu/resolute/amd64',
+                              'date_superseded': None, 'date_removed': None}]}
+        with patch.object(runtime.urllib.request, 'urlopen',
+                          return_value=io.BytesIO(json.dumps(reply).encode())), \
+                self.assertRaises(ValueError):
+            runtime.snapshot_before_supersession([('libc6', '2.43-2ubuntu2.7', 'amd64')])
 
     def test_a_cached_deb_does_not_stand_in_for_other_failures(self):
         archives = self.cached(f'zlib1g_{NEW.replace(":", "%3a")}_amd64.deb')
