@@ -3228,3 +3228,5 @@ area.
 - MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).
 
 - **Bounded automatic conflict retries.** AI rebases wait six hours before retrying an unchanged PR, preserve capacity recovery, and limit attempts to three per sweep and six per hour. Issue [#5497](https://github.com/obs-rust/obs-studio/issues/5497).
+
+- **Delay preserve keeps every packet through a reconnect.** With "Preserve cutoff point when reconnecting", a delayed packet that came due just as a reconnect began was dropped; the output is now marked reconnecting before its capture ends (an intentional difference from upstream OBS). Issue [#5722](https://github.com/obs-rust/obs-studio/issues/5722).

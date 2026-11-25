@@ -133,7 +133,5 @@ pub fn can(reconnecting: bool, active: bool, code: i32) -> bool {
 /// preserved stream loses it.
 #[must_use]
 pub fn hold_first(delay_active: bool) -> bool {
-    // RED stub (#5722): the C's order.
-    let _ = delay_active;
-    false
+    delay_active
 }
