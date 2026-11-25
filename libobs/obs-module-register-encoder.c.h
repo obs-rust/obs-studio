@@ -67,7 +67,6 @@ static size_t copy_size_obs_encoder_info(size_t size)
 			callbacks |= OBS_MODULE_TYPE_RULES_HAS_##bit; \
 	} while (false)
 
-
 #define encoder_warn(format, ...) blog(LOG_WARNING, "obs_register_encoder: " format, ##__VA_ARGS__)
 
 void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size)
