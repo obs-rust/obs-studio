@@ -150,20 +150,34 @@ pub trait Graphics {
 
 /// `obs_source_draw_set_color_matrix(color_matrix, color_range_min,
 /// color_range_max)`, `None` for a NULL pointer.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn set_color_matrix<G: Graphics>(
     graphics: &mut G,
     color_matrix: Option<&[f32; 16]>,
     color_range_min: Option<&[f32; 3]>,
     color_range_max: Option<&[f32; 3]>,
 ) {
-    let _ = (graphics, color_matrix, color_range_min, color_range_max);
-    todo!()
+    let Some(effect) = graphics.current_effect() else {
+        graphics.warn_no_effect(Function::SetColorMatrix);
+        return;
+    };
+    let Some(color_matrix) = color_matrix else {
+        graphics.log_null(Function::SetColorMatrix);
+        return;
+    };
+    let color_range_min = color_range_min.unwrap_or(&DEFAULT_RANGE_MIN);
+    let color_range_max = color_range_max.unwrap_or(&DEFAULT_RANGE_MAX);
+
+    let matrix = graphics.param(effect, Param::ColorMatrix);
+    let range_min = graphics.param(effect, Param::ColorRangeMin);
+    let range_max = graphics.param(effect, Param::ColorRangeMax);
+
+    graphics.set_matrix4(matrix, color_matrix);
+    graphics.set_range(range_min, color_range_min);
+    graphics.set_range(range_max, color_range_max);
 }
 
 /// `obs_source_draw(texture, x, y, cx, cy, flip)`, `None` for a NULL
 /// texture.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn draw<G: Graphics>(
     graphics: &mut G,
     texture: Option<G::Texture>,
@@ -173,6 +187,47 @@ pub fn draw<G: Graphics>(
     cy: u32,
     flip: bool,
 ) {
-    let _ = (graphics, texture, x, y, cx, cy, flip);
-    todo!()
+    let Some(texture) = texture else {
+        graphics.log_null(Function::Draw);
+        return;
+    };
+    let Some(effect) = graphics.current_effect() else {
+        graphics.warn_no_effect(Function::Draw);
+        return;
+    };
+
+    let linear_srgb = graphics.linear_srgb();
+
+    let previous = graphics.framebuffer_srgb_enabled();
+    graphics.enable_framebuffer_srgb(linear_srgb);
+
+    let image = graphics.param(effect, Param::Image);
+    if linear_srgb {
+        graphics.set_texture_srgb(image, texture);
+    } else {
+        graphics.set_texture(image, texture);
+    }
+
+    let change_pos = x != 0 || y != 0;
+    if change_pos {
+        graphics.matrix_push();
+        graphics.matrix_translate3f(position(x), position(y), 0.0);
+    }
+
+    graphics.draw_sprite(texture, if flip { GS_FLIP_V } else { 0 }, cx, cy);
+
+    if change_pos {
+        graphics.matrix_pop();
+    }
+
+    graphics.enable_framebuffer_srgb(previous);
+}
+
+/// The C's `(float)x`: the nearest `f32`, ties to even.
+#[expect(
+    clippy::as_conversions,
+    reason = "the C's int to float conversion, rounding as it does"
+)]
+const fn position(value: i32) -> f32 {
+    value as f32
 }

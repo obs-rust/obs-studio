@@ -72,7 +72,6 @@
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace-seam.c.h"
 #include "libobs/obs-source-deinterlace-texture-fields.c.h"
-#include "libobs/obs-source-draw.c.h"
 #include "libobs/obs-source-enabled-setter-fields.c.h"
 #include "libobs/obs-source-enum-filters-fields.c.h"
 #include "libobs/obs-source-filter-backup-fields.c.h"

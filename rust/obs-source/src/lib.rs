@@ -36,6 +36,8 @@
 //! `libobs/obs-source-deinterlace-draw.c.h`, the draw decisions of
 //! deinterlacing (the effect, the early return, the linear sRGB flag, the
 //! technique and multiplier, the second field and the mode change);
+//! `libobs/obs-source-draw.c.h`, the exported draw helpers
+//! `obs_source_draw_set_color_matrix()` and `obs_source_draw()`;
 //! `libobs/obs-source-deinterlace-pacing.c.h`, the frame pacing of
 //! double-rate deinterlacing; `libobs/obs-source-deinterlace-select.c.h`,
 //! the frame selection of deinterlacing (which queued frames a deinterlaced
@@ -167,7 +169,7 @@
 //! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`filter_backup`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`source_draw`], [`filter_backup`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
