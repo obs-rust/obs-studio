@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <obs-internal.h>
+#include <obs-module.h>
 #include <util/platform.h>
 
 #if defined(_WIN32)
