@@ -16225,7 +16225,8 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "SIMDe::SIMDe"
       ]
     },
     "test_sck_stall": {
