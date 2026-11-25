@@ -523,13 +523,19 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `command not found: soldr` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
+        uses: zackees/setup-soldr@c1bfc684de8c5f97b178c8837e3e8e6a7383676c # merge of forge-ci/setup-soldr#701: the fleet-cache tier (forge-ci/cache)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
           version: 0.9.54
           build-cache: false
+          # Fleet cache (forge-ci/cache): the tier that a merge_group run may
+          # publish to, which actions/cache structurally cannot. Inert unless
+          # vars.FLEET_CACHE_URL is set, so this is a no-op until the store is
+          # reachable; the identity is derived by the action, not passed here.
+          fleet-cache: auto
+          fleet-cache-family: app
           # Cook the workspace dependencies the app build compiles anyway.
           prebuild-deps-flags: --release
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
@@ -545,6 +551,8 @@ jobs:
         env:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          FLEET_CACHE_URL: ${{ vars.FLEET_CACHE_URL }}
+          FLEET_CACHE_TOKEN: ${{ secrets.FLEET_CACHE_TOKEN }}
 
       # The x86_64 leg cross-builds on an arm64 runner and needs that
       # target's standard library too.
@@ -1509,7 +1517,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `The term 'soldr' is not recognized` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
+        uses: zackees/setup-soldr@c1bfc684de8c5f97b178c8837e3e8e6a7383676c # merge of forge-ci/setup-soldr#701: the fleet-cache tier (forge-ci/cache)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1522,6 +1530,11 @@ jobs:
           shims: true
           # The arm64 leg adds a target std library after setup (#507/#969).
           solo-toolchain-cache: false
+          # Fleet cache (forge-ci/cache): same tier as macos-build -- inert unless
+          # vars.FLEET_CACHE_URL is set. S3 stays configured; the fleet tier runs
+          # first and a hit skips the S3 restore, so the two cannot fight.
+          fleet-cache: auto
+          fleet-cache-family: app
           # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
           # enforced only on the merge_group singleton. No bucket/creds = feature off.
           s3-bucket: forge-ci
@@ -1531,6 +1544,8 @@ jobs:
         env:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          FLEET_CACHE_URL: ${{ vars.FLEET_CACHE_URL }}
+          FLEET_CACHE_TOKEN: ${{ secrets.FLEET_CACHE_TOKEN }}
 
       # The arm64 leg cross-builds on an x64 runner and needs that target's
       # standard library too.
