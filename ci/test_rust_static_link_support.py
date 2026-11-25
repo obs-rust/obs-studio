@@ -73,9 +73,10 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "set(MSVC FALSE)\n"
                 "add_library(libobs_rust-static STATIC rust.c)\n"
                 "add_library(support STATIC fallback.c)\n"
+                # The root project reads fragments before creating graph targets.
+                f'include("{(ROOT / "test/cmocka/tests.d/test_texture_file_data_steps.cmake").as_posix()}")\n'
                 "add_executable(test_texture_file_data_steps_rust main.c recording-link-support.c unused-link-support.c)\n"
                 "target_link_libraries(test_texture_file_data_steps_rust PRIVATE libobs_rust-static)\n"
-                f'include("{(ROOT / "test/cmocka/tests.d/test_texture_file_data_steps.cmake").as_posix()}")\n'
                 f'include("{HELPER.as_posix()}")\n'
                 "obs_rust_static_consumers(support missing_owner)\n"
             )
