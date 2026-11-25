@@ -49,6 +49,7 @@ pub mod blend_entrypoints;
 pub mod bounds;
 pub mod cubetexture_access;
 pub mod depth_dispatch;
+pub mod device_identity;
 pub mod device_load;
 pub mod device_queries;
 pub mod effect_destroy;

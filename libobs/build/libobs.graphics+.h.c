@@ -5,7 +5,6 @@
 #include "libobs/graphics/blend-entrypoints-fields.c.h"
 #include "libobs/graphics/effect-parser-lifecycle-adapter.c.h"
 #include "libobs/graphics/effect-parser.c.h"
-#include "libobs/graphics/graphics-device-identity.c.h"
 #include "libobs/graphics/graphics-device-load-fields.c.h"
 #include "libobs/graphics/graphics-device-queries-fields.c.h"
 #include "libobs/graphics/graphics-gpu-metadata.c.h"
