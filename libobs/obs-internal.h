@@ -984,6 +984,14 @@ extern void obs_context_wait(struct obs_context_data *context);
 extern void obs_context_data_setname(struct obs_context_data *context, const char *name);
 extern void obs_context_data_setname_ht(struct obs_context_data *context, const char *name, void *phead);
 
+/* Private shared loader context; not part of the public module API. */
+struct fail_info {
+	struct dstr fail_modules;
+	size_t fail_count;
+};
+
+void load_all_callback(void *param, const struct obs_module_info2 *info);
+
 /* Module search paths (obs-module-paths.c): pure, no libobs state.
  * obs_module_paths_data_dir(): a bmalloc'd data path for the module name,
  * every %module% of data_dir replaced by it and one trailing '/' taken off;

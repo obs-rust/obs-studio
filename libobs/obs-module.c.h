@@ -165,11 +165,6 @@ bool obs_create_disabled_module(obs_module_t **module, const char *path, const c
 
 extern void get_plugin_info(const char *path, bool *is_obs_plugin);
 
-struct fail_info {
-	struct dstr fail_modules;
-	size_t fail_count;
-};
-
 static bool is_safe_module(const char *name)
 {
 	switch (obs_module_load_rules_safe_list(obs->safe_modules.num)) {
@@ -203,7 +198,7 @@ static bool is_disabled_module(const char *name)
 	return obs_module_names_listed(obs->disabled_modules.array, obs->disabled_modules.num, name);
 }
 
-static void load_all_callback(void *param, const struct obs_module_info2 *info)
+void load_all_callback(void *param, const struct obs_module_info2 *info)
 {
 	struct fail_info *fail_info = param;
 	obs_module_t *module;
@@ -349,18 +344,6 @@ bool obs_load_core_modules(void)
 	dstr_free(&error.fail_modules);
 
 	return obs->core_modules_loaded;
-}
-
-void obs_load_plugins(struct obs_runtime_module_info *info, struct obs_module_failure_info *error)
-{
-	struct fail_info failure = {0};
-
-	obs_module_paths_find(info->path_info.binary, info->path_info.data, info->type, get_module_extension(),
-			      obs_host_add_module_extension, load_all_callback, &failure);
-
-	error->count = failure.fail_count;
-	error->failed_modules = strlist_split(failure.fail_modules.array, ';', false);
-	dstr_free(&failure.fail_modules);
 }
 
 /* Function to find a specifically defined module. Used for loading core modules by name.
