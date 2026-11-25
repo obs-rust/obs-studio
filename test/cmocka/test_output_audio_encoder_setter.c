@@ -348,7 +348,12 @@ static void failed_reference_promotion(void **state)
 {
 	(void)state;
 	obs_encoder_set_audio(audio[1], mix);
-	assert_true(obs_encoder_initialize(audio[1]));
+	obs_output_t *holder = obs_output_create("audio_setter_output", "initializer", NULL, NULL);
+	assert_non_null(holder);
+	obs_output_set_audio_encoder(holder, audio[1], 0);
+	assert_true(obs_output_initialize_encoders(holder, 0));
+	obs_output_set_audio_encoder(holder, NULL, 0);
+	obs_output_release(holder);
 	obs_output_set_audio_encoder(output, audio[0], 0);
 	long refs = references(audio[0]);
 	destroy_target = output;
