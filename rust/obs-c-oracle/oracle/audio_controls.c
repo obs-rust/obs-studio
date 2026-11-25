@@ -42,6 +42,9 @@
 /* Rust obs-source exports the real signal handler getter (#5591); the
  * stand-in below answers NULL for this oracle only. */
 #define obs_source_get_signal_handler oracle_audio_controls_get_signal_handler
+/* Rust obs-source exports the real speaker layout getter (#5603); the
+ * stand-in below answers SPEAKERS_UNKNOWN for this oracle only. */
+#define obs_source_get_speaker_layout oracle_audio_controls_get_speaker_layout
 
 size_t oracle_obs_audio_info_size(void);
 size_t oracle_obs_audio_info_align(void);

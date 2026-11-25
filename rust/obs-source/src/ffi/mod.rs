@@ -14,6 +14,7 @@ pub mod source_audio_capture_callbacks;
 pub mod source_audio_input;
 pub mod source_audio_mixers_getter;
 pub mod source_audio_pause_callbacks;
+pub mod source_audio_pending_speaker_layout;
 pub mod source_audio_place;
 pub mod source_audio_render;
 pub mod source_audio_timing;

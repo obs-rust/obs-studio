@@ -61,7 +61,7 @@
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-mixers-fields.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
-#include "libobs/obs-source-audio-pending-speaker-layout.c.h"
+#include "libobs/obs-source-audio-pending-speaker-layout-fields.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
 #include "libobs/obs-source-base-size-fields.c.h"
 #include "libobs/obs-source-boolean-query-fields.c.h"

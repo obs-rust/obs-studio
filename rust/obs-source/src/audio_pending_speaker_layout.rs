@@ -32,18 +32,30 @@ pub trait Pending {
 /// without reading its flags; a source whose flags have neither
 /// [`OBS_SOURCE_AUDIO`] nor [`OBS_SOURCE_COMPOSITE`] answers true without
 /// reading `audio_pending`; otherwise the answer is `audio_pending`.
-#[expect(clippy::todo, reason = "RED stub for #5603")]
-pub fn audio_pending(_source: Option<&impl Pending>, _log: impl FnOnce(&'static CStr)) -> bool {
-    todo!("#5603")
+pub fn audio_pending(source: Option<&impl Pending>, log: impl FnOnce(&'static CStr)) -> bool {
+    let Some(source) = source else {
+        log(PENDING_FUNCTION);
+        return true;
+    };
+    if source.removed() {
+        return true;
+    }
+    if source.output_flags() & (OBS_SOURCE_COMPOSITE | OBS_SOURCE_AUDIO) == 0 {
+        return true;
+    }
+    source.audio_pending()
 }
 
 /// `None` is a NULL source: it logs once with [`SPEAKER_LAYOUT_FUNCTION`]
 /// and answers [`SPEAKERS_UNKNOWN`] without reading anything. Otherwise
 /// `speakers` (`sample_info.speakers`) is read once and is the answer.
-#[expect(clippy::todo, reason = "RED stub for #5603")]
 pub fn speaker_layout(
-    _speakers: Option<impl FnOnce() -> c_int>,
-    _log: impl FnOnce(&'static CStr),
+    speakers: Option<impl FnOnce() -> c_int>,
+    log: impl FnOnce(&'static CStr),
 ) -> c_int {
-    todo!("#5603")
+    let Some(speakers) = speakers else {
+        log(SPEAKER_LAYOUT_FUNCTION);
+        return SPEAKERS_UNKNOWN;
+    };
+    speakers()
 }

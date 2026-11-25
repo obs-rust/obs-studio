@@ -29,6 +29,7 @@ mod audio_output;
 mod audio_pause_callbacks;
 mod audio_pause_callbacks_parity;
 mod audio_pending_speaker_layout;
+mod audio_pending_speaker_layout_parity;
 mod audio_place;
 mod audio_place_parity;
 mod audio_render_plan;
