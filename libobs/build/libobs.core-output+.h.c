@@ -36,6 +36,7 @@
 #include "libobs/obs-encoder-roi-list.c.h"
 #include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
+#include "libobs/obs-encoder-set-audio.c.h"
 #include "libobs/obs-encoder-set-group.c.h"
 #include "libobs/obs-encoder-set-name-fields.c.h"
 #include "libobs/obs-encoder-set-preferred-format-fields.c.h"
