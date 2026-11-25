@@ -51,3 +51,10 @@ bool obs_output_reconnect_can(bool reconnecting, bool active, int code)
 	return (reconnecting && code != OBS_OUTPUT_RECONNECT_SUCCESS) ||
 	       (active && code == OBS_OUTPUT_RECONNECT_DISCONNECTED);
 }
+
+/* Intentional difference from upstream (#5722): mark the output
+ * reconnecting before its capture ends while the delay is active. */
+bool obs_output_reconnect_hold_first(bool delay_active)
+{
+	return delay_active;
+}

@@ -21,7 +21,7 @@
 
 use obs_output::output_reconnect::{
     MAX_MSEC, OBS_OUTPUT_DISCONNECTED, OBS_OUTPUT_SUCCESS, active, can, first_delay, give_up,
-    grows, next_delay,
+    grows, hold_first, next_delay,
 };
 use proptest::prelude::*;
 
@@ -319,4 +319,12 @@ fn edge_intentional_differences() {
     assert!(!active(-20));
     assert!(!active(i32::MIN));
     assert!(active(i32::MAX));
+}
+
+// #5722: obs_output_signal_stop() marks a delayed output reconnecting before
+// its capture ends (an intentional difference from the C's order).
+#[test]
+fn hold_first_only_while_the_delay_is_active() {
+    assert!(hold_first(true));
+    assert!(!hold_first(false));
 }

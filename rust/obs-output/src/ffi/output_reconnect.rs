@@ -9,7 +9,7 @@
 //! retry count and the wait's stores, the capture's start and end, the
 //! signals and the logs, and passes plain values here. So `struct
 //! obs_output` is never mirrored. These shims take no lock, call nothing in
-//! libobs and dereference no pointer. All six stay hidden
+//! libobs and dereference no pointer. All seven stay hidden
 //! (`rust-hidden.d`).
 //!
 //! Intentional differences: the core's (every wait clamped to 0 to 15
@@ -54,4 +54,10 @@ pub extern "C" fn obs_output_reconnect_active(retry_max: c_int) -> bool {
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_output_reconnect_can(reconnecting: bool, active: bool, code: c_int) -> bool {
     core::can(reconnecting, active, code)
+}
+
+/// `bool obs_output_reconnect_hold_first(bool delay_active)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_output_reconnect_hold_first(delay_active: bool) -> bool {
+    core::hold_first(delay_active)
 }

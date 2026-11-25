@@ -1,5 +1,5 @@
-/* Test-only oracle: the original libobs/obs-output-reconnect.c.h,
- * unmodified, with its six functions renamed to oracle_* so they can link
+/* Test-only oracle: libobs/obs-output-reconnect.c.h
+ * (upstream plus obs_output_reconnect_hold_first, #5722), with its seven functions renamed to oracle_* so they can link
  * next to the Rust shims. The parity test never passes the inputs where C is
  * undefined (a delay setting whose * 1000 overflows int, a later product
  * above UINT32_MAX or below 0, or not a number). */
@@ -12,6 +12,7 @@
 #define obs_output_reconnect_next_delay oracle_obs_output_reconnect_next_delay
 #define obs_output_reconnect_active oracle_obs_output_reconnect_active
 #define obs_output_reconnect_can oracle_obs_output_reconnect_can
+#define obs_output_reconnect_hold_first oracle_obs_output_reconnect_hold_first
 
 #include "obs-output-reconnect.c.h"
 

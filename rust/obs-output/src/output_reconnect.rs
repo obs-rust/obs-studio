@@ -120,3 +120,20 @@ pub fn active(retry_max: i32) -> bool {
 pub fn can(reconnecting: bool, active: bool, code: i32) -> bool {
     (reconnecting && code != OBS_OUTPUT_SUCCESS) || (active && code == OBS_OUTPUT_DISCONNECTED)
 }
+
+/// `obs_output_signal_stop()`, on the reconnect path: the output is marked
+/// reconnecting before its capture ends, so the delay queue never sees the
+/// capture off while the output is not yet reconnecting. Only while the
+/// delay is active (`delay_active`), the one case where `pop_packet` reads
+/// `reconnecting` to hold an `OBS_OUTPUT_DELAY_PRESERVE` queue.
+///
+/// Intentional difference (#5722): the C ends the capture first and sets
+/// `reconnecting` afterwards in `output_reconnect()`. A delayed packet that
+/// comes due between the two stores is released instead of held, so a
+/// preserved stream loses it.
+#[must_use]
+pub fn hold_first(delay_active: bool) -> bool {
+    // RED stub (#5722): the C's order.
+    let _ = delay_active;
+    false
+}
