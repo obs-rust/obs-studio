@@ -17,7 +17,7 @@
     clippy::unreachable
 )]
 
-use crate::media_admission::{Call, action};
+use crate::media_admission::{self, Admit, Call, action};
 use core::ffi::CStr;
 
 /// `obs_source_media_play_pause`, named in its NULL diagnostic.
@@ -119,24 +119,71 @@ pub trait Source {
     fn signal(&self, signal: &'static CStr);
 }
 
-/// `obs_source_media_play_pause()` and the other queueing calls.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn queue(
-    _source: Option<&impl Source>,
-    _action: Action,
-    _log_null: impl FnOnce(&'static CStr),
+/// `media_admit()`: the validity step, then the output flags when it asks
+/// for them.
+fn admit(source: &impl Source, valid: bool, call: Call) -> Admit {
+    let admit = media_admission::admit(valid);
+    if admit == Admit::ReadFlags {
+        media_admission::admit_flags(Some(call), source.output_flags())
+    } else {
+        admit
+    }
+}
+
+/// `obs_source_media_play_pause()` and the other queueing calls: `None` is a
+/// NULL source, logged as [`Action::function`]. Otherwise a source without
+/// `context.data`, without `OBS_SOURCE_CONTROLLABLE_MEDIA` or without the
+/// call's callback is refused, each read only when the step before passed;
+/// an accepted one queues `action`. The callback is never called here.
+pub fn queue(source: Option<&impl Source>, action: Action, log_null: impl FnOnce(&'static CStr)) {
+    let Some(source) = source else {
+        log_null(action.function());
+        return;
+    };
+    let call = action.call();
+    let mut admit = admit(source, source.has_data(), call);
+    if admit == Admit::ReadCallback {
+        admit = media_admission::admit_callback(source.has_callback(call));
+    }
+    if admit == Admit::Accept {
+        source.queue(action);
+    }
+}
+
+/// `obs_source_media_started()`: `None` is a NULL source, logged as
+/// [`STARTED_FUNCTION`]; any other source with
+/// `OBS_SOURCE_CONTROLLABLE_MEDIA` emits [`STARTED_SIGNAL`].
+pub fn started(source: Option<&impl Source>, log_null: impl FnOnce(&'static CStr)) {
+    signal(
+        source,
+        Call::Started,
+        STARTED_FUNCTION,
+        STARTED_SIGNAL,
+        log_null,
+    );
+}
+
+/// `obs_source_media_ended()`: `None` is a NULL source, logged as
+/// [`ENDED_FUNCTION`]; any other source with
+/// `OBS_SOURCE_CONTROLLABLE_MEDIA` emits [`ENDED_SIGNAL`].
+pub fn ended(source: Option<&impl Source>, log_null: impl FnOnce(&'static CStr)) {
+    signal(source, Call::Ended, ENDED_FUNCTION, ENDED_SIGNAL, log_null);
+}
+
+/// Started and ended: `obs_source_valid()` only (no `context.data`), then
+/// the output flags; no callback step.
+fn signal(
+    source: Option<&impl Source>,
+    call: Call,
+    function: &'static CStr,
+    name: &'static CStr,
+    log_null: impl FnOnce(&'static CStr),
 ) {
-    todo!("#5616")
-}
-
-/// `obs_source_media_started()`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn started(_source: Option<&impl Source>, _log_null: impl FnOnce(&'static CStr)) {
-    todo!("#5616")
-}
-
-/// `obs_source_media_ended()`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn ended(_source: Option<&impl Source>, _log_null: impl FnOnce(&'static CStr)) {
-    todo!("#5616")
+    let Some(source) = source else {
+        log_null(function);
+        return;
+    };
+    if admit(source, true, call) == Admit::Accept {
+        source.signal(name);
+    }
 }
