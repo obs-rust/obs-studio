@@ -875,7 +875,6 @@ error:
 	HANDLE_ERROR(size, obs_encoder_info, info);
 }
 
-
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef type_required
 #undef has_val
