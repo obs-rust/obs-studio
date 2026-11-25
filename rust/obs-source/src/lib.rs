@@ -226,6 +226,7 @@ pub mod filter_index;
 pub mod filter_relationship_getters;
 pub mod flags_mixers;
 pub mod frame_copy;
+pub mod frame_init;
 pub mod get_weak;
 pub mod handler_getters;
 pub mod hidden_setter;
