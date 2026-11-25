@@ -18736,6 +18736,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_show_active_counters": {
+      "sources": [
+        "test/cmocka/test_source_show_active_counters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_showing_active": {
       "sources": [
         "test/cmocka/test_source_showing_active.c"
@@ -29938,6 +29953,12 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_source_show_active_counters": {
+      "target": "test_source_show_active_counters",
+      "command": [
+        "${target}"
+      ]
     },
     "test_source_showing_active": {
       "target": "test_source_showing_active",

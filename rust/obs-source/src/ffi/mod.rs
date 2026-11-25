@@ -66,6 +66,7 @@ pub mod source_render_route;
 pub mod source_save_load;
 pub mod source_set_name;
 pub mod source_settings_getter;
+pub mod source_show_active_counters;
 pub mod source_showing_active;
 pub mod source_size;
 pub mod source_state_getters;
