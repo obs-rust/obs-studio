@@ -1685,18 +1685,6 @@ obs_source_t *obs_get_transition_by_name(const char *name)
 	return source;
 }
 
-obs_source_t *obs_get_transition_by_uuid(const char *uuid)
-{
-	obs_source_t *source = obs_get_source_by_uuid(uuid);
-
-	if (source && source->info.type == OBS_SOURCE_TYPE_TRANSITION)
-		return source;
-	else if (source)
-		obs_source_release(source);
-
-	return NULL;
-}
-
 obs_output_t *obs_get_output_by_name(const char *name)
 {
 	return get_context_by_name(&obs->data.first_output, name, &obs->data.outputs_mutex, obs_output_addref_safe_);
