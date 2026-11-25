@@ -12,7 +12,7 @@ static size_t copy_size_obs_encoder_info(size_t size)
 		offsetof(struct obs_encoder_info, caps),
 	};
 	return obs_module_register_copy_whole_size(size, sizeof(void *), u32_fields,
-					   sizeof(u32_fields) / sizeof(u32_fields[0]));
+						   sizeof(u32_fields) / sizeof(u32_fields[0]));
 }
 
 #define REGISTER_OBS_DEF(size_var, structure, dest, info)                                               \
