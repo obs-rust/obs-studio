@@ -3079,21 +3079,6 @@ void obs_sceneitem_do_transition(obs_sceneitem_t *item, bool visible)
 	}
 }
 
-void obs_scene_prune_sources(obs_scene_t *scene)
-{
-	obs_scene_item_ptr_array_t remove_items;
-	da_init(remove_items);
-
-	video_lock(scene);
-	update_transforms_and_prune_sources(scene, &remove_items, NULL, false);
-	video_unlock(scene);
-
-	for (size_t i = 0; i < remove_items.num; i++)
-		obs_sceneitem_release(remove_items.array[i]);
-
-	da_free(remove_items);
-}
-
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef audio_lock
 #undef video_lock
