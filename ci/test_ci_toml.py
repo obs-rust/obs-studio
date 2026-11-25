@@ -472,7 +472,8 @@ class CiTomlTest(unittest.TestCase):
         pins = []
         for path in WORKFLOWS.glob("*.y*ml"):
             pins.extend(re.findall(r"zackees/setup-soldr@([0-9a-f]{40})", path.read_text()))
-        self.assertEqual(pins.count(TIER2_CHECKPOINT_SETUP_SOLDR_PIN), 1)
+        # Tier 2 build, the dual-platform link matrix, and macOS artifact preparation.
+        self.assertEqual(pins.count(TIER2_CHECKPOINT_SETUP_SOLDR_PIN), 3)
         self.assertEqual(set(pins), {SETUP_SOLDR_PIN, TIER2_CHECKPOINT_SETUP_SOLDR_PIN},
                          "update SETUP_SOLDR_PIN, SETUP_SOLDR_COOK_PREFIX and the deps family with the pin")
         deps = load()["cache"]["family"]["deps"]
