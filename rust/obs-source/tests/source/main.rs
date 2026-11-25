@@ -178,6 +178,7 @@ mod type_data_parity;
 mod type_info;
 mod type_info_parity;
 mod update;
+mod update_parity;
 mod update_properties;
 mod update_properties_parity;
 mod video_tick;

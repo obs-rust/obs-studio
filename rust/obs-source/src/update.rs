@@ -20,6 +20,7 @@
 
 use core::ffi::CStr;
 use obs_util::platform::CLongAtomic;
+use std::sync::atomic::Ordering::SeqCst;
 
 /// `OBS_SOURCE_VIDEO` from `obs-source.h`.
 pub const OBS_SOURCE_VIDEO: u32 = 1 << 0;
@@ -48,6 +49,17 @@ pub trait Source {
 /// its next video tick, and any other source with data and an `update`
 /// callback runs it and then sends `source_update`.
 pub fn update(source: Option<&impl Source>, has_settings: bool, log: impl FnOnce(&'static CStr)) {
-    let _ = (source, has_settings, log);
-    todo!()
+    let Some(source) = source else {
+        log(c"obs_source_update");
+        return;
+    };
+    if has_settings {
+        source.apply_settings();
+    }
+    if source.output_flags() & OBS_SOURCE_VIDEO != 0 {
+        source.defer_update_count().fetch_add(1, SeqCst);
+    } else if source.can_update() {
+        source.call_update();
+        source.signal_update();
+    }
 }
