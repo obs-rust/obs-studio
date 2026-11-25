@@ -2287,7 +2287,7 @@ jobs:
           persist-credentials: false
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
         with:
           # Same scope and layer as rust-cross-lint, so it replays master's cache.
           verdict-scope: build-project
@@ -2307,6 +2307,7 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
+          SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
@@ -2415,7 +2416,7 @@ jobs:
           sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y --no-install-recommends cmake ninja-build pkg-config uuid-dev libglib2.0-dev libxkbcommon-dev libncurses6 libtinfo6 libsqlite3-0
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
         with:
           verdict-scope: build-project
           version: 0.9.54
@@ -2429,6 +2430,7 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
+          SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
