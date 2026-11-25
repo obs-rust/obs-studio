@@ -2288,9 +2288,9 @@ jobs:
     name: Tier 2 Link Check 🔗 (${{ matrix.alias }})
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
-    # Both full inventories are required independently, including attested PRs.
+    # Run both inventories on fallback PRs and on the selected merge groups.
     # No category or other alias dependency: the three link legs can overlap.
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.cmocka_link == 'true' }}
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.cmocka_link == 'true' }}
     strategy:
       fail-fast: false
       matrix:

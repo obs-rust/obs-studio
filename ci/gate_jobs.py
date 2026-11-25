@@ -203,9 +203,6 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
                 and all(gates.get(gate) == "valid" for gate in plan["required_client_gates"]))
     if complete:
         expected -= heavy
-        # Existing client proofs cover category links, not the cmocka CMake
-        # pass. The base-owned selector must witness that pass even on fast PRs.
-        expected.update(cmocka_jobs(selected))
     for key, job_names in names.items():
         status = plan["jobs"].get(key, {})
         needed = status.get("required_gates", [])
