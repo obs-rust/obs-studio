@@ -12,7 +12,8 @@ void obs_sceneitem_bounds_update_transform(obs_sceneitem_t *item);
 #define item_relative_scale obs_sceneitem_xform_relative_scale
 #define do_update_transform(item) obs_sceneitem_bounds_update_transform(item)
 
-/* clang-format off: preserve the extracted C oracle bodies verbatim. */
+/* Preserve the extracted C oracle bodies verbatim. */
+/* clang-format off */
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
 	if (item) {
