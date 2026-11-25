@@ -155,6 +155,8 @@ class RuntimeWorkflowTest(unittest.TestCase):
         self.assertIn('-C "$OBS_TIER2_TEST_BUILD"', tests)
         self.assertIn('--build "$OBS_TIER2_TEST_BUILD"', tests)
         self.assertIn('Release Tier 2 Scratch\n        if: always()', tests)
+        cleanup = tests.split('Release Tier 2 Scratch', 1)[1]
+        self.assertLess(cleanup.index('sudo -n chown -hR'), cleanup.index('shutil.rmtree'))
 
     def test_manifest_is_produced_and_transferred_before_runtime_install(self):
         text = (ROOT / '.github/workflows/build-project.yaml').read_text()
