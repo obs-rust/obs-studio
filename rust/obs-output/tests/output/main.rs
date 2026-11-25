@@ -72,6 +72,7 @@ mod encoder_reroute;
 mod encoder_reroute_parity;
 mod encoder_roi;
 mod encoder_roi_list;
+mod encoder_roi_list_parity;
 mod encoder_roi_parity;
 mod encoder_roi_state;
 mod encoder_roi_state_parity;

@@ -19,18 +19,55 @@ pub trait RoiList {
 
 /// Admit and append one ROI, incrementing only on success.
 pub fn add_roi(
-    _encoder: Option<&mut impl RoiList>,
-    _roi: Option<&Roi>,
-    _invalid: impl FnOnce(),
+    encoder: Option<&mut impl RoiList>,
+    roi: Option<&Roi>,
+    invalid: impl FnOnce(),
 ) -> bool {
-    todo!()
+    let Some(encoder) = encoder else {
+        invalid();
+        return false;
+    };
+    let Some(roi) = roi else { return false };
+    if !crate::encoder_roi::admit(encoder.caps(), roi) {
+        return false;
+    }
+    encoder.with_locked(|entries| {
+        entries.append(roi);
+        let increment = entries.increment();
+        *increment = increment.wrapping_add(1);
+    });
+    true
 }
 
 /// Visit newest first under the mutex, with temporary copies when scaled.
 pub fn enum_roi(
-    _encoder: Option<&mut impl RoiList>,
-    _callback: impl FnMut(&mut Roi),
-    _invalid: impl FnOnce(),
+    encoder: Option<&mut impl RoiList>,
+    mut callback: impl FnMut(&mut Roi),
+    invalid: impl FnOnce(),
 ) {
-    todo!()
+    let Some(encoder) = encoder else {
+        invalid();
+        return;
+    };
+    let (sw, sh) = encoder.scaled_size();
+    let factors = if sw != 0 && sh != 0 {
+        let (w, h) = encoder.video_size();
+        let Some(factors) = crate::encoder_roi::scale_factors(sw, sh, w, h) else {
+            return;
+        };
+        Some(factors)
+    } else {
+        None
+    };
+    encoder.with_locked(|entries| {
+        for index in (0..entries.count()).rev() {
+            entries.visit(index, &mut |roi| {
+                if let Some((sx, sy)) = factors {
+                    callback(&mut crate::encoder_roi::scale(roi, sx, sy));
+                } else {
+                    callback(roi);
+                }
+            });
+        }
+    });
 }

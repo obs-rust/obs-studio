@@ -1,10 +1,9 @@
 //! Safe core of `libobs/obs-encoder-roi.c.h`: the encoder region of
 //! interest (ROI) checks and scaling.
 //!
-//! The encoder still keeps `roi_mutex`, the list of ROIs, `roi_increment`,
-//! the walk over the list (last added first) and the callback, and checks
-//! the encoder (`obs_encoder_valid()`) and the NULL ROI. These take and
-//! return plain values, keep no state and call nothing in libobs.
+//! [`crate::encoder_roi_list`] owns the add/enumeration policy, borrowing
+//! the encoder's existing list and mutex through its private ABI adapter.
+//! These arithmetic helpers take and return plain values and keep no state.
 //!
 //! - [`admit`] (`obs_encoder_add_roi()`): whether an encoder with `caps`
 //!   stores the ROI. It needs [`OBS_ENCODER_CAP_ROI`], a rectangle that is

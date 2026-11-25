@@ -1,12 +1,10 @@
 //! C ABI for `libobs/obs-encoder-roi.c.h`, declared in
 //! `libobs/obs-encoder-roi.h` without `EXPORT`.
 //!
-//! `obs_encoder_add_roi()` and `obs_encoder_enum_roi()` (still C, in
-//! `obs-encoder.c.h`) check the encoder and the NULL ROI, hold
-//! `roi_mutex`, keep the list and `roi_increment`, walk it last added
-//! first and call the callback; they pass the encoder's caps, the sizes
-//! and the ROIs to these. `struct obs_encoder_roi` is mirrored as
-//! [`obs_encoder_roi`] (Tier 3 checks the layout against the C). The
+//! The list entry points in [`super::encoder_roi_list`] borrow the encoder's
+//! mutex and storage and delegate list decisions to the safe Rust core.
+//! `struct obs_encoder_roi` is mirrored as [`obs_encoder_roi`] (Tier 3
+//! checks its layout against C). These arithmetic helper
 //! symbols stay hidden (`rust-hidden.d`).
 //!
 //! The pointers are the C's: libobs never passes NULL (`roi` is checked
