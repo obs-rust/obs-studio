@@ -2212,41 +2212,6 @@ _Static_assert(OBS_ORDER_MOVE_TOP == 2, "OBS_ORDER_MOVE_TOP");
 _Static_assert(OBS_ORDER_MOVE_BOTTOM == 3, "OBS_ORDER_MOVE_BOTTOM");
 _Static_assert(sizeof(struct obs_sceneitem_order_info) == 2 * sizeof(void *), "struct obs_sceneitem_order_info");
 
-void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
-{
-	if (!item)
-		return;
-
-	struct obs_scene *scene = obs_scene_get_ref(item->parent);
-
-	if (!scene)
-		return;
-
-	full_lock(scene);
-
-	detach_sceneitem(item);
-
-	size_t steps = 0;
-	if (obs_scene_item_order_position(position, scene->first_item != NULL, &steps)) {
-		attach_sceneitem(scene, item, NULL);
-	} else {
-		struct obs_scene_item *next = scene->first_item;
-
-		for (size_t i = steps; i > 0; --i) {
-			if (next->next == NULL)
-				break;
-			next = next->next;
-		}
-
-		attach_sceneitem(scene, item, next);
-	}
-
-	full_unlock(scene);
-
-	signal_reorder(item);
-	obs_scene_release(scene);
-}
-
 static inline void scene_item_set_info_internal(obs_sceneitem_t *item, const struct obs_transform_info *info)
 {
 	if (!item->absolute_coordinates) {
