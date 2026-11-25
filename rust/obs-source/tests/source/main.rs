@@ -124,6 +124,7 @@ mod set_name_parity;
 mod settings_getter;
 mod settings_getter_parity;
 mod show_active_counters;
+mod show_active_counters_parity;
 mod showing_active;
 mod showing_active_parity;
 mod size_route;

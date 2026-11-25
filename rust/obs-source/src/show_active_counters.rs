@@ -41,33 +41,43 @@ impl Change {
     ];
 
     /// The public function, named in its NULL diagnostic.
-    #[expect(clippy::todo, reason = "RED stub for #5601")]
     pub fn function(self) -> &'static CStr {
-        todo!("#5601")
+        match self {
+            Self::IncShowing => c"obs_source_inc_showing",
+            Self::IncActive => c"obs_source_inc_active",
+            Self::DecShowing => c"obs_source_dec_showing",
+            Self::DecActive => c"obs_source_dec_active",
+        }
     }
 
     /// The C call this change forwards to.
-    #[expect(clippy::todo, reason = "RED stub for #5601")]
     pub fn direction(self) -> Direction {
-        todo!("#5601")
+        match self {
+            Self::IncShowing | Self::IncActive => Direction::Activate,
+            Self::DecShowing | Self::DecActive => Direction::Deactivate,
+        }
     }
 
     /// The view type handed to that call.
-    #[expect(clippy::todo, reason = "RED stub for #5601")]
     pub fn view_type(self) -> u32 {
-        todo!("#5601")
+        match self {
+            Self::IncShowing | Self::DecShowing => AUX_VIEW,
+            Self::IncActive | Self::DecActive => MAIN_VIEW,
+        }
     }
 }
 
 /// `None` is a NULL source: it logs once with the function's name and calls
 /// nothing. Otherwise `forward` is called once with the source, the C call
 /// and the view type, and nothing is logged.
-#[expect(clippy::todo, reason = "RED stub for #5601")]
 pub fn apply<S>(
-    _change: Change,
-    _source: Option<S>,
-    _forward: impl FnOnce(S, Direction, u32),
-    _log: impl FnOnce(&'static CStr),
+    change: Change,
+    source: Option<S>,
+    forward: impl FnOnce(S, Direction, u32),
+    log: impl FnOnce(&'static CStr),
 ) {
-    todo!("#5601")
+    match source {
+        Some(source) => forward(source, change.direction(), change.view_type()),
+        None => log(change.function()),
+    }
 }

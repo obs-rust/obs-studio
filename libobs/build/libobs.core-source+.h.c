@@ -98,7 +98,6 @@
 #include "libobs/obs-source-save-load-fields.c.h"
 #include "libobs/obs-source-set-name-fields.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"
-#include "libobs/obs-source-show-active-counters.c.h"
 #include "libobs/obs-source-showing-active-fields.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
