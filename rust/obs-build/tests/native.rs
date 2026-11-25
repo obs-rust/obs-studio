@@ -5594,6 +5594,8 @@ pub(crate) mod core_module_manifest;
 
 #[path = "native/registration/canonical_source_update_properties_swap_is_registered.rs"]
 mod canonical_source_update_properties_swap_is_registered;
+#[path = "native/registration/canonical_source_weak_refs_swap_is_registered.rs"]
+mod canonical_source_weak_refs_swap_is_registered;
 
 #[path = "native/registration/canonical_type_catalog_enum_swap_is_registered.rs"]
 mod canonical_type_catalog_enum_swap_is_registered;
