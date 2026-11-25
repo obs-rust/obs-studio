@@ -25,6 +25,7 @@
 #include "libobs/obs-get-audio-fields.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
 #include "libobs/obs-get-main-texture-fields.c.h"
+#include "libobs/obs-get-module-name.c.h"
 #include "libobs/obs-get-output-source-fields.c.h"
 #include "libobs/obs-get-video-fields.c.h"
 #include "libobs/obs-get-video-frame-counts-fields.c.h"
