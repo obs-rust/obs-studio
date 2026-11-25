@@ -247,6 +247,7 @@ pub mod render_route;
 pub mod save_load;
 pub mod set_name;
 pub mod settings_getter;
+pub mod show_active_counters;
 pub mod showing_active;
 pub mod size_route;
 pub mod source_duplicate;
