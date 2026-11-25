@@ -57,6 +57,7 @@ VIA_PREFIXES = {
 # being written, while `deps` still resolved to cook-base-v2- (#3166).
 SETUP_SOLDR_PIN = "db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1"  # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
 TIER2_CHECKPOINT_SETUP_SOLDR_PIN = "dd26c92eb35c553b208bb741326b6d54cf611436"  # forge-ci/setup-soldr#707 preserves cook-base-v4
+APP_FLEET_SETUP_SOLDR_PIN = "c1bfc684de8c5f97b178c8837e3e8e6a7383676c"  # forge-ci/setup-soldr#701 preserves cook-base-v4
 SETUP_SOLDR_COOK_PREFIX = "cook-base-v4-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v4"
 
 
@@ -474,7 +475,9 @@ class CiTomlTest(unittest.TestCase):
             pins.extend(re.findall(r"zackees/setup-soldr@([0-9a-f]{40})", path.read_text()))
         # Tier 2 build, the dual-platform link matrix, and macOS artifact preparation.
         self.assertEqual(pins.count(TIER2_CHECKPOINT_SETUP_SOLDR_PIN), 3)
-        self.assertEqual(set(pins), {SETUP_SOLDR_PIN, TIER2_CHECKPOINT_SETUP_SOLDR_PIN},
+        # macOS and Windows app builds use the fleet cache action pin.
+        self.assertEqual(pins.count(APP_FLEET_SETUP_SOLDR_PIN), 2)
+        self.assertEqual(set(pins), {SETUP_SOLDR_PIN, TIER2_CHECKPOINT_SETUP_SOLDR_PIN, APP_FLEET_SETUP_SOLDR_PIN},
                          "update SETUP_SOLDR_PIN, SETUP_SOLDR_COOK_PREFIX and the deps family with the pin")
         deps = load()["cache"]["family"]["deps"]
         self.assertNotIn("via", deps, "ci-lint's schema makes `via` and `prefix` mutually exclusive")
