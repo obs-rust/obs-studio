@@ -1,7 +1,9 @@
-//! Real-header layout and Tier 3 parity for #4073; no input exclusions.
+//! Real-header layout and Tier 3 parity for #4073 and #5591; no input exclusions.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
-use obs_source::ffi::source_handler_getters::{Fields, obs_source_get_proc_handler as proc};
+use obs_source::ffi::source_handler_getters::{
+    Fields, obs_source_get_proc_handler as proc, obs_source_get_signal_handler as signal,
+};
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
 use proptest::prelude::*;
 
@@ -15,8 +17,9 @@ unsafe extern "C" {
     fn oracle_source_handlers_unchanged(source: *const c_void) -> bool;
     fn oracle_source_handlers_addresses(source: *const c_void) -> bool;
     fn oracle_source_handlers_layout(layout: *mut usize);
+    fn oracle_obs_source_get_signal_handler(source: *const c_void) -> *mut c_void;
     fn oracle_obs_source_get_proc_handler(source: *const c_void) -> *mut c_void;
-    fn oracle_source_handlers_logs(proc: Getter, get: GetLog, set: SetLog) -> bool;
+    fn oracle_source_handlers_logs(signal: Getter, proc: Getter, get: GetLog, set: SetLog) -> bool;
 }
 
 struct Fixture(*mut c_void);
@@ -29,15 +32,18 @@ impl Drop for Fixture {
 
 #[test]
 fn real_header_layout() {
-    let mut layout = [0; 5];
-    // SAFETY: the oracle writes exactly five size/alignment/offset values.
+    let mut layout = [0; 8];
+    // SAFETY: the oracle writes exactly eight size/alignment/offset values.
     unsafe { oracle_source_handlers_layout(layout.as_mut_ptr()) };
     assert_eq!(
         layout,
         [
             size_of::<Fields>(),
             align_of::<Fields>(),
+            offset_of!(Fields, signal),
             offset_of!(Fields, proc),
+            size_of::<*mut c_void>(),
+            align_of::<*mut c_void>(),
             size_of::<*mut c_void>(),
             align_of::<*mut c_void>()
         ]
@@ -52,6 +58,11 @@ fn check(present_signal: bool, present_proc: bool, same: bool, flags: u32) {
     let mut tokens = [core::ptr::null_mut(); 2];
     // SAFETY: this live fixture owns both tokens; the oracle writes exactly two addresses.
     unsafe { oracle_source_handlers_tokens(fixture.0, tokens.as_mut_ptr()) };
+    let ps = if present_signal {
+        tokens[0]
+    } else {
+        core::ptr::null_mut()
+    };
     let pp = if present_proc {
         tokens[usize::from(!same)]
     } else {
@@ -67,6 +78,11 @@ fn check(present_signal: bool, present_proc: bool, same: bool, flags: u32) {
                 oracle_obs_source_get_proc_handler(fixture.0)
             );
             assert_eq!(proc(fixture.0), pp);
+            assert_eq!(
+                signal(fixture.0),
+                oracle_obs_source_get_signal_handler(fixture.0)
+            );
+            assert_eq!(signal(fixture.0), ps);
             assert!(oracle_source_handlers_unchanged(fixture.0));
         }
     }
@@ -94,6 +110,7 @@ fn null_diagnostics_match_c() {
     // shim's opaque handler-pointer ABI and the probe restores the handler.
     unsafe {
         assert!(oracle_source_handlers_logs(
+            signal,
             proc,
             base_get_log_handler,
             base_set_log_handler

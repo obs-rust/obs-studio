@@ -1592,7 +1592,9 @@ extern struct darray *obs_source_caption_callback_fields(obs_source_t *source);
 extern void obs_source_caption_callback_lock(obs_source_t *source);
 extern void obs_source_caption_callback_unlock(obs_source_t *source);
 
+/* Borrowed signal and procedure handler addresses. Caller rejects NULL before access. */
 struct obs_source_handler_getters_fields {
+	signal_handler_t *const *signal;
 	proc_handler_t *const *proc;
 };
 extern struct obs_source_handler_getters_fields obs_source_handler_getters_fields(const obs_source_t *source);

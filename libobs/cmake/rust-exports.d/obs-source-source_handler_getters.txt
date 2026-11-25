@@ -1,1 +1,2 @@
 obs_source_get_proc_handler
+obs_source_get_signal_handler

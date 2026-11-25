@@ -519,6 +519,8 @@ mod canonical_source_handler_getters_is_registered;
 mod canonical_source_identity_getters_is_registered;
 #[path = "native/registration/canonical_source_push_queries_is_registered.rs"]
 mod canonical_source_push_queries_is_registered;
+#[path = "native/registration/canonical_source_signal_handler_swap_is_registered.rs"]
+mod canonical_source_signal_handler_swap_is_registered;
 #[path = "native/registration/canonical_source_state_getters_is_registered.rs"]
 mod canonical_source_state_getters_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]

@@ -3118,11 +3118,6 @@ void obs_source_skip_video_filter(obs_source_t *filter)
 	}
 }
 
-signal_handler_t *obs_source_get_signal_handler(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_signal_handler") ? source->context.signals : NULL;
-}
-
 struct source_enum_data {
 	obs_source_enum_proc_t enum_callback;
 	void *param;

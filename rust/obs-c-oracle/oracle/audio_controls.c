@@ -39,6 +39,9 @@
  * stand-ins private to this oracle. */
 #define obs_source_add_audio_capture_callback oracle_audio_controls_add_audio_capture_callback
 #define obs_source_remove_audio_capture_callback oracle_audio_controls_remove_audio_capture_callback
+/* Rust obs-source exports the real signal handler getter (#5591); the
+ * stand-in below answers NULL for this oracle only. */
+#define obs_source_get_signal_handler oracle_audio_controls_get_signal_handler
 
 size_t oracle_obs_audio_info_size(void);
 size_t oracle_obs_audio_info_align(void);
