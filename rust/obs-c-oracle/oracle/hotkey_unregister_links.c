@@ -2,7 +2,7 @@
  * (rust/obs-hotkey/src/ffi/unregister.rs), under libobs's own names.
  *
  * The shims name the private field accessors of
- * libobs/obs-hotkey-unregister-fields.c.h and two weak releases that live in
+ * libobs/obs-hotkey-unregister-fields.c.h and one weak release that lives in
  * libobs. The MSVC, MinGW and macOS linkers want every symbol an object names
  * resolved, used or not, so obs-tests-core needs a definition; libobs has the
  * real ones. obs_weak_output_release() and obs_weak_service_release() come
@@ -68,11 +68,6 @@ void *obs_hotkey_unregister_description(obs_hotkey_t *key)
 }
 
 void obs_weak_source_release(obs_weak_source_t *weak)
-{
-	UNUSED_PARAMETER(weak);
-}
-
-void obs_weak_encoder_release(obs_weak_encoder_t *weak)
 {
 	UNUSED_PARAMETER(weak);
 }
