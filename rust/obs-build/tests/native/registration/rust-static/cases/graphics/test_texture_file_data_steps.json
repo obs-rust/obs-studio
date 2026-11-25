@@ -19,7 +19,6 @@
       ],
       "libraries": [
         "libobs_rust-static",
-        "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
         {
@@ -50,7 +49,11 @@
           }
         }
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "inherit_header_definitions": true
     }
   },
   "tests": {
