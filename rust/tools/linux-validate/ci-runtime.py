@@ -387,8 +387,10 @@ def execute_shared(args: argparse.Namespace) -> int:
     token = os.environ.pop('OBS_TIER2_ARTIFACT_TOKEN', '')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lease, tempfile.TemporaryDirectory() as temp:
         try:
-            lease.settimeout(300)
+            lease.settimeout(5)
             lease.connect(os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', ''))
+            # A cold fill includes the GitHub transfer and image materialization.
+            lease.settimeout(600)
             request = dict(run=os.environ.get('GITHUB_RUN_ID', ''), head=os.environ.get('GITHUB_SHA', ''), token=token)
             lease.sendall((json.dumps(request) + '\n').encode())
             with lease.makefile('rb') as response:
