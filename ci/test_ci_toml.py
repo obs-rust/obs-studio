@@ -668,6 +668,7 @@ class AllowPermissionsTest(unittest.TestCase):
         grants = load()["allow"]["permissions"]
         self.assertEqual(scopes, {
             ("native-cache-transport", "contents: write"),
+            ("reserve-event-data", "id-token: write"),
             ("reserve-tier2-linux-build", "id-token: write"),
         })
         for job, scope in sorted(scopes):

@@ -163,11 +163,33 @@ env:
   # repository variable SETUP_SOLDR_PROFILE=hosted.
   SETUP_SOLDR_PROFILE: ${{ vars.SETUP_SOLDR_PROFILE }}
 jobs:
+  reserve-event-data:
+    name: Reserve Event Data Runner
+    if: ${{ github.event_name == 'merge_group' && inputs.mq-heavy-labels != '' && vars.FORGE_POOL_LEASE_CLASS != '' }}
+    runs-on: ${{ vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
+    timeout-minutes: 2
+    permissions:
+      id-token: write
+    outputs:
+      runs-on: ${{ steps.reserve.outputs.runs-on }}
+    steps:
+      - id: reserve
+        uses: forge-ci/ci.yml/actions/pool-select@52f6ada3ed0cb8622e31f1a16d506fb853b731b0 # ci.yml#569
+        with:
+          source: lease
+          labels: ${{ inputs.mq-heavy-labels }}
+          fallback: ubuntu-latest
+          lease-class: ${{ vars.FORGE_POOL_LEASE_CLASS }}
+          lease-job: check-event
+
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    # Full history and scope scripts need a build runner. Keep hosted fallback.
-    runs-on: ${{ github.event_name == 'merge_group' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
+    needs: reserve-event-data
+    if: ${{ !cancelled() }}
+    # Wait for a ready lease or run hosted so an unclaimed pool job cannot
+    # indefinitely block scheduling every lane.
+    runs-on: ${{ needs.reserve-event-data.outputs.runs-on != '' && fromJSON(needs.reserve-event-data.outputs.runs-on) || 'ubuntu-latest' }}
     defaults:
       run:
         shell: bash

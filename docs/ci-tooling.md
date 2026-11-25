@@ -1427,8 +1427,9 @@ Rust Tier 2 Linux build, its OFF/ON test jobs, Rust Cross Lint
 (two main targets plus the release-target job), and the Linux macOS Rust artifact
 producer and Windows Link Check use that selection.
 Build and tests share the selected pool so local handoff remains valid.
-On merge groups, Event Data uses the selected build pool because it needs a
-full history checkout. CI Mode uses the quick runner when configured and
+On merge groups, Event Data uses a bounded Forge build-runner reservation
+when the pool is selected and a lease class is configured. With no ready
+lease it runs hosted. Its full history checkout needs a build-sized runner. CI Mode uses the quick runner when configured and
 skips PR-only admission steps. Both use hosted runners when their routing
 inputs are absent. Format, Fast Gate, Cross Compile, Qt, app builds, proof
 publication, queue cancellation and CI Gate use hosted runners.

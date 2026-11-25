@@ -318,8 +318,7 @@ class CiScopeTest(unittest.TestCase):
             "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
         }
         pr_only = {"rust-tests-linux", "cross-compile", "linux-qt-frontend"}
-        queue_only = {"check-event"}
-        routed = heavy | pr_only | queue_only
+        routed = heavy | pr_only
         light = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
@@ -347,9 +346,7 @@ class CiScopeTest(unittest.TestCase):
                 if selected:
                     selected_jobs.add(job)
                     prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
-                    if job in queue_only:
-                        prefix = "github.event_name == 'merge_group' && "
-                    fallback = ("ubuntu-latest" if job in queue_only | {"rust-linux-tier2-build", "rust-linux-tier2"}
+                    fallback = ("ubuntu-latest" if job in {"rust-linux-tier2-build", "rust-linux-tier2"}
                                 else "ubuntu-26.04")
                     if job == "rust-linux-tier2-build":
                         self.assertTrue(runner[1].startswith(
