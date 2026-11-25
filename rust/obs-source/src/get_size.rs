@@ -18,6 +18,7 @@
     clippy::unreachable
 )]
 
+use crate::size_route::{Entry, TYPE_FILTER, entry};
 use core::ffi::CStr;
 
 /// `obs_source_get_width`, named in its NULL diagnostic.
@@ -62,8 +63,10 @@ pub trait Libobs {
     fn unlock_filters(&mut self, source: Self::Source);
     /// `source->filters.num != 0`, read under the lock.
     fn has_filters(&mut self, source: Self::Source) -> bool;
-    /// `source->filters.array[0]`, read under the lock when it has filters.
-    fn first_filter(&mut self, source: Self::Source) -> Self::Source;
+    /// `source->filters.array[0]`, read under the lock when it has filters
+    /// (`None` for a NULL entry, which `obs_source_filter_add()` never
+    /// stores).
+    fn first_filter(&mut self, source: Self::Source) -> Option<Self::Source>;
     /// `obs_source_base_width(source)` or `obs_source_base_height(source)`.
     fn base_size(&mut self, source: Self::Source, axis: Axis) -> u32;
 }
@@ -71,6 +74,28 @@ pub trait Libobs {
 /// `obs_source_get_width()` (`Axis::Width`) or `obs_source_get_height()`
 /// (`Axis::Height`) of `source` (`None` for NULL).
 pub fn get<L: Libobs>(libobs: &mut L, source: Option<L::Source>, axis: Axis) -> u32 {
-    let _ = (libobs, source, axis);
-    todo!("#5726")
+    let Some(source) = source else {
+        libobs.log_null(axis.function());
+        return 0;
+    };
+    if !libobs.has_data(source) {
+        return 0;
+    }
+
+    let source_type = libobs.source_type(source);
+    if source_type == TYPE_FILTER {
+        // A filter starts at itself and takes no lock: its filter_mutex
+        // guards filters it never reads.
+        return libobs.base_size(source, axis);
+    }
+
+    libobs.lock_filters(source);
+    let start = match entry(source_type, libobs.has_filters(source)) {
+        Entry::FirstFilter => libobs.first_filter(source),
+        Entry::Itself => Some(source),
+    };
+    // obs_source_base_width(NULL) is 0.
+    let size = start.map_or(0, |start| libobs.base_size(start, axis));
+    libobs.unlock_filters(source);
+    size
 }

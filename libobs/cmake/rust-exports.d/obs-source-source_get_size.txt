@@ -1,0 +1,2 @@
+obs_source_get_width
+obs_source_get_height

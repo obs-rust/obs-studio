@@ -78,10 +78,10 @@ impl Libobs for Model {
         assert!(self.locked.contains(&source), "filters read unlocked");
         !self.nodes[source].filters.is_empty()
     }
-    fn first_filter(&mut self, source: usize) -> usize {
+    fn first_filter(&mut self, source: usize) -> Option<usize> {
         assert!(self.locked.contains(&source), "filters read unlocked");
         self.events.push(Event::FirstFilter(source));
-        self.nodes[source].filters[0]
+        self.nodes[source].filters.first().copied()
     }
     fn base_size(&mut self, source: usize, axis: Axis) -> u32 {
         self.events.push(Event::Base(source, axis));
