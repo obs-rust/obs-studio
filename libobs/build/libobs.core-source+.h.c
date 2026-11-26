@@ -80,6 +80,7 @@
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-flags-mixers-fields.c.h"
 #include "libobs/obs-source-frame-wrappers-fields.c.h"
+#include "libobs/obs-source-get-release-frame.c.h"
 #include "libobs/obs-source-get-weak-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-hidden-setter-fields.c.h"
