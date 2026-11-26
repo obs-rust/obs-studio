@@ -83,8 +83,15 @@ pub fn copy_filters<H: FilterCopy>(
     src: Option<H::Source>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (host, dst, src, log);
-    todo!("#5792")
+    let Some(dst) = dst else {
+        log(COPY_FILTERS_FUNCTION, DST_PARAMETER);
+        return;
+    };
+    let Some(src) = src else {
+        log(COPY_FILTERS_FUNCTION, SRC_PARAMETER);
+        return;
+    };
+    duplicate_filters(host, dst, src, host.private(dst));
 }
 
 /// `duplicate_filters()`, the hidden `obs_source_duplicate_filters()`:
@@ -92,8 +99,33 @@ pub fn copy_filters<H: FilterCopy>(
 /// one going away), then after the unlock copies them onto `dst` from the
 /// last to the first, each as `private` says.
 pub fn duplicate_filters<H: FilterCopy>(host: &H, dst: H::Source, src: H::Source, private: bool) {
-    let _ = (host, dst, src, private);
-    todo!("#5792")
+    host.lock(src);
+    let mut filters = Vec::with_capacity(host.count(src));
+    let mut index = 0;
+    while index < host.count(src) {
+        if let Some(filter) = host.get_ref(host.filter(src, index)) {
+            filters.push(filter);
+        }
+        index = index.wrapping_add(1);
+    }
+    host.unlock(src);
+
+    for filter in filters.into_iter().rev() {
+        copy_one(host, dst, filter, private);
+        host.release(filter);
+    }
+}
+
+/// One filter's copy: a free name, the enabled state, the duplicate, its
+/// enabled state, the add, and the copy's release.
+fn copy_one<H: FilterCopy>(host: &H, dst: H::Source, filter: H::Source, private: bool) {
+    let name = host.new_name(dst, filter);
+    let enabled = host.enabled(filter);
+    let copy = host.duplicate(filter, &name, private);
+    host.set_enabled(copy, enabled);
+    host.free_name(name);
+    host.add(dst, copy);
+    host.release(copy);
 }
 
 /// `obs_source_copy_single_filter()`: a `None` destination is logged as
@@ -107,6 +139,15 @@ pub fn copy_single_filter<H: FilterCopy>(
     filter: Option<H::Source>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (host, dst, filter, log);
-    todo!("#5792")
+    let Some(dst) = dst else {
+        log(COPY_SINGLE_FILTER_FUNCTION, DST_PARAMETER);
+        return;
+    };
+    let Some(filter) = filter else {
+        log(COPY_SINGLE_FILTER_FUNCTION, FILTER_PARAMETER);
+        return;
+    };
+    if host.compatible(dst, filter) {
+        copy_one(host, dst, filter, true);
+    }
 }

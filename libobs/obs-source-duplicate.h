@@ -45,7 +45,7 @@
  * obs-source.c and obs-scene.c keep every lookup (obs_scene_from_source(),
  * obs_group_from_source(), obs_source_get_filter_by_name()), every create,
  * reference and release, obs_data_apply(), obs_scene_add(),
- * duplicate_filters() and duplicate_filter() with their add order,
+ * the filter copies (obs-source-copy-filters.c.h, ported, #5792),
  * filter_compatible(), duplicate_item_data(), get_child_at_idx(),
  * resize_scene(), every lock, dstr_printf() and every log, each where it
  * was. Source pointers are only compared here, never followed. Nothing here

@@ -328,10 +328,13 @@ fn copy_single_filter_passes_a_failed_duplicate_on() {
     model.no_duplicate = vec![FIRST];
     copy_single_filter(&model, Some(DST), Some(FIRST), no_log);
     let events = model.events();
-    assert_eq!(events[4..], [
-        Event::SetEnabled(NULL_COPY, true),
-        Event::FreeName(String::from("name0")),
-        Event::Add(DST, NULL_COPY),
-        Event::Release(NULL_COPY),
-    ]);
+    assert_eq!(
+        events[4..],
+        [
+            Event::SetEnabled(NULL_COPY, true),
+            Event::FreeName(String::from("name0")),
+            Event::Add(DST, NULL_COPY),
+            Event::Release(NULL_COPY),
+        ]
+    );
 }

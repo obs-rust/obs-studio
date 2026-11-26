@@ -54,6 +54,7 @@ mod configurable_parity;
 mod conversion_plan;
 mod conversion_plan_parity;
 mod copy_filters;
+mod copy_filters_parity;
 mod default_flags;
 mod default_flags_parity;
 mod defaults;
