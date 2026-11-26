@@ -232,6 +232,7 @@ pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;
 pub mod filter_relationship_getters;
+pub mod filter_remove;
 pub mod filter_set_order;
 pub mod flags_mixers;
 pub mod frame_copy;
