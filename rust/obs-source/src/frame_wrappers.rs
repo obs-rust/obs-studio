@@ -105,47 +105,82 @@ pub trait Host {
 /// replaced.
 #[must_use]
 pub fn from_frame(frame: &Frame) -> Frame {
-    todo!("obs_source_frame copy (#5760): {frame:?}")
+    Frame {
+        full_range: frame_copy::full_range(frame.format, frame.full_range),
+        ..*frame
+    }
 }
 
 /// The `obs_source_frame` an `obs_source_frame2` becomes.
 #[must_use]
 pub fn from_frame2(frame: &Frame2) -> Frame {
-    todo!("obs_source_frame2 build (#5760): {frame:?}")
+    Frame {
+        data: frame.data,
+        linesize: frame.linesize,
+        width: frame.width,
+        height: frame.height,
+        timestamp: frame.timestamp,
+        format: frame.format,
+        color_matrix: frame.color_matrix,
+        full_range: frame_copy::full_range2(frame.format, frame.range),
+        max_luminance: 0,
+        color_range_min: frame.color_range_min,
+        color_range_max: frame.color_range_max,
+        flip: frame.flip,
+        flags: frame.flags,
+        trc: frame.trc,
+        refs: 0,
+        prev_frame: false,
+    }
+}
+
+/// The shared wrapper: the destroying check, then the NULL frame to
+/// `on_null`, or the built frame to `on_frame`.
+fn wrap<H: Host, F>(
+    host: &H,
+    source: H::Source,
+    frame: Option<&F>,
+    build: fn(&F) -> Frame,
+    on_null: fn(&H, H::Source, Option<&Frame>),
+    on_frame: fn(&H, H::Source, Option<&Frame>),
+) {
+    if host.destroying(source) {
+        return;
+    }
+    match frame {
+        None => on_null(host, source, None),
+        Some(frame) => on_frame(host, source, Some(&build(frame))),
+    }
 }
 
 /// `obs_source_output_video(source, frame)`.
 pub fn output_video<H: Host>(host: &H, source: H::Source, frame: Option<&Frame>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_output_video safe core (#5760)")
+    wrap(host, source, frame, from_frame, H::output, H::output);
 }
 
 /// `obs_source_output_video2(source, frame)`.
 pub fn output_video2<H: Host>(host: &H, source: H::Source, frame: Option<&Frame2>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_output_video2 safe core (#5760)")
+    wrap(host, source, frame, from_frame2, H::output, H::output);
 }
 
 /// `obs_source_preload_video(source, frame)`.
 pub fn preload_video<H: Host>(host: &H, source: H::Source, frame: Option<&Frame>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_preload_video safe core (#5760)")
+    wrap(host, source, frame, from_frame, H::preload, H::preload);
 }
 
 /// `obs_source_preload_video2(source, frame)`.
 pub fn preload_video2<H: Host>(host: &H, source: H::Source, frame: Option<&Frame2>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_preload_video2 safe core (#5760)")
+    wrap(host, source, frame, from_frame2, H::preload, H::preload);
 }
 
-/// `obs_source_set_video_frame(source, frame)`.
+/// `obs_source_set_video_frame(source, frame)`: a NULL frame goes to the
+/// preload worker.
 pub fn set_video_frame<H: Host>(host: &H, source: H::Source, frame: Option<&Frame>) {
-    let _ = (host, source, frame, frame_copy::full_range);
-    todo!("obs_source_set_video_frame safe core (#5760)")
+    wrap(host, source, frame, from_frame, H::preload, H::set);
 }
 
-/// `obs_source_set_video_frame2(source, frame)`.
+/// `obs_source_set_video_frame2(source, frame)`: a NULL frame goes to the
+/// preload worker.
 pub fn set_video_frame2<H: Host>(host: &H, source: H::Source, frame: Option<&Frame2>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_set_video_frame2 safe core (#5760)")
+    wrap(host, source, frame, from_frame2, H::preload, H::set);
 }
