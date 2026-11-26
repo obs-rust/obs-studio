@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
-if(NOT ENABLE_VST3 OR NOT OBS_LIBOBS_BACKEND STREQUAL HYBRID)
+if(NOT ENABLE_VST3)
+  return()
+endif()
+
+if(NOT OBS_LIBOBS_BACKEND STREQUAL HYBRID)
   return()
 endif()
 
