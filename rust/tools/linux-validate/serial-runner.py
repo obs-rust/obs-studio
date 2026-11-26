@@ -168,25 +168,63 @@ def scheduled_tests(registry: dict, path: Path) -> tuple[dict[str, dict], dict[s
     return tests, durations
 
 
+def schedule_lanes(durations: dict[str, float], count: int) -> list[list[str]]:
+    """Balance the short isolation list onto CPU pairs."""
+    ordered = sorted(durations, key=lambda name: (-durations[name], name))
+    lanes: list[list[str]] = [[] for _ in range(count)]
+    costs = [0.0] * count
+    for name in ordered:
+        index = min(range(count), key=costs.__getitem__)
+        costs[index] += durations[name]
+        lanes[index].append(name)
+
+    # For the Tier 2 list, search below the greedy bound. Keep the cheap
+    # assignment for larger custom lists where exact partitioning can grow.
+    if len(ordered) > 12:
+        return lanes
+    best = lanes
+    bound = max(costs)
+    lanes = [[] for _ in range(count)]
+    costs = [0.0] * count
+
+    def search(index: int) -> None:
+        nonlocal best, bound
+        if index == len(ordered):
+            bound = max(costs)
+            best = [lane.copy() for lane in lanes]
+            return
+        name = ordered[index]
+        duration = durations[name]
+        seen: set[float] = set()
+        for slot, cost in enumerate(costs):
+            if cost in seen or cost + duration >= bound:
+                continue
+            seen.add(cost)
+            costs[slot] += duration
+            lanes[slot].append(name)
+            search(index + 1)
+            lanes[slot].pop()
+            costs[slot] = cost
+
+    search(0)
+    return best
+
+
 def run_schedule(registry: dict, args: argparse.Namespace) -> int:
     tests, durations = scheduled_tests(registry, args.schedule)
     cpus = parse_cpus(args.cpus)
     if len(cpus) < 2 or len(cpus) % 2 or not set(cpus) <= os.sched_getaffinity(0):
         raise ValueError("scheduled tests require complete CPU pairs within this process's affinity")
     pairs = cpu_pairs(cpus, len(cpus) // 2)
-    lanes: list[list[dict]] = [[] for _ in pairs]
-    lane_costs = [0.0] * len(lanes)
-    for name in sorted(durations, key=lambda name: (-durations[name], name)):
-        index = min(range(len(lanes)), key=lane_costs.__getitem__)
-        lane_costs[index] += durations[name]
-        lanes[index].append(tests[name])
+    lanes = schedule_lanes(durations, len(pairs))
     log_dir = Path(args.log_dir) if args.log_dir else None
     if log_dir:
         log_dir.mkdir(parents=True, exist_ok=True)
 
-    def run_lane(pair: list[int], lane: list[dict]) -> int:
+    def run_lane(pair: list[int], lane: list[str]) -> int:
         failures = 0
-        for test in lane:
+        for name in lane:
+            test = tests[name]
             props = properties(test)
             failures += collect(
                 [start_test(test, pair, args, log_dir)],

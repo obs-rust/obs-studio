@@ -88,6 +88,16 @@ class AffinityTest(unittest.TestCase):
 
 
 class SerialRunTest(unittest.TestCase):
+    def test_tier2_isolation_reaches_the_measured_four_pair_bound(self):
+        spec = importlib.util.spec_from_file_location("tier2_serial_runner", RUNNER)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        plan = json.loads((TOOLS / "isolation-schedule.json").read_text(encoding="utf-8"))
+        lanes = module.schedule_lanes(plan, 4)
+        self.assertCountEqual([name for lane in lanes for name in lane], plan)
+        self.assertEqual(max(sum(plan[name] for name in lane) for lane in lanes), 100)
+
     def probe(self, tmp: Path) -> list[str]:
         """A command that records its CPUs, its start and its end, then sleeps 1 s."""
         script = tmp / "probe.py"

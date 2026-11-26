@@ -24,7 +24,7 @@ class RuntimeTest(unittest.TestCase):
             docker, environment = runtime.cpu_plan("all", "0-15", "8-15")
             self.assertEqual(docker, ["--cpuset-cpus", "0-15", "--cpus", "16"])
             self.assertIn("OBS_TIER2_SERIAL_CPUS=8-15", environment)
-            self.assertIn("OBS_CTEST_JOBS=8", environment)
+            self.assertIn("OBS_CTEST_JOBS=12", environment)
             self.assertTrue(any(value.endswith("/isolation-schedule.json") for value in environment))
             for part, isolated in (("suite", "8-15"), ("all", "8-14"), ("all", "14-17")):
                 with self.subTest(part=part, isolated=isolated), self.assertRaises(ValueError):

@@ -191,11 +191,14 @@ def cpu_plan(part: str, reservation: str, isolation: str) -> tuple[list[str], li
     if (not isolated < cpus or len(isolated) < 2 or len(isolated) % 2
             or not cpus <= os.sched_getaffinity(0) or len(suite) < 2):
         raise ValueError('CPU reservation needs complete isolated pairs and separate suite CPUs within runner affinity')
+    # On the measured eight-core suite, twelve workers hide I/O and timer
+    # waits. The kernel still restricts those workers to the same CPU set.
+    workers = 12 if len(suite) == 8 else len(suite)
     return ['--cpuset-cpus', serial_runner.format_cpus(sorted(cpus)), '--cpus', str(len(cpus))], [
         'OBS_CTEST_PART=', 'OBS_CTEST_SHARD=', 'OBS_CTEST_SERIAL_SHARD=',
         f'OBS_TIER2_SERIAL_CPUS={serial_runner.format_cpus(sorted(isolated))}',
         f'OBS_TIER2_ISOLATED_SCHEDULE={SOURCE}/rust/tools/linux-validate/isolation-schedule.json',
-        f'OBS_CTEST_JOBS={len(suite)}',
+        f'OBS_CTEST_JOBS={workers}',
     ]
 
 
