@@ -302,3 +302,28 @@ pub fn raise(host: &mut impl RealtimeHost, previous: Previous) -> Outcome {
         reasons,
     }
 }
+
+/// The time-constraint policy of the macOS audio thread (#5771), in
+/// nanoseconds: the period is one audio tick, the thread asks for a quarter
+/// of it as computation, to be done within half of it. The values the
+/// measurement in #5458 used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TimeConstraint {
+    pub period_ns: u64,
+    pub computation_ns: u64,
+    pub constraint_ns: u64,
+}
+
+/// The time-constraint values for an audio output at `samples_per_sec`.
+pub fn time_constraint(samples_per_sec: u32) -> TimeConstraint {
+    let _ = samples_per_sec;
+    todo!("#5771")
+}
+
+/// Nanoseconds to Mach absolute time units for the timebase `numer/denom`
+/// (`mach_timebase_info`), truncated and saturated at `u32::MAX`, the width
+/// of the policy fields.
+pub fn ns_to_mach_abs(ns: u64, numer: u32, denom: u32) -> u32 {
+    let _ = (ns, numer, denom);
+    todo!("#5771")
+}

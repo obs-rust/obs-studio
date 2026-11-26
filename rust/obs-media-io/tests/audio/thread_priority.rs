@@ -5,7 +5,7 @@
 
 use obs_media_io::thread_priority::{
     AUDIO_RT_PRIORITY, HIGH_PRIORITY_NICE, Limits, Method, Outcome, Previous, RealtimeHost,
-    Service, raise,
+    Service, TimeConstraint, ns_to_mach_abs, raise, time_constraint,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -362,5 +362,42 @@ fn a_service_that_allows_nothing_is_not_asked() {
             .any(|r| r.contains("no higher priority allowed")),
         "{:?}",
         outcome.reasons
+    );
+}
+
+/// #5771: one audio tick is the period; a quarter of it is the computation,
+/// half of it the constraint (the values measured in #5458).
+#[test]
+fn macos_time_constraint_follows_the_audio_tick() {
+    assert_eq!(
+        time_constraint(48_000),
+        TimeConstraint {
+            period_ns: 21_333_333,
+            computation_ns: 5_333_333,
+            constraint_ns: 10_666_666,
+        }
+    );
+    assert_eq!(
+        time_constraint(44_100),
+        TimeConstraint {
+            period_ns: 23_219_954,
+            computation_ns: 5_804_988,
+            constraint_ns: 11_609_977,
+        }
+    );
+}
+
+/// Apple silicon counts 24 MHz ticks (timebase 125/3), Intel counts
+/// nanoseconds (1/1); the policy fields are 32 bits.
+#[test]
+fn nanoseconds_convert_to_mach_absolute_time() {
+    assert_eq!(ns_to_mach_abs(21_333_333, 125, 3), 511_999);
+    assert_eq!(ns_to_mach_abs(21_333_333, 1, 1), 21_333_333);
+    assert_eq!(ns_to_mach_abs(0, 125, 3), 0);
+    assert_eq!(ns_to_mach_abs(u64::MAX, 1, 1), u32::MAX);
+    assert_eq!(
+        ns_to_mach_abs(1_000, 0, 3),
+        u32::MAX,
+        "a zero numerator must not divide by zero"
     );
 }
