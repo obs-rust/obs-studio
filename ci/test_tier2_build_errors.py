@@ -85,7 +85,15 @@ class BuildErrorsTest(unittest.TestCase):
         bin_dir = Path(directory, 'stub-bin')
         bin_dir.mkdir()
         stub = bin_dir / 'zccache'
-        stub.write_text('#!/usr/bin/env bash\necho "daemon diagnostic: $*"\nexit ' + status + '\n')
+        stub.write_text(
+            '#!/usr/bin/env bash\necho "daemon diagnostic: $*"\n'
+            f'ready={shlex.quote(str(bin_dir / "daemon-ready"))}\n'
+            'case "$1" in\n'
+            '  stop) echo stopped > "$ready" ;;\n'
+            '  start) echo started > "$ready" ;;\n'
+            '  status) grep -qx started "$ready" || exit 1 ;;\n'
+            'esac\nexit ' + status + '\n'
+        )
         stub.chmod(0o755)
         return {'PATH': f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
 
