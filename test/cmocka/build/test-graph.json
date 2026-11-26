@@ -18963,6 +18963,21 @@
         }
       ]
     },
+    "test_source_show_preloaded_video": {
+      "sources": [
+        "test/cmocka/test_source_show_preloaded_video.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_showing_active": {
       "sources": [
         "test/cmocka/test_source_showing_active.c"
@@ -30295,6 +30310,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_show_preloaded_video": {
+      "target": "test_source_show_preloaded_video",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_showing_active": {
       "target": "test_source_showing_active",
