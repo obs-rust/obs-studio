@@ -92,6 +92,8 @@ mod frame_init;
 mod frame_init_parity;
 mod frame_wrappers;
 mod frame_wrappers_parity;
+mod get_size;
+mod get_size_parity;
 mod get_weak;
 mod get_weak_parity;
 mod handler_getters;
