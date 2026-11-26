@@ -2461,21 +2461,6 @@ _Static_assert(OBS_SOURCE_AUDIO_INPUT_LINEAR == OBS_BALANCE_TYPE_LINEAR, "OBS_BA
 _Static_assert(sizeof(enum audio_format) == sizeof(int), "enum audio_format is passed as int");
 _Static_assert(sizeof(enum speaker_layout) == sizeof(int), "enum speaker_layout is passed as int");
 
-void remove_async_frame(obs_source_t *source, struct obs_source_frame *frame)
-{
-	if (frame)
-		frame->prev_frame = false;
-
-	for (size_t i = 0; i < source->async_cache.num; i++) {
-		struct async_frame *f = &source->async_cache.array[i];
-
-		if (f->frame == frame) {
-			f->used = false;
-			break;
-		}
-	}
-}
-
 /* obs-source-async-pacing.c decides with the same threshold */
 _Static_assert(OBS_SOURCE_ASYNC_PACING_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
 

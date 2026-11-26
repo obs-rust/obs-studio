@@ -51,12 +51,33 @@ pub trait Host {
 
 /// `obs_source_get_frame(source)`.
 pub fn get_frame<H: Host>(host: &H, source: Option<H::Source>) -> Option<H::Frame> {
-    let _ = (host, source);
-    todo!("obs_source_get_frame safe core (#5757)")
+    let Some(source) = source else {
+        host.null_source(c"obs_source_get_frame");
+        return None;
+    };
+    host.lock(source);
+    let frame = host.take_current(source);
+    if let Some(frame) = frame {
+        host.addref(frame);
+    }
+    host.unlock(source);
+    frame
 }
 
 /// `obs_source_release_frame(source, frame)`.
 pub fn release_frame<H: Host>(host: &H, source: Option<H::Source>, frame: Option<H::Frame>) {
-    let _ = (host, source, frame);
-    todo!("obs_source_release_frame safe core (#5757)")
+    let Some(frame) = frame else {
+        return;
+    };
+    let Some(source) = source else {
+        host.destroy(frame);
+        return;
+    };
+    host.lock(source);
+    if host.release_ref(frame) {
+        host.destroy(frame);
+    } else {
+        host.return_to_cache(source, frame);
+    }
+    host.unlock(source);
 }

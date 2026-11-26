@@ -93,6 +93,7 @@ mod frame_init_parity;
 mod frame_wrappers;
 mod frame_wrappers_parity;
 mod get_release_frame;
+mod get_release_frame_parity;
 mod get_weak;
 mod get_weak_parity;
 mod handler_getters;

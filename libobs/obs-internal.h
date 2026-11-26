@@ -1899,6 +1899,16 @@ extern bool obs_source_frame_wrappers_destroying(obs_source_t *source);
 extern void obs_source_frame_wrappers_output(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_frame_wrappers_preload(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_frame_wrappers_set(obs_source_t *source, const struct obs_source_frame *frame);
+/* Async frame adapters for the Rust obs_source_get_frame() and
+ * obs_source_release_frame() (obs-source-get-release-frame-fields.c.h).
+ * Non-NULL only. */
+extern void obs_source_async_frame_lock(obs_source_t *source);
+extern void obs_source_async_frame_unlock(obs_source_t *source);
+extern struct obs_source_frame *obs_source_async_frame_take_current(obs_source_t *source);
+extern void obs_source_async_frame_addref(struct obs_source_frame *frame);
+extern bool obs_source_async_frame_release_ref(struct obs_source_frame *frame);
+extern void obs_source_async_frame_destroy(struct obs_source_frame *frame);
+extern void obs_source_async_frame_return(obs_source_t *source, struct obs_source_frame *frame);
 
 extern void set_deinterlace_texture_size(obs_source_t *source);
 extern void deinterlace_process_last_frame(obs_source_t *source, uint64_t sys_time);

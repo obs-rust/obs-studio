@@ -5,8 +5,12 @@
  * are oracle/source_deinterlace_getters.c's), and do-nothing definitions
  * of the libobs calls the deinterlace shims
  * (rust/obs-source-seam/src/ffi/source_deinterlace.rs) name under libobs's
- * own names: the frame cache, the async texture upload, the effect load
- * and the framebuffer sRGB calls. The SDR white level is obs-core's own
+ * own names: the async texture upload, the effect load and the
+ * framebuffer sRGB calls. The frame release (obs_source_release_frame()) is
+ * obs-source's own Rust export (rust/obs-source/src/ffi/
+ * source_get_release_frame.rs), over the production adapters and
+ * remove_async_frame() that oracle/source_get_release_frame.c compiles
+ * (#5757). The SDR white level is obs-core's own
  * Rust export (rust/obs-core/src/ffi/video_level_queries.rs), which reads
  * oracle/video_level_queries.c's core: NULL outside its parity test, so
  * the default 300. The deinterlace texture size is obs-source's own Rust
@@ -34,12 +38,6 @@
 
 struct obs_core *oracle_deinterlace_obs;
 
-void remove_async_frame(obs_source_t *source, struct obs_source_frame *frame)
-{
-	UNUSED_PARAMETER(source);
-	UNUSED_PARAMETER(frame);
-}
-
 bool set_async_texture_size(struct obs_source *source, const struct obs_source_frame *frame)
 {
 	UNUSED_PARAMETER(source);
@@ -55,12 +53,6 @@ bool update_async_textures(struct obs_source *source, const struct obs_source_fr
 	UNUSED_PARAMETER(tex);
 	UNUSED_PARAMETER(texrender);
 	return false;
-}
-
-void obs_source_release_frame(obs_source_t *source, struct obs_source_frame *frame)
-{
-	UNUSED_PARAMETER(source);
-	UNUSED_PARAMETER(frame);
 }
 
 gs_effect_t *obs_load_effect(gs_effect_t **effect, const char *file)
