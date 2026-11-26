@@ -1781,6 +1781,25 @@ static inline bool destroying(const struct obs_source *source)
 	return os_atomic_load_long(&source->destroying);
 }
 
+/* Adapters for the Rust obs_source_show_preloaded_video()
+ * (obs-source-show-preloaded-video-fields.c.h). Non-NULL only. */
+extern bool obs_source_preloaded_video_has_frame(const obs_source_t *source);
+extern void obs_source_preloaded_video_enter_graphics(void);
+extern void obs_source_preloaded_video_set_texture_size(obs_source_t *source);
+extern void obs_source_preloaded_video_update_textures(obs_source_t *source);
+extern void obs_source_preloaded_video_mark_fresh(obs_source_t *source);
+extern void obs_source_preloaded_video_mark_active(obs_source_t *source);
+extern void obs_source_preloaded_video_leave_graphics(void);
+extern void obs_source_preloaded_video_lock_async(obs_source_t *source);
+extern uint64_t obs_source_preloaded_video_last_frame_ts(const obs_source_t *source);
+extern void obs_source_preloaded_video_unlock_async(obs_source_t *source);
+extern void obs_source_preloaded_video_lock_audio(obs_source_t *source);
+extern bool obs_source_preloaded_video_monitor_only(const obs_source_t *source);
+extern uint64_t obs_source_preloaded_video_now(void);
+extern void obs_source_preloaded_video_reset_timing(obs_source_t *source, uint64_t timestamp, uint64_t os_time);
+extern void obs_source_preloaded_video_reset_data(obs_source_t *source, uint64_t os_time);
+extern void obs_source_preloaded_video_unlock_audio(obs_source_t *source);
+
 /* obs-source.c, for obs_source_output_audio() */
 extern struct obs_audio_data *filter_async_audio(obs_source_t *source, struct obs_audio_data *in);
 

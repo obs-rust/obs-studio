@@ -147,6 +147,8 @@ mod settings_getter;
 mod settings_getter_parity;
 mod show_active_counters;
 mod show_active_counters_parity;
+mod show_preloaded_video;
+mod show_preloaded_video_parity;
 mod showing_active;
 mod showing_active_parity;
 mod size_route;
