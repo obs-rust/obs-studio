@@ -4,7 +4,9 @@
 #include "plugins/obs-vst3/VST3EditorWindow.h"
 #include "plugins/obs-vst3/VST3HostApp.h"
 #include "plugins/obs-vst3/VST3Plugin.h"
+#ifndef OBS_VST3_RUST_HOST
 #include "plugins/obs-vst3/VST3Scanner.h"
+#endif
 #include "plugins/obs-vst3/obs-vst3.h"
 #include "plugins/obs-vst3/vst3-platform.h"
 #include "plugins/obs-vst3/vst3-rust-host.h"

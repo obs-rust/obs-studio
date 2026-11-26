@@ -57,16 +57,12 @@ pub fn build(
     platform::configure_vst3(&mut sdk_library, sdk_include);
     let sdk_archive = build.static_library(&sdk_library)?;
 
-    let discovery = source.join("build/obs-vst3.discovery+.hpp.cpp");
-    let discovery_host = source.join("build/obs-vst3.discovery.linux+.hpp.cpp");
     let mut library = module(build, &root, core, "obs-vst3")?;
     library.sources = vec![
         source.join("build/obs-vst3.core+.hpp.cpp"),
         source.join("build/obs-vst3.editor+.hpp.cpp"),
         source.join("build/obs-vst3.editor.linux+.hpp.cpp"),
         source.join("build/obs-vst3.linux+.hpp.cpp"),
-        discovery,
-        discovery_host,
     ];
     library.include_dirs.push(root.join("frontend/api"));
     let host = host

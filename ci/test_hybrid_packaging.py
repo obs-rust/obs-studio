@@ -18,6 +18,62 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class HybridPackagingTest(unittest.TestCase):
+
+    def test_vst3_is_only_available_on_the_hybrid_backend(self):
+        plugins = ROOT / "plugins/CMakeLists.txt"
+        with tempfile.TemporaryDirectory(prefix="obs-vst3-backend-") as temp:
+            root = Path(temp)
+            for submodule in ("obs-browser", "obs-websocket"):
+                (root / submodule).mkdir()
+                (root / submodule / "CMakeLists.txt").touch()
+            (root / "CMakeLists.txt").write_text(
+                f"""
+cmake_minimum_required(VERSION 3.28)
+project(vst3_selection NONE)
+add_custom_target(libobs)
+set(OS_LINUX ON)
+set(ENABLE_FRONTEND ON)
+function(add_core_module name)
+  set_property(GLOBAL APPEND PROPERTY selected_modules "${{name}}")
+endfunction()
+function(_obs_architecture_matches arch result)
+  if(arch STREQUAL "x86_64")
+    set("${{result}}" TRUE PARENT_SCOPE)
+  else()
+    set("${{result}}" FALSE PARENT_SCOPE)
+  endif()
+endfunction()
+function(obs_msvc_exempt_c4201)
+endfunction()
+function(obs_msvc_exempt_c4505)
+endfunction()
+function(set_obs_core_modules)
+  get_property(modules GLOBAL PROPERTY selected_modules)
+  file(WRITE "${{CMAKE_BINARY_DIR}}/modules.txt" "${{modules}}")
+endfunction()
+include("{plugins.as_posix()}")
+"""
+            )
+            for backend, enabled, expected in (
+                ("C", "OFF", False),
+                ("C", "ON", False),
+                ("HYBRID", "OFF", False),
+                ("HYBRID", "ON", True),
+            ):
+                with self.subTest(backend=backend, enabled=enabled):
+                    build = root / f"{backend}-{enabled}"
+                    result = subprocess.run(
+                        [
+                            "cmake", "-S", str(root), "-B", str(build),
+                            f"-DOBS_LIBOBS_BACKEND={backend}", f"-DENABLE_VST3={enabled}",
+                        ],
+                        check=False, capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    selected = (build / "modules.txt").read_text().split(";")
+                    self.assertIn("obs-vst", selected)
+                    self.assertEqual("obs-vst3" in selected, expected)
+
     def load_flatpak_cache_probe(self):
         spec = importlib.util.spec_from_file_location('flatpak_cache_probe', ROOT / 'ci/flatpak_cache_probe.py')
         module = importlib.util.module_from_spec(spec)

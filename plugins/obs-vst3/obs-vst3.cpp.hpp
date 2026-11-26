@@ -89,9 +89,10 @@ void unloadHost()
 	gHostApp.reset();
 }
 // -------------------- initial scanning ------------------
-VST3Scanner *list;
 #ifdef OBS_VST3_RUST_HOST
 static AtomicSharedPtr<CatalogState> rustCatalog;
+#else
+VST3Scanner *list;
 #endif
 std::atomic<bool> vst3ScanDone;
 static std::thread vst3ScanThread;
@@ -129,12 +130,22 @@ static bool vst3JSONLoad()
 		return false;
 	}
 
+#ifdef OBS_VST3_RUST_HOST
+	auto *builder = vst3_filter_catalog_begin();
+#else
 	list->pluginList.clear();
 	list->classCount.clear();
+#endif
 
 	size_t jsonPluginNumber = obs_data_array_count(jsonPluginList);
 	for (size_t i = 0; i < jsonPluginNumber; ++i) {
 		obs_data_t *obj = obs_data_array_item(jsonPluginList, i);
+#ifdef OBS_VST3_RUST_HOST
+		vst3_filter_catalog_add(builder, obs_data_get_string(obj, "id"), obs_data_get_string(obj, "path"),
+					obs_data_get_string(obj, "name"), obs_data_get_string(obj, "pluginName"),
+					obs_data_get_bool(obj, "isFX"));
+		obs_data_release(obj);
+#else
 		VST3ClassInfo classInfo;
 
 		classInfo.name = obs_data_get_string(obj, "name");
@@ -161,16 +172,12 @@ static bool vst3JSONLoad()
 
 		++list->classCount[classInfo.path];
 		list->pluginList.push_back(std::move(classInfo));
+#endif
 	}
 	obs_data_array_release(jsonPluginList);
 	obs_data_release(root);
 
 #ifdef OBS_VST3_RUST_HOST
-	auto *builder = vst3_filter_catalog_begin();
-	for (const auto &plugin : list->pluginList) {
-		vst3_filter_catalog_add(builder, plugin.id.c_str(), plugin.path.c_str(), plugin.name.c_str(),
-					plugin.pluginName.c_str(), plugin.isFX);
-	}
 	std::shared_ptr<CatalogState> catalog(vst3_filter_catalog_finish(builder), vst3_filter_catalog_destroy);
 	std::atomic_store(&rustCatalog, catalog);
 #else
@@ -217,8 +224,13 @@ static void getScanResult(obs_source_t *src)
 
 	bool ready = false;
 	if (noVst3) {
+#ifdef OBS_VST3_RUST_HOST
+		std::atomic_store(&rustCatalog, std::shared_ptr<CatalogState>{});
+		blog(LOG_INFO, "OBS-VST3: install VST3s before using this plugin.");
+#else
 		list->pluginList.clear();
 		list->classCount.clear();
+#endif
 		ready = true;
 	} else if (scanCompleted) {
 		ready = vst3JSONLoad();
@@ -229,12 +241,19 @@ static void getScanResult(obs_source_t *src)
 
 	if (ready) {
 		blog(LOG_INFO, "[VST3 Scanner] Available plugins:");
+#ifdef OBS_VST3_RUST_HOST
+		const auto catalog = std::atomic_load(&rustCatalog);
+		vst3_filter_catalog_choices(catalog.get(), nullptr, [](void *, const char *name, const char *) {
+			blog(LOG_INFO, "[VST3 Scanner]   %s", name);
+		});
+#else
 		for (const auto &plugin : list->pluginList) {
 			if (!plugin.isFX) {
 				continue;
 			}
 			blog(LOG_INFO, "[VST3 Scanner]   %s", plugin.name.c_str());
 		}
+#endif
 	}
 
 	if (!scanInfo.empty()) {
@@ -254,12 +273,14 @@ static void getScanResult(obs_source_t *src)
 bool retrieveVst3List(obs_source_t *src)
 {
 	vst3ScanDone.store(false, std::memory_order_relaxed);
+#ifndef OBS_VST3_RUST_HOST
 	list = new VST3Scanner();
 	if (!list->hasVST3()) {
 		vst3ScanDone.store(true, std::memory_order_release);
 		blog(LOG_INFO, "OBS-VST3: install VST3s before using this plugin.");
 		return false;
 	}
+#endif
 	char *path = obs_module_config_path(nullptr);
 	os_mkdirs(path);
 	bfree(path);
@@ -284,10 +305,11 @@ void freeVst3List()
 	if (vst3ScanThread.joinable()) {
 		vst3ScanThread.join();
 	}
-	delete list;
-	list = nullptr;
 #ifdef OBS_VST3_RUST_HOST
 	std::atomic_store(&rustCatalog, std::shared_ptr<CatalogState>{});
+#else
+	delete list;
+	list = nullptr;
 #endif
 }
 

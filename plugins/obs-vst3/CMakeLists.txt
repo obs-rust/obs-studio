@@ -4,17 +4,24 @@ if(NOT ENABLE_VST3)
   return()
 endif()
 
+if(NOT OBS_LIBOBS_BACKEND STREQUAL HYBRID)
+  return()
+endif()
+
 find_package(Qt6 REQUIRED Widgets)
 include(cmake/sdk.cmake)
 
-add_library(
-  obs-vst3-discovery
-  STATIC
-  build/obs-vst3.discovery+.hpp.cpp
-  "build/obs-vst3.discovery.${_vst3_host}+.hpp.cpp"
-)
-target_link_libraries(obs-vst3-discovery PUBLIC OBS::libobs OBS::vst3-sdk)
-set_target_properties(obs-vst3-discovery PROPERTIES FOLDER plugins/obs-vst3 POSITION_INDEPENDENT_CODE ON)
+if(OBS_BUILD_C_REFERENCE OR ENABLE_UNIT_TESTS)
+  add_library(
+    obs-vst3-discovery
+    STATIC
+    EXCLUDE_FROM_ALL
+    build/obs-vst3.discovery+.hpp.cpp
+    "build/obs-vst3.discovery.${_vst3_host}+.hpp.cpp"
+  )
+  target_link_libraries(obs-vst3-discovery PUBLIC OBS::libobs OBS::vst3-sdk)
+  set_target_properties(obs-vst3-discovery PROPERTIES FOLDER plugins/obs-vst3 POSITION_INDEPENDENT_CODE ON)
+endif()
 
 add_subdirectory(vst3-scan)
 
@@ -39,46 +46,45 @@ target_compile_options(obs-vst3 PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJCXX,AppleCla
 if(OS_MACOS)
   set_target_properties(obs-vst3 PROPERTIES XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES)
 endif()
-target_link_libraries(obs-vst3 PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
-if(OBS_LIBOBS_BACKEND STREQUAL HYBRID)
-  corrosion_import_crate(
-    MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
-    CRATES obs-vst3-native
-    CRATE_TYPES staticlib
-    PROFILE release
-  )
-  obs_serialize_cargo_build(obs-vst3)
-  target_compile_definitions(obs-vst3 PRIVATE OBS_VST3_RUST_HOST)
-  target_link_libraries(
-    obs-vst3
-    PRIVATE obs_vst3-static "$<$<PLATFORM_ID:Darwin>:$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>>"
-  )
-  if(OS_LINUX)
-    target_link_options(obs-vst3 PRIVATE "LINKER:--exclude-libs,ALL")
-    if(ENABLE_UNIT_TESTS)
-      add_library(obs-vst3-c-reference MODULE EXCLUDE_FROM_ALL ${_obs_vst3_host_sources})
-      target_link_libraries(obs-vst3-c-reference PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
-      set_target_properties(obs-vst3-c-reference PROPERTIES PREFIX "" AUTOMOC ON)
-      if(OBS_VST3_SCANNER_NAME)
-        target_compile_definitions(obs-vst3-c-reference PRIVATE OBS_VST3_SCANNER_NAME="${OBS_VST3_SCANNER_NAME}")
-      endif()
-
-      # Link the same host source set into test executables so the probe can
-      # call the private C++ adapter without exporting it from the modules.
-      foreach(variant IN ITEMS cpp rust)
-        set(probe "test-vst3-variable-${variant}")
-        add_executable(
-          "${probe}"
-          EXCLUDE_FROM_ALL
-          ${_obs_vst3_host_sources}
-          "${CMAKE_CURRENT_SOURCE_DIR}/../../test/cmocka/vst3-test-variable.cpp"
-        )
-        target_link_libraries("${probe}" PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
-        set_target_properties("${probe}" PROPERTIES AUTOMOC ON)
-      endforeach()
-      target_compile_definitions(test-vst3-variable-rust PRIVATE OBS_VST3_RUST_HOST)
-      target_link_libraries(test-vst3-variable-rust PRIVATE obs_vst3-static)
+target_link_libraries(obs-vst3 PRIVATE OBS::frontend-api OBS::libobs OBS::vst3-sdk Qt::Widgets)
+corrosion_import_crate(
+  MANIFEST_PATH "${CMAKE_SOURCE_DIR}/Cargo.toml"
+  CRATES obs-vst3-native
+  CRATE_TYPES staticlib
+  PROFILE release
+)
+obs_serialize_cargo_build(obs-vst3)
+target_compile_definitions(obs-vst3 PRIVATE OBS_VST3_RUST_HOST)
+target_link_libraries(
+  obs-vst3
+  PRIVATE obs_vst3-static "$<$<PLATFORM_ID:Darwin>:$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>>"
+)
+if(OS_LINUX)
+  target_link_options(obs-vst3 PRIVATE "LINKER:--exclude-libs,ALL")
+  if(ENABLE_UNIT_TESTS)
+    add_library(obs-vst3-c-reference MODULE EXCLUDE_FROM_ALL ${_obs_vst3_host_sources})
+    target_link_libraries(obs-vst3-c-reference PRIVATE OBS::frontend-api obs-vst3-discovery Qt::Widgets)
+    set_target_properties(obs-vst3-c-reference PROPERTIES PREFIX "" AUTOMOC ON)
+    if(OBS_VST3_SCANNER_NAME)
+      target_compile_definitions(obs-vst3-c-reference PRIVATE OBS_VST3_SCANNER_NAME="${OBS_VST3_SCANNER_NAME}")
     endif()
+
+    # Link the same host source set into test executables so the probe can
+    # call the private C++ adapter without exporting it from the modules.
+    foreach(variant IN ITEMS cpp rust)
+      set(probe "test-vst3-variable-${variant}")
+      add_executable(
+        "${probe}"
+        EXCLUDE_FROM_ALL
+        ${_obs_vst3_host_sources}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../test/cmocka/vst3-test-variable.cpp"
+      )
+      target_link_libraries("${probe}" PRIVATE OBS::frontend-api OBS::libobs OBS::vst3-sdk Qt::Widgets)
+      set_target_properties("${probe}" PROPERTIES AUTOMOC ON)
+    endforeach()
+    target_compile_definitions(test-vst3-variable-rust PRIVATE OBS_VST3_RUST_HOST)
+    target_link_libraries(test-vst3-variable-cpp PRIVATE obs-vst3-discovery)
+    target_link_libraries(test-vst3-variable-rust PRIVATE obs_vst3-static)
   endif()
 endif()
 if(OBS_VST3_SCANNER_NAME)
