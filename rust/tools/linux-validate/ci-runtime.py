@@ -488,16 +488,29 @@ def execute(args: argparse.Namespace) -> None:
         command('docker', 'stop', '--timeout', '1', ident)
 
 
+def supports_cpu_plan(socket_path: Path) -> bool:
+    try:
+        return socket_path.with_name('cpu-plan-v1').read_text().strip() == str(socket_path.stat().st_ino)
+    except OSError:
+        return False
+
+
 def execute_shared(args: argparse.Namespace) -> int:
     """Run under a host lease, or return EX_TEMPFAIL before starting tests."""
     token = os.environ.pop('OBS_TIER2_ARTIFACT_TOKEN', '')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lease, tempfile.TemporaryDirectory() as temp:
         try:
+            address = os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', '')
+            wants_cpu = (getattr(args, 'part', '') == 'all' and not getattr(args, 'reserved_cpus', '')
+                         and not getattr(args, 'isolated_cpus', '') and address
+                         and supports_cpu_plan(Path(address)))
             lease.settimeout(5)
-            lease.connect(os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', ''))
-            # A cold fill includes the GitHub transfer and image materialization.
-            lease.settimeout(600)
+            lease.connect(address)
+            # A cold fill can also be followed by a bounded same-run CPU wait.
+            lease.settimeout(780 if wants_cpu else 600)
             request = dict(run=os.environ.get('GITHUB_RUN_ID', ''), head=os.environ.get('GITHUB_SHA', ''), token=token)
+            if wants_cpu:
+                request['cpu'] = True
             lease.sendall((json.dumps(request) + '\n').encode())
             with lease.makefile('rb') as response:
                 reply = json.loads(response.readline(2 << 20))

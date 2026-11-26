@@ -19,6 +19,17 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_cpu_protocol_marker_is_bound_to_the_current_socket(self):
+        with tempfile.TemporaryDirectory() as directory, runtime.socket.socket(runtime.socket.AF_UNIX) as listener:
+            socket_path = Path(directory) / "lease.sock"
+            listener.bind(str(socket_path))
+            marker = socket_path.with_name("cpu-plan-v1")
+            self.assertFalse(runtime.supports_cpu_plan(socket_path))
+            marker.write_text(str(socket_path.stat().st_ino + 1))
+            self.assertFalse(runtime.supports_cpu_plan(socket_path))
+            marker.write_text(str(socket_path.stat().st_ino))
+            self.assertTrue(runtime.supports_cpu_plan(socket_path))
+
     def test_cpu_reservation_partitions_the_complete_suite(self):
         with patch.object(runtime.os, "sched_getaffinity", return_value=set(range(16))):
             docker, environment = runtime.cpu_plan("all", "0-15", "8-15")
