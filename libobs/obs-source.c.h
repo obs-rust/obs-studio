@@ -2415,24 +2415,6 @@ void obs_source_output_video2(obs_source_t *source, const struct obs_source_fram
 	obs_source_output_video_internal(source, &new_frame);
 }
 
-void obs_source_output_cea708(obs_source_t *source, const struct obs_source_cea_708 *captions)
-{
-	if (destroying(source))
-		return;
-	if (!captions) {
-		return;
-	}
-
-	pthread_mutex_lock(&source->caption_cb_mutex);
-
-	for (size_t i = source->caption_cb_list.num; i > 0; i--) {
-		struct caption_cb_info info = source->caption_cb_list.array[i - 1];
-		info.callback(info.param, source, captions);
-	}
-
-	pthread_mutex_unlock(&source->caption_cb_mutex);
-}
-
 static inline struct obs_source_frame_copy_shape frame_copy_shape(const struct obs_source_frame *frame)
 {
 	const struct obs_source_frame_copy_shape shape = {
