@@ -1,5 +1,5 @@
 //! Plain async flag reads and the unbuffered store, preserving NULL defaults
-//! and diagnostics.
+//! and diagnostics, and the last rendered async timestamp read (#5766).
 use core::ffi::CStr;
 
 pub fn unbuffered(value: Option<bool>, log: impl FnOnce(&'static CStr, &'static CStr)) -> bool {
@@ -37,6 +37,5 @@ pub fn set_unbuffered(
 /// `obs_source_get_last_async_ts()` (#5766): the timestamp of the last async
 /// frame rendered, as stored. The C has no NULL check, so neither does this.
 pub fn last_async_ts(value: &u64) -> u64 {
-    let _ = value;
-    todo!("#5766")
+    *value
 }

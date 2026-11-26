@@ -1,5 +1,6 @@
-/* Original getters, unbuffered setter (#5595) and adapter over the real
- * private source layout. No intended behavior differences or exclusions. */
+/* Original getters, unbuffered setter (#5595), last async timestamp getter
+ * (#5766) and adapters over the real private source layout. No intended
+ * behavior differences or exclusions. */
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -122,4 +123,33 @@ bool oracle_source_async_unbuffered_setter_null_log(flag_setter set_unbuffered, 
 	base_set_log_handler(old_handler, old_param);
 	return log.count == 1 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_source_set_async_unbuffered: Null 'source' parameter") == 0;
+}
+
+/* obs_source_get_last_async_ts() (#5766): the original getter, the offset of
+ * the field it reads and a noise-filled fixture holding a given timestamp. */
+uint64_t oracle_obs_source_get_last_async_ts(const obs_source_t *source);
+#define obs_source_get_last_async_ts oracle_obs_source_get_last_async_ts
+#include "obs-source-async-last-ts-getter.c.h"
+#undef obs_source_get_last_async_ts
+
+size_t oracle_source_async_last_ts_offset(void);
+size_t oracle_source_async_last_ts_offset(void)
+{
+	return offsetof(struct obs_source, async_last_rendered_ts);
+}
+
+void *oracle_source_async_last_ts_new(uint8_t noise, uint64_t ts);
+void *oracle_source_async_last_ts_new(uint8_t noise, uint64_t ts)
+{
+	struct async_flag_fixture *fixture = calloc(1, sizeof(*fixture));
+	if (fixture) {
+		memset(&fixture->source, noise, sizeof(fixture->source));
+		/* The neighbouring timestamps hold other values, so a read of the
+		 * wrong field differs. */
+		fixture->source.async_last_rendered_ts = ts;
+		fixture->source.last_frame_ts = ~ts;
+		fixture->source.last_sys_timestamp = ts ^ 0x5555555555555555ull;
+		memcpy(fixture->snapshot, &fixture->source, sizeof(fixture->source));
+	}
+	return fixture;
 }

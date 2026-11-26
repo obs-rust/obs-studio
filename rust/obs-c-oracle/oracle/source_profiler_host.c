@@ -13,17 +13,13 @@
  * graphics context they do nothing and return false, so they are not
  * defined here (a second definition breaks the port_comparison link), nor is
  * obs_source_get_output_flags, which is Rust in obs-source (#5340) and
- * reads a real zeroed source of oracle/source_profiler.c. The C
+ * reads a real zeroed source of oracle/source_profiler.c, nor
+ * obs_source_get_last_async_ts, which is Rust in obs-source (#5766) and
+ * reads the same source's async_last_rendered_ts. The C
  * oracle of source-profiler.c (oracle/source_profiler.c) uses its own
  * renamed stand-ins, not these. */
 
 #include "obs-internal.h"
-
-uint64_t obs_source_get_last_async_ts(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return 0;
-}
 
 gs_timer_t *gs_timer_create(void)
 {

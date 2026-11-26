@@ -1,4 +1,6 @@
-//! C ABI over borrowed fields, without mirroring the private source layout.
+//! C ABI over borrowed fields, without mirroring the private source layout:
+//! the async flag getters, the unbuffered setter and the last rendered async
+//! timestamp (#5766).
 
 use crate::async_flag_getters;
 use core::ffi::{CStr, c_char, c_int, c_void};
@@ -11,6 +13,7 @@ pub struct AsyncFlagFields {
 
 unsafe extern "C" {
     fn obs_source_async_flag_fields(source: *const c_void) -> AsyncFlagFields;
+    fn obs_source_async_last_ts_field(source: *const c_void) -> *const u64;
     fn blog(level: c_int, format: *const c_char, ...);
 }
 
@@ -65,4 +68,20 @@ pub unsafe extern "C" fn obs_source_set_async_unbuffered(source: *mut c_void, un
         unsafe { fields.unbuffered.cast_mut().as_mut() }
     };
     async_flag_getters::set_unbuffered(field, unbuffered, null_log);
+}
+
+/// `obs_source_get_last_async_ts(source)` (#5766), hidden in libobs as the C
+/// was (`obs-internal.h`, no `EXPORT`; `rust-hidden.d`). The source profiler
+/// calls it for an async video source each tick.
+///
+/// # Safety
+/// `source` must be a live, non-null source: the C dereferences it with no
+/// check, and the field is read under the same synchronization as the C (a
+/// plain read, no lock).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_source_get_last_async_ts(source: *const c_void) -> u64 {
+    // SAFETY: the caller's source is live and non-null; the adapter only forms
+    // the address of its aligned, initialized timestamp field.
+    let field = unsafe { &*obs_source_async_last_ts_field(source) };
+    async_flag_getters::last_async_ts(field)
 }

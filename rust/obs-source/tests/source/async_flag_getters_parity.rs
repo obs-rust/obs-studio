@@ -1,5 +1,7 @@
 //! Exact flag, NULL diagnostic and complete source-state parity for the
-//! getters and the unbuffered setter (#5595). No exclusions.
+//! getters and the unbuffered setter (#5595), and exact answer and
+//! source-state parity for the last async timestamp getter (#5766). No
+//! exclusions.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
 use obs_source::ffi::source_async_flag_getters::{self as rust, AsyncFlagFields};
@@ -18,6 +20,10 @@ unsafe extern "C" {
     ) -> bool;
     fn oracle_obs_source_async_unbuffered(source: *const c_void) -> bool;
     fn oracle_obs_source_async_decoupled(source: *const c_void) -> bool;
+    fn oracle_source_async_last_ts_offset() -> usize;
+    fn oracle_source_async_last_ts_new(noise: u8, ts: u64) -> *mut c_void;
+    fn oracle_obs_source_get_last_async_ts(source: *const c_void) -> u64;
+    fn obs_source_async_last_ts_field(source: *const c_void) -> *const u64;
     fn oracle_source_async_flag_null_log(
         unbuffered: unsafe extern "C" fn(*const c_void) -> bool,
         decoupled: unsafe extern "C" fn(*const c_void) -> bool,
@@ -156,6 +162,59 @@ fn null_defaults_and_historical_logs() {
     }
 }
 
+/// Both getters answer the stored timestamp on the same noise-filled fixture,
+/// and neither writes a byte of it.
+fn check_last_ts(noise: u8, ts: u64) {
+    // SAFETY: the oracle allocates the complete real C source layout.
+    let source = Source(unsafe { oracle_source_async_last_ts_new(noise, ts) });
+    assert!(!source.0.is_null());
+    for _ in 0..2 {
+        // SAFETY: the fixture remains live and exclusively owned during both reads.
+        unsafe {
+            let c = oracle_obs_source_get_last_async_ts(source.0);
+            assert!(oracle_source_async_flag_unchanged(source.0));
+            let rust = rust::obs_source_get_last_async_ts(source.0);
+            assert!(oracle_source_async_flag_unchanged(source.0));
+            assert_eq!(rust, c);
+            assert_eq!(rust, ts);
+        }
+    }
+}
+
+#[test]
+fn last_ts_adapter_addresses_the_real_field() {
+    // SAFETY: a live fixture; the adapter only forms an address.
+    let source = Source(unsafe { oracle_source_async_last_ts_new(0x5a, 7) });
+    assert!(!source.0.is_null());
+    // SAFETY: as above; the offset is the real header's offsetof.
+    let (field, offset) = unsafe {
+        (
+            obs_source_async_last_ts_field(source.0),
+            oracle_source_async_last_ts_offset(),
+        )
+    };
+    assert_eq!(field.addr() - source.0.addr(), offset);
+}
+
+#[test]
+fn last_ts_characterized_edges() {
+    let values = [
+        0,
+        1,
+        33_333_333,
+        1_000_000_000 * 60 * 60 * 24,
+        0x8000_0000_0000_0000,
+        0x7fff_ffff_ffff_ffff,
+        0x0123_4567_89ab_cdef,
+        u64::MAX,
+    ];
+    for noise in [0x00, 0xff, 0x5a] {
+        for ts in values.into_iter().chain((0..64).map(|bit| 1u64 << bit)) {
+            check_last_ts(noise, ts);
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: obs_c_oracle::parity::cases(256),
@@ -165,6 +224,11 @@ proptest! {
     #[test]
     fn random_fields_match_c(unbuffered in any::<bool>(), decoupled in any::<bool>()) {
         check(unbuffered, decoupled);
+    }
+
+    #[test]
+    fn last_ts_matches_c(noise in any::<u8>(), ts in any::<u64>()) {
+        check_last_ts(noise, ts);
     }
 
     #[test]

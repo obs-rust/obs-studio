@@ -1,0 +1,4 @@
+# obs-source-async-last-ts-getter.c.h (#5766): the source profiler calls it
+# inside libobs. Declared in obs-internal.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_source_get_last_async_ts
