@@ -54,6 +54,7 @@
 #include "libobs/obs-source-async-compensation-fields.c.h"
 #include "libobs/obs-source-async-decoupled-fields.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"
+#include "libobs/obs-source-async-last-ts-getter.c.h"
 #include "libobs/obs-source-async-rotation-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
 #include "libobs/obs-source-audio-active-setter-fields.c.h"
