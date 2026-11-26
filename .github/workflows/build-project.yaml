@@ -994,19 +994,8 @@ jobs:
           artifact: manifest
           path: build-aux/io.github.obs_rust.OBSStudioRust.json
 
-      - name: Record Start Time ⏱️
-        id: start
-        run: echo "epoch=$(date +%s)" >> "${GITHUB_OUTPUT}"
-
       - name: Reset Flatpak Compiler Counters
-        run: |
-          # The image already supplies this manifest's SDK. The ccache starts
-          # empty (no Actions cache since #1801 phase A); reset it anyway, so the
-          # stats below cover only this build.
-          ccache_dir="${PWD}/.flatpak-builder/ccache"
-          mkdir -p "${ccache_dir}"
-          sdk="org.freedesktop.Sdk//$(sed -n 's/^ *"runtime-version": *"\([^" ]*\)".*/\1/p' build-aux/io.github.obs_rust.OBSStudioRust.json)"
-          flatpak run --command=ccache --filesystem="${ccache_dir}" --env=CCACHE_DIR="${ccache_dir}" "${sdk}" --zero-stats
+        run: uv run --no-project ci/flatpak_compiler_cache.py reset --cache .flatpak-builder/ccache/obs-zccache
 
       - name: Build Flatpak Manifest 🧾
         uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
@@ -1018,11 +1007,8 @@ jobs:
           build-bundle: ${{ fromJSON(needs.check-event.outputs.package) && (github.event_name != 'push' || github.ref_type == 'tag' || startsWith(github.ref_name, 'release/')) }}
           bundle: obs-studio-flatpak-${{ needs.check-event.outputs.commitHash }}.flatpak
           manifest-path: ${{ github.workspace }}/build-aux/io.github.obs_rust.OBSStudioRust.json
-          # Always on: the action passes `--ccache` to flatpak-builder only
-          # when `cache` is true. It used to be off for a PR whose manifest
-          # hash had no master cache, so a full PR compiled all ~700 files
-          # without ccache (~9 min instead of ~1.5 min, #651). The compiler
-          # statistics below read this ccache.
+          # Keep SDK ccache wrappers for dependency modules. OBS selects the
+          # real compilers and uses zccache inside the writable /run/ccache mount.
           cache: true
           # No Actions cache for the builder state (#1801 phase A).
           restore-cache: false
@@ -1031,8 +1017,6 @@ jobs:
           # Keep the module-local diagnostic log until its sanitized summary.
           keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}
 
-      # The pinned action snapshots this state immediately after building.
-      # Measure its composition before considering any cache-content changes.
       - name: Summarize Flatpak Compiler Diagnostics
         if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
         run: uv run --no-project ci/flatpak_compiler_diagnostics.py summarize --output "$RUNNER_TEMP/flatpak-compiler-diagnostics.json"
@@ -1061,31 +1045,8 @@ jobs:
           LC_ALL=C du --apparent-size --block-size=1 --max-depth=2 -- .flatpak-builder | LC_ALL=C sort -nr
           echo '::endgroup::'
 
-      # The SDK's own ccache reads the cache flatpak-builder wrote. On master
-      # pushes it also drops entries this build did not use, so the saved cache
-      # stays the size of one build.
-      - name: Ccache Stats 📊
-        id: ccache-stats
-        continue-on-error: true
-        env:
-          PRUNE: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
-        run: |
-          : Ccache Stats 📊
-          ccache_dir="${PWD}/.flatpak-builder/ccache"
-          sdk="org.freedesktop.Sdk//$(sed -n 's/^ *"runtime-version": *"\([^"]*\)".*/\1/p' build-aux/io.github.obs_rust.OBSStudioRust.json)"
-          run_ccache() {
-            flatpak run --command=ccache --filesystem="${ccache_dir}" --env=CCACHE_DIR="${ccache_dir}" "${sdk}" "$@"
-          }
-          if [[ "${PRUNE}" == true ]]; then
-            run_ccache --evict-older-than "$(( $(date +%s) - ${{ steps.start.outputs.epoch }} + 60 ))s"
-          fi
-          {
-            echo '### Flatpak Ccache Stats (this build)'
-            echo '```'
-            run_ccache --show-stats --verbose
-            echo '```'
-          } | tee -a "${GITHUB_STEP_SUMMARY}"
-          du -sh "${ccache_dir}"
+      - name: Zccache Stats 📊
+        run: uv run --no-project ci/flatpak_compiler_cache.py report --cache .flatpak-builder/ccache/obs-zccache --app flatpak_app/files
 
       - name: Validate AppStream
         uses: ./.github/actions/flatpak-builder-lint
@@ -1112,8 +1073,6 @@ jobs:
           artifact: repo
           path: repo
 
-      # The existing master-only ccache eviction keeps this to one useful build.
-      # The existing builder-family allocation/backend remain unchanged.
       - name: Measure Flatpak Cache Capacity
         if: inputs.flatpak-cache-probe
         timeout-minutes: 15
@@ -1166,7 +1125,7 @@ jobs:
         if: inputs.flatpak-compiler-transfer-probe
         run: |
           uv run --no-project ci/flatpak_compiler_cache.py pack --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
-            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+            --cache .flatpak-builder/ccache/obs-zccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Upload Experimental Flatpak Compiler Artifact
         if: inputs.flatpak-compiler-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -1301,14 +1260,13 @@ jobs:
       - name: Verify and Restore Compiler Artifact Last
         run: |
           uv run --no-project ci/flatpak_compiler_cache.py restore --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
-            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer" \
+            --cache .flatpak-builder/ccache/obs-zccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer" \
             > "$RUNNER_TEMP/flatpak-compiler-transfer/consumer-restore.json"
-          uv run --no-project ci/flatpak_compiler_cache.py reset --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
-            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+          uv run --no-project ci/flatpak_compiler_cache.py reset --cache .flatpak-builder/ccache/obs-zccache
       - name: Force Application Work Without Changing Compiler Inputs
         run: |
           uv run --no-project ci/flatpak_compiler_cache.py force --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
-            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+            --cache .flatpak-builder/ccache/obs-zccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Record Experimental Dependency Reuse
         if: inputs.flatpak-dependency-transfer-probe
         run: |
@@ -1331,7 +1289,7 @@ jobs:
       - name: Verify Substantial Cross Runner Compiler Reuse
         run: |
           uv run --no-project ci/flatpak_compiler_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
-            --cache .flatpak-builder/ccache --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
+            --cache .flatpak-builder/ccache/obs-zccache --app flatpak_app/files --artifact "$RUNNER_TEMP/flatpak-compiler-transfer"
       - name: Validate Compiler Consumer AppStream
         uses: ./.github/actions/flatpak-builder-lint
         with:

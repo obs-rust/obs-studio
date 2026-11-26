@@ -116,11 +116,18 @@ def parse_cache_logs(text: str) -> dict:  # noqa: C901
             observations["archive_bytes"] = int(archive[1])
         compiled = re.search(r"Compilations:\s+(\d+) total \((\d+) cached, (\d+) cold, (\d+) non-cacheable\)", message)
         session = re.search(r"final zccache session stats: hits=(\d+) misses=(\d+) compilations=(\d+) non_cacheable=(\d+) errors=(\d+)", message)
+        flatpak = re.search(
+            r"Flatpak Zccache Stats \(this build\): warm_hits=(\d+) cold_misses=(\d+) uncacheable=(\d+) compilations=(\d+)$",
+            message)
         hits = re.search(r"\bHits:\s+(\d+)\s*/\s*(\d+)", message)
         if compiled:
             observations["compiler_reports"] = dict(zip(("total", "cached", "cold", "non_cacheable"), map(int, compiled.groups())), kind="zccache-build")
         elif session:
             observations["compiler_reports"] = dict(zip(("hits", "misses", "compilations", "non_cacheable", "errors"), map(int, session.groups())), kind="soldr-session")
+        elif flatpak:
+            observations["compiler_reports"] = dict(
+                zip(("hits", "misses", "non_cacheable", "compilations"), map(int, flatpak.groups())),
+                kind="zccache-flatpak", counter_scope="job-session", job_delta_available=True)
         elif hits:
             observations["compiler_reports"] = {"kind": "ccache", "hits": int(hits[1]), "cacheable": int(hits[2])}
             if "flatpak" in name.casefold():
@@ -386,7 +393,7 @@ def collect(repo: str, start: str, end: str, output: Path, per_group: int, inclu
             "Log counters have different compiler/job scopes and are not summed.",
             "Archive byte observations can repeat and are not total transfer bytes.",
             "Missing/expired logs or absent counters are unknown, never zero hits.",
-            "Flatpak ccache counters include restored history; job deltas are unavailable without a final-restore baseline.",
+            "Historical Flatpak ccache counters include restored history; job deltas are unavailable without a final-restore baseline.",
             "Compiler-version changes require separate cold/warm cohorts.",
         ])
     (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")

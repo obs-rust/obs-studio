@@ -149,6 +149,14 @@ class CacheMetricsTest(unittest.TestCase):
         self.assertNotEqual(parsed["Qt"]["compiler_reports"][0].get("counter_scope"),
                             "restored-cumulative", "Do not generalize Flatpak's counter behavior")
 
+    def test_flatpak_zccache_reports_job_scoped_counters(self):
+        report = ("Flatpak\tZccache Stats\t2026-11-26T00:00:00Z "
+                  "Flatpak Zccache Stats (this build): warm_hits=320 cold_misses=10 uncacheable=4 compilations=334")
+        self.assertEqual(metrics.parse_cache_logs(report)["Flatpak"]["compiler_reports"], [{
+            "kind": "zccache-flatpak", "counter_scope": "job-session", "job_delta_available": True,
+            "hits": 320, "misses": 10, "non_cacheable": 4, "compilations": 334,
+        }])
+
     def test_current_ctest_success_preserves_failures_and_unknown_counts(self):
         log = "\n".join([
             "Qt\tBuild frontend\t2026-10-18T01:29:45Z 100% tests passed out of 15",

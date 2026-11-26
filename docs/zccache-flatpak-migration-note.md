@@ -1,66 +1,67 @@
-# Flatpak compiler cache migration
+# Flatpak OBS compiler cache decision
 
-The OBS manifest targets `org.freedesktop.Sdk//26.08`. The existing
-[SDK PCH qualification](ci-speed-flatpak-pch-1760.md) records GCC 16.2.0 and
-ccache 4.14 from the production SDK. The SDK executable is
-`/usr/bin/ccache`, inside the SDK's `/usr`. The workflow queries that
-executable via `flatpak run --command=ccache`. Phase 1 did not inspect a
-live SDK checkout or establish whether it contains zccache.
+Use option 3. Stage the pinned static musl zccache archive in the OBS module
+and pass its sandbox path through the existing CMake `OBS_ZCCACHE_LAUNCHER`
+override for C and C++. This is the only module being migrated. A build-only
+SDK or manifest module (option 1) would add deployment and cleanup work for a
+tool that no other module uses. Exposing a runner binary (option 2) would
+require adding runner-specific permissions to the builder's separate
+sandboxes. The release archives are outside the app prefix and the
+`Zccache Stats` step rejects staged tools or state under the installed
+`files/` tree.
 
-The [pinned GitHub action](https://github.com/flatpak/flatpak-github-actions/blob/79327416609af08178ad73b352877e51450790b3/flatpak-builder/index.js#L234)
-adds `--ccache` for `cache: true`, independently of Actions cache restore
-and save. Flatpak Builder creates compiler-name links to `/usr/bin/ccache`,
-mounts its compiler cache under `/run/ccache`, prepends `/run/ccache/bin`
-to PATH, and sets `CCACHE_DIR=/run/ccache`. The host state lives under
-`.flatpak-builder/ccache`. See the upstream
-[environment setup](https://github.com/flatpak/flatpak-builder/blob/1.4.8/src/builder-context.c#L1081-L1103)
-and [build sandbox mount](https://github.com/flatpak/flatpak-builder/blob/1.4.8/src/builder-module.c#L1185-L1204).
+The manifest pins both [zccache 1.15.22 release archives](https://github.com/forge-ci/zccache/releases/tag/1.15.22).
+Both downloaded tarballs were checked with `sha256sum`. The manifest
+regression test asserts the exact digest and architecture of each archive.
 
-The OBS module explicitly chooses `/usr/bin/cc` and `/usr/bin/c++`, so
-it bypasses the compiler-name links. Its `-DENABLE_CCACHE=ON` relies on
-`cmake/common/ccache.cmake` and the OBS PCH helper for the validated
-compiler-launcher path. Remove those only alongside the manifest switch.
-`ci/flatpak_cache_probe.py` isolates builder state by category.
-`ci/flatpak_compiler_cache.py` fingerprints the SDK and its compilers,
-checks the generated links, transfers compiler state, and queries stats.
-`ci/flatpak_compiler_diagnostics.py` configures and summarizes ccache
-debug logs. All three depend on the current layout or reporting contract.
+| Architecture | SHA-256 |
+| --- | --- |
+| x86_64 | `11bf3c33a55c9032f6e153faa21c06d35f137e9ccbe13a91c3a7daa24f56f65d` |
+| aarch64 | `e4cd3f7123e890f04ef157be375c6c0a90203a675e373cc68a87e14b03f671a4` |
 
-## Options
+The build runs in the Freedesktop 26.08 SDK. Flatpak Builder binds the
+module source at `/run/build/obs`, which makes the launcher visible as
+`/run/build/obs/.flatpak-zccache/zccache`. We keep the
+[pinned action's `cache: true`](https://github.com/flatpak/flatpak-github-actions/blob/79327416609af08178ad73b352877e51450790b3/flatpak-builder/index.js#L247-L249)
+to keep SDK ccache available to dependency modules. zccache uses the builder's
+[writable `/run/ccache` bind mount](https://github.com/flatpak/flatpak-builder/blob/1.4.8/src/builder-module.c#L1266-L1270).
+The builder also creates the mount with ccache disabled. OBS selects
+`/usr/bin/cc` and `/usr/bin/c++` directly.
 
-1. **Build-only SDK or manifest module.** Install a checksum-pinned,
-   architecture-specific zccache release ahead of the OBS module. Use an
-   existing SDK extension only after verifying its contents and provenance.
-   A manifest module can stage the binary under `/app`; arrange final
-   cleanup so the tool is excluded from the application artifact. This
-   adds source pins and per-architecture qualification, with a reproducible
-   origin in offline builds.
-2. **Host binary exposed with `flatpak run --filesystem`.** Grant read-only
-   access to a pinned host binary and separate write access to a cache
-   directory for an SDK experiment. The permission applies to that
-   invocation; the builder starts its own module sandboxes and resets host
-   filesystem access. A production integration would need explicit build
-   sandbox access, and must prove architecture, loader compatibility, and
-   daemon/cache access. This adds runner-specific setup and permissions.
-3. **Launcher staged inside the OBS build.** Provide the verified archive
-   as an OBS module source, unpack it under the mounted module build tree,
-   and configure C and C++ launchers to that sandbox-visible absolute path.
-   This avoids a new SDK and keeps the tool out of the installed files,
-   but requires lifecycle wiring for a persistent cache directory, with
-   additional wiring if other modules are to share the launcher. A CMake
-   launcher setting alone supplies no executable.
+The OBS Ninja build uses `/run/ccache/obs-zccache/state` for content-addressed
+data and the socket at `v1.15.22/daemon-v1.15.22.sock` beneath that root.
+The host sees the state at `.flatpak-builder/ccache/obs-zccache/state`.
+An isolated builder state therefore also isolates OBS's cache. When the
+build environment lacks the writable bind mount, the helper uses a
+module-local state directory outside `/app`.
 
-## Recommendation
+Flatpak Builder launches configure, Ninja and install in separate
+sandboxes. The manifest stages a Ninja entry point that delegates to a
+CMake script in the OBS module. The script opens one fresh zccache session for the parallel Ninja compile
+invocation, ends the session, and stops the daemon in that same sandbox.
+This follows the session finalization and cache flush in
+[`build-aux/appimage/build.py`](../build-aux/appimage/build.py) and the
+cache lifecycle in [`rust/tools/linux-validate/validate.sh`](../rust/tools/linux-validate/validate.sh).
+Only successful compilation and shutdown publish the session report.
+The opt-in diagnostics upload a bounded, sanitized journal summary.
 
-Prototype option 3 for the OBS module first. Disable the builder's
-compiler-name wrappers in the experiment and measure any lost reuse in
-other modules before changing the production action. Use option 1 if
-several modules need the same tool. Keep option 2 for SDK diagnostics.
+Production builds keep Actions cache restore and save disabled. The
+explicit compiler transfer probe archives durable state only after the
+session report exists. It retains source, SDK commit, compiler digest,
+architecture and manifest identity checks and adds the release digest.
+The source-fetch and pruned-builder probes still isolate dependency and
+compiler state. The warm and cross-runner probes require at least 100
+hits and at least 80% hits among cacheable compilations.
 
-Validate the pinned binary inside the exact SDK commit on each shipping
-architecture before changing transport. Run cold and warm builds with
-isolated counters, flush the daemon before archiving, and verify restored
-hits. Repeat the existing PCH freshness checks, including same-size,
-same-timestamp edits. Preserve the SDK/compiler cache identity checks and
-verify the packaged application using the saved profile required by
-`AGENTS.md`.
+The hosted `flatpak-build` job in `.github/workflows/build-project.yaml`
+must exercise the SDK's Ninja entry point, launcher and daemon shutdown.
+Its `Zccache Stats` line reports warm hits, cold misses and uncacheable
+compiles for that session. Zero hits emits a warning; missing or empty
+session evidence fails. The opt-in same-runner and cross-runner probes
+qualify warm hits, and the saved-profile runtime job qualifies the
+installed export. Run `ci/flatpak_pch_probe.py --zccache /path/to/zccache
+--output /path/to/evidence` in the matching SDK to repeat the same-size,
+same-timestamp freshness trials with the new launcher. Historical
+[ccache results](ci-speed-flatpak-pch-1760.md) describe the previous lane.
+The current workflow and Rust toolchain module target x86_64. The
+aarch64 launcher pin is ready for SDK qualification on that architecture.

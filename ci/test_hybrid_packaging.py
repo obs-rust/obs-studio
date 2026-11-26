@@ -6,6 +6,7 @@ import os
 import re
 import runpy
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -26,7 +27,7 @@ class HybridPackagingTest(unittest.TestCase):
 
     def flatpak_probe_fixture(self, root, fail=False):
         state = root / '.flatpak-builder'
-        for name, size in [('downloads/archive', 100000), ('ccache/object', 50000), ('cache/object', 1000)]:
+        for name, size in [('downloads/archive', 100000), ('ccache/obs-zccache/state/v1.15.22/index.bin', 50000), ('cache/object', 1000)]:
             path = state / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(os.urandom(size))
@@ -178,18 +179,20 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
     def test_flatpak_pch_cache_uses_launcher_and_preserves_input_freshness(self):
         manifest = json.loads((ROOT / "build-aux/io.github.obs_rust.OBSStudioRust.json").read_text())
         obs = next(module for module in manifest["modules"] if module["name"] == "obs")
-        self.assertIn("-DENABLE_CCACHE=ON", obs["config-opts"],
-                      "activate the existing PCH-aware CMake compiler launcher")
+        self.assertIn("-DENABLE_CCACHE=OFF", obs["config-opts"])
+        self.assertIn("-DENABLE_ZCCACHE=ON", obs["config-opts"])
+        self.assertIn("-DOBS_ZCCACHE_LAUNCHER=/run/build/obs/.flatpak-zccache/zccache", obs["config-opts"])
         self.assertIn("-DCMAKE_C_COMPILER=/usr/bin/cc", obs["config-opts"])
         self.assertIn("-DCMAKE_CXX_COMPILER=/usr/bin/c++", obs["config-opts"],
                       "avoid nesting the SDK masquerading wrapper inside the launcher")
         env = obs["build-options"]["env"]
-        self.assertEqual(env.get("CCACHE_DEPEND"), "true",
-                         "PCH creation must not reuse a preprocessor result that omits changed macro definitions")
-        self.assertEqual(env.get("CCACHE_COMPILERCHECK"), "content",
-                         "a compiler replacement with preserved size/mtime must invalidate cached objects")
-        self.assertNotIn("CCACHE_SLOPPINESS", env,
-                         "keep the existing PCH helper's bounded settings; do not weaken header freshness")
+        self.assertEqual(env.get("ZCCACHE_DISABLE"), "1")
+        self.assertNotIn("ZCCACHE_FAST", env)
+        self.assertNotIn("ZCCACHE_SCAN_SYSTEM_HEADERS", env)
+        self.assertNotIn("CCACHE_SLOPPINESS", env)
+        probe = (ROOT / 'ci/flatpak_pch_probe.py').read_text()
+        for trial in ('header-same-stat', 'source-same-stat', 'compiler-same-stat', 'configuration-warm'):
+            self.assertIn(trial, probe)
 
     def test_flatpak_cpp20_browser_sources_remain_cacheable_without_named_modules(self):
         manifest = json.loads((ROOT / 'build-aux/io.github.obs_rust.OBSStudioRust.json').read_text())
@@ -204,7 +207,7 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "evidence"
             script = ROOT / "ci/flatpak_pch_probe.py"
-            error = subprocess.CalledProcessError(17, ["ccache", "--version"],
+            error = subprocess.CalledProcessError(17, ["zccache", "--version"],
                                                   output="fixture SDK identity unavailable\n")
             with patch.object(sys, "argv", [str(script), "--output", str(output)]), \
                  patch("subprocess.check_output", side_effect=["configured", "fixture compiler", error]):
@@ -213,7 +216,7 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
             log = output / "failed-command.log"
             self.assertTrue(log.exists(), "preserve SDK tool stderr instead of only an opaque CalledProcessError")
             self.assertIn("fixture SDK identity unavailable", log.read_text())
-            self.assertIn('"ccache", "--version"', log.read_text())
+            self.assertIn('"zccache", "--version"', log.read_text())
 
     def test_flatpak_restores_no_actions_cache_before_compiling(self):
         # The Flatpak builder state left the Actions cache (#1801 phase A).
@@ -230,7 +233,7 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
         marker = "- name: Report Flatpak Cache Contents"
         self.assertTrue(marker in job, "measure the actual builder state before proposing pruning")
         self.assertLess(job.index("- name: Build Flatpak Manifest"), job.index(marker))
-        self.assertLess(job.index(marker), job.index("- name: Ccache Stats"))
+        self.assertLess(job.index(marker), job.index("- name: Zccache Stats"))
         step = job.split(marker, 1)[1].split("\n      - ", 1)[0]
         body = re.search(r"        run: \|\n((?:          [^\n]*\n|\n)*)", step)[1]
         return "\n".join(line[10:] for line in body.splitlines())
@@ -241,7 +244,7 @@ set_target_properties(obs-nvenc PROPERTIES PREFIX "")
             root = Path(directory)
             state = root / ".flatpak-builder"
             for name, size in (("downloads/input", 11), ("cache/objects/object", 17),
-                               ("ccache/object", 23), ("build/obs/object", 31)):
+                               ("ccache/obs-zccache/state/v1.15.22/index.bin", 23), ("build/obs/object", 31)):
                 path = state / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(b"x" * size)
@@ -431,12 +434,19 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
                         builds.append(prepared)
                         if len(builds) == 1:
                             self.assertFalse((isolated / 'ccache').exists())
-                            (isolated / 'ccache').mkdir()
-                            (isolated / 'ccache/fresh').write_text('new compiler results')
+                            cache = isolated / 'ccache/obs-zccache'
+                            cache.mkdir(parents=True)
+                            (cache / 'fresh').write_text('new compiler results')
                         else:
-                            self.assertTrue((isolated / 'ccache/fresh').exists())
+                            cache = isolated / 'ccache/obs-zccache'
+                            self.assertTrue((cache / 'fresh').exists())
+                            self.assertFalse((cache / 'session.json').exists(), 'fresh warm session required')
                             self.assertFalse((isolated / 'ccache/original').exists())
                             self.assertNotEqual(prepared, builds[0], 'warm build must invalidate application module')
+                        (cache / 'session.json').write_text(json.dumps({
+                            'hits': hits if len(builds) == 2 else 0, 'misses': misses if len(builds) == 2 else 330,
+                            'status': 'ok', 'compilations': 330, 'non_cacheable': 0, 'errors': 0,
+                        }))
                         build = Path(command[-2])
                         for relative in ('bin/obs', 'share/app-info/icons/flatpak/128x128/io.github.obs_rust.OBSStudioRust.png',
                                          'share/app-info/xmls/io.github.obs_rust.OBSStudioRust.xml.gz'):
@@ -447,18 +457,12 @@ class FlatpakPrunedBuildTest(unittest.TestCase):
                             return 'Cache hit for obs, skipping build\n'
                         return ('Cache hit for dependency, skipping build\nOBS_PRUNED_REBUILD_EXECUTED\n'
                                 + ('OBS_COMPILER_REUSE_EXECUTED\n' if len(builds) == 2 else ''))
-                    if '--print-stats' in command:
-                        return f'direct_cache_hit {hits}\npreprocessed_cache_hit 0\ncache_miss {misses}\n'
                     return '{}'
                 if succeeds:
                     result = probe.measure(state, manifest, root, execute=execute, compiler_reuse=True)
                     self.assertEqual(result['compiler_reuse']['hits'], 300)
                     self.assertEqual(result['compiler_reuse']['misses'], 2)
                     self.assertEqual(len(builds), 2)
-                    reset = next(i for i, command in enumerate(calls) if '--zero-stats' in command)
-                    builder_calls = [i for i, command in enumerate(calls) if 'flatpak-builder' in command]
-                    self.assertLess(builder_calls[0], reset)
-                    self.assertLess(reset, builder_calls[1])
                     self.assertEqual(sum(command[0] == 'flatpak-builder-lint' for command in calls), 6)
                 else:
                     with self.assertRaises(ValueError):
@@ -525,23 +529,22 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / 'source'
-            (source / 'a').mkdir(parents=True)
-            (source / 'a/result').write_bytes(b'actual compiler bytes')
-            (source / 'bin').mkdir()
-            for compiler in ('cc', 'c++', 'gcc', 'g++'):
-                (source / 'bin' / compiler).symlink_to('/usr/bin/ccache')
+            version = source / 'v1.15.22'
+            (version / 'artifacts').mkdir(parents=True)
+            (version / 'artifacts/result').write_bytes(b'actual compiler bytes')
+            (version / 'zccache-daemon').write_bytes(b'not cache data')
+            (version / 'daemon.running-process.json').write_text('{}')
             profile = {'source': 'a' * 40, 'sdk': 'sdk-commit', 'compiler': 'compiler-sha', 'manifest': 'manifest-sha'}
             artifact = root / 'artifact'
+            with socket.socket(socket.AF_UNIX) as daemon:
+                daemon.bind(str(version / 'daemon-v1.15.22.sock'))
             report = module.pack(source, artifact, profile)
             self.assertEqual(report['payload_bytes'], 21)
             target = root / 'target'
-            (target / 'bin').mkdir(parents=True)
-            for compiler in ('cc', 'c++', 'gcc', 'g++'):
-                (target / 'bin' / compiler).symlink_to('/usr/bin/ccache')
             module.restore(artifact, target, profile)
-            self.assertTrue((target / 'bin/cc').is_symlink())
-            self.assertEqual(report['omitted_builder_wrappers'], ['bin/c++', 'bin/cc', 'bin/g++', 'bin/gcc'])
-            self.assertEqual((target / 'a/result').read_bytes(), b'actual compiler bytes')
+            self.assertEqual(report['omitted_daemon_sockets'], ['v1.15.22/daemon-v1.15.22.sock'])
+            self.assertEqual(list((target / 'v1.15.22').iterdir()), [target / 'v1.15.22/artifacts'])
+            self.assertEqual((target / 'v1.15.22/artifacts/result').read_bytes(), b'actual compiler bytes')
             with self.assertRaisesRegex(ValueError, 'profile'):
                 module.restore(artifact, root / 'wrong', dict(profile, compiler='changed'))
             self.assertFalse((root / 'wrong').exists())
@@ -579,7 +582,7 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
                     entry.linkname = '../escape' if kind != tarfile.REGTYPE else ''
                     entry.size = 1 if kind == tarfile.REGTYPE else 0
                     output.addfile(entry, io.BytesIO(b'x') if entry.size else None)
-                metadata = {'format': 1, 'profile': {}, 'archive_bytes': archive.stat().st_size,
+                metadata = {'format': module.FORMAT, 'profile': {}, 'archive_bytes': archive.stat().st_size,
                             'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'payload_bytes': 1, 'files': 1}
                 (artifact / 'manifest.json').write_text(json.dumps(metadata))
                 with self.assertRaises(ValueError):
@@ -592,8 +595,8 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
                 module.pack(source, root / 'linked', {})
             (source / 'link').rename(source / 'rejected-link')
             source = root / 'bounded-source'
-            source.mkdir()
-            (source / 'large').write_bytes(b'ab')
+            (source / 'v1.15.22').mkdir(parents=True)
+            (source / 'v1.15.22/index.bin').write_bytes(b'ab')
             with patch.object(module, 'MAX_PAYLOAD_BYTES', 1), self.assertRaisesRegex(ValueError, 'limit|size'):
                 module.pack(source, root / 'oversize', {})
 
@@ -623,8 +626,13 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
             argv = ['flatpak_compiler_cache.py', 'verify', '--manifest', str(manifest),
                     '--cache', str(root / 'cache'), '--artifact', str(root)]
             for hits, misses, accepted in [(0, 330, False), (5, 0, False), (150, 100, False), (328, 2, True)]:
-                with self.subTest(hits=hits, misses=misses), patch.object(sys, 'argv', argv), \
-                     patch.object(module.subprocess, 'check_output', return_value=f'direct_cache_hit {hits}\ncache_miss {misses}\n'):
+                cache = root / 'cache'
+                cache.mkdir(exist_ok=True)
+                (cache / 'session.json').write_text(json.dumps({
+                    'status': 'ok', 'hits': hits, 'misses': misses, 'compilations': hits + misses,
+                    'errors': 0, 'non_cacheable': 0,
+                }))
+                with self.subTest(hits=hits, misses=misses), patch.object(sys, 'argv', argv):
                     if accepted:
                         module.main()
                     else:
@@ -651,7 +659,8 @@ class FlatpakCompilerTransferTest(unittest.TestCase):
             root = Path(directory)
             source = root / 'source'
             source.mkdir()
-            (source / 'result').write_bytes(b'cached output')
+            (source / 'v1.15.22').mkdir()
+            (source / 'v1.15.22/index.bin').write_bytes(b'cached output')
             artifact = root / 'artifact'
             producer = {'sdk': 'updated-sdk', 'compiler': 'updated-compiler'}
             consumer = {'sdk': 'image-sdk', 'compiler': 'image-compiler'}
