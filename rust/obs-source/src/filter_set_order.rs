@@ -18,6 +18,9 @@
     clippy::unreachable
 )]
 
+use crate::source_filter_chain::{
+    Route, Target, edge_move, move_route, same_kind, target_of, walk_step,
+};
 use core::ffi::CStr;
 
 /// The public function named in the NULL diagnostics.
@@ -62,6 +65,86 @@ pub fn set_order<C: FilterChain>(
     movement: i32,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (source, filter, movement, log);
-    todo!("#5775")
+    let Some(source) = source else {
+        log(SET_ORDER_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    let Some(filter) = filter else {
+        log(SET_ORDER_FUNCTION, FILTER_PARAMETER);
+        return;
+    };
+    source.lock();
+    let moved = move_filter_dir(source, filter, movement);
+    source.unlock();
+    if moved {
+        source.signal();
+    }
+}
+
+/// `move_filter_dir()`: whether the filter moved (and every filter was
+/// retargeted).
+fn move_filter_dir<C: FilterChain>(source: &C, filter: C::Filter, movement: i32) -> bool {
+    let Some(idx) = find(source, filter) else {
+        return false;
+    };
+    let to = match move_route(movement) {
+        Route::Up => walk(source, filter, idx, true),
+        Route::Down => walk(source, filter, idx, false),
+        route @ (Route::Top | Route::Bottom) => edge_move(route == Route::Top, idx, source.count()),
+        // The C's answer for a movement outside the enum, which move_route()
+        // never gives: no move, but a retarget.
+        Route::Retarget => {
+            retarget(source);
+            return true;
+        }
+        Route::Stay => None,
+    };
+    let Some(to) = to else {
+        return false;
+    };
+    source.move_filter(idx, to);
+    retarget(source);
+    true
+}
+
+/// `da_find()`: the first index holding `filter`, the count read before
+/// each entry.
+fn find<C: FilterChain>(source: &C, filter: C::Filter) -> Option<usize> {
+    let mut index = 0;
+    while index < source.count() {
+        if source.filter(index) == filter {
+            return Some(index);
+        }
+        index = index.wrapping_add(1);
+    }
+    None
+}
+
+/// `find_next_filter()` (`up`) and `find_prev_filter()`: from `idx`, the
+/// nearest filter of the same kind as `filter`, which is read again at every
+/// step, as the C's recursion did.
+fn walk<C: FilterChain>(source: &C, filter: C::Filter, idx: usize, up: bool) -> Option<usize> {
+    let mut cur = idx;
+    loop {
+        let cur_flags = source.flags(filter);
+        let next = walk_step(up, cur, source.count())?;
+        if same_kind(cur_flags, source.flags(source.filter(next))) {
+            return Some(next);
+        }
+        cur = next;
+    }
+}
+
+/// The retarget of `reorder_filter_targets()`: each filter, from the first,
+/// targets the next one, the last one the source.
+fn retarget<C: FilterChain>(source: &C) {
+    let mut i = 0;
+    while i < source.count() {
+        let target = match target_of(i, source.count()) {
+            Target::Source => None,
+            Target::Filter => Some(source.filter(i.wrapping_add(1))),
+        };
+        source.set_target(source.filter(i), target);
+        i = i.wrapping_add(1);
+    }
 }
