@@ -215,6 +215,7 @@ pub mod caption_callbacks;
 pub mod color_space;
 pub mod configurable;
 pub mod conversion_plan;
+pub mod copy_filters;
 pub mod default_flags;
 pub mod defaults;
 pub mod deinterlace;
