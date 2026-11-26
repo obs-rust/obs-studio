@@ -274,10 +274,11 @@ else
         "${ZCCACHE_CACHE_DIR:-/nonexistent}"/v*/daemon.running-process.json; do
         if [ -e "$cooldown" ]; then rm -f -- "$cooldown"; fi
       done
-      # status starts a fresh daemon. Only a successful bounded re-probe
-      # permits caching; timeouts and unsupported/missing commands fail closed.
+      # Status only probes a running daemon. Start it explicitly after stop
+      # and keep the uncached fallback if startup or the health check fails.
       daemon_unavailable=0
-      if timeout --kill-after=2s 5s zccache status >"$build.zccache-reprobe.log" 2>&1; then
+      if timeout --kill-after=2s 5s zccache start >"$build.zccache-reprobe.log" 2>&1 &&
+        timeout --kill-after=2s 5s zccache status >>"$build.zccache-reprobe.log" 2>&1; then
         echo "== zccache re-probe: ok"
       else
         probe_status=$?
