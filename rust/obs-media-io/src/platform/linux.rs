@@ -257,8 +257,15 @@ pub(crate) struct AudioThreadClass {
 
 impl AudioThreadClass {
     pub(crate) fn enter(_samples_per_sec: u32) -> Self {
-        // SAFETY: getpid and gettid have no preconditions.
-        let (pid, tid) = unsafe { (libc::getpid(), libc::gettid()) };
+        // The raw syscall, not libc::gettid: that wrapper is glibc 2.30, above
+        // the AppImage's glibc 2.28 floor (#5790). A thread id fits in pid_t.
+        // SAFETY: getpid and SYS_gettid have no preconditions.
+        let (pid, tid) = unsafe {
+            (
+                libc::getpid(),
+                libc::syscall(libc::SYS_gettid) as libc::pid_t,
+            )
+        };
         let mut host = LinuxHost {
             pid,
             tid,
