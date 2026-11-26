@@ -265,7 +265,7 @@ not get a line.
   too much CPU time after a long stall, it falls back to normal priority
   instead of OBS being stopped. *Linux*, 2026-11-26. Issue
   [#5770](https://github.com/obs-rust/obs-studio/issues/5770), PR
-  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
+  [#5781](https://github.com/obs-rust/obs-studio/pull/5781).
 - **ALSA captures 24-bit devices at 24 bits.** A USB audio interface that
   offers `S24_3LE` and `S16_LE` is opened at 24 bits, where before OBS tried
   16 bits first. *Linux*, 2026-10-16. Issue
