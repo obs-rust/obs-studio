@@ -18342,6 +18342,25 @@
         "test/cmocka/source-label-stubs/frontend/build/frontend-components.pch.hpp"
       ]
     },
+    "test_source_last_async_ts": {
+      "sources": [
+        "test/cmocka/test_source_last_async_ts.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_load_migration_steps": {
       "sources": [
         "test/cmocka/test_source_load_migration_steps.c",
@@ -30077,6 +30096,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_last_async_ts": {
+      "target": "test_source_last_async_ts",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_load_migration_steps": {
       "target": "test_source_load_migration_steps",
