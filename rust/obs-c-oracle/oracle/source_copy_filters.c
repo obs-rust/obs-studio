@@ -90,10 +90,12 @@ static long scf_id(const obs_source_t *source)
 	return SCF_OTHER;
 }
 
+/* Newest first: the heap may hand a freed name's address to the next name
+ * (the Windows CRT does), and the live name is the latest one there. */
 static long scf_name_id(const char *name)
 {
 	struct scf_fixture *f = scf_current;
-	for (size_t i = 0; i < f->name_count; i++) {
+	for (size_t i = f->name_count; i-- > 0;) {
 		if (f->names[i] == name)
 			return (long)i;
 	}
