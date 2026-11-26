@@ -82,6 +82,7 @@ mod filter_index;
 mod filter_index_parity;
 mod filter_relationship_getters;
 mod filter_relationship_getters_parity;
+mod filter_set_order;
 mod flags_mixers;
 mod flags_mixers_parity;
 mod frame_copy;
