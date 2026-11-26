@@ -256,6 +256,16 @@ not get a line.
 - Unchanged JACK source settings no longer restart audio capture. *Linux*.
 - Stopping ALSA capture before its worker starts no longer revives the worker and hangs shutdown. *Linux*.
 
+- **Real-time audio thread.** The audio thread asks for real-time
+  priority, through the Realtime portal (also in Flatpak) or rtkit, so audio
+  ticks stay on time while the CPU is busy: under full load, the worst
+  wake-up delay dropped from 10-15 ms to 22 µs in the measurement in
+  [#5458](https://github.com/obs-rust/obs-studio/discussions/5458). The log
+  says at start which method applied, or why none did. If the thread uses
+  too much CPU time after a long stall, it falls back to normal priority
+  instead of OBS being stopped. *Linux*, 2026-11-26. Issue
+  [#5770](https://github.com/obs-rust/obs-studio/issues/5770), PR
+  [#5781](https://github.com/obs-rust/obs-studio/pull/5781).
 - **ALSA captures 24-bit devices at 24 bits.** A USB audio interface that
   offers `S24_3LE` and `S16_LE` is opened at 24 bits, where before OBS tried
   16 bits first. *Linux*, 2026-10-16. Issue

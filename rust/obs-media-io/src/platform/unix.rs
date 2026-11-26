@@ -77,12 +77,20 @@ impl Drop for RecursiveMutex {
     }
 }
 
+/// macOS and the BSDs: no audio thread class yet (macOS: #5771).
 /// Unix has no MMCSS registration. The Windows worker calls
 /// `AvSetMmThreadCharacteristicsW`; this keeps the call site host-neutral.
+#[cfg(not(target_os = "linux"))] // Linux: `super::linux`
 pub(crate) struct AudioThreadClass;
 
+#[cfg(not(target_os = "linux"))]
 impl AudioThreadClass {
     pub(crate) fn enter() -> Self {
         Self
+    }
+
+    /// No log line on this host.
+    pub(crate) fn notice(&mut self) -> Option<(i32, String)> {
+        None
     }
 }

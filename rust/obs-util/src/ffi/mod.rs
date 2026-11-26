@@ -12,6 +12,8 @@ pub mod crc32;
 pub mod darray;
 #[cfg(all(unix, not(target_os = "macos"), feature = "gio"))]
 pub mod dbus_inhibit;
+#[cfg(all(unix, not(target_os = "macos"), feature = "gio"))]
+pub mod dbus_realtime;
 pub mod deque;
 pub mod dstr;
 pub mod dstr_libc;

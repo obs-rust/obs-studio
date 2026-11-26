@@ -779,7 +779,8 @@ impl Drop for AudioOutput {
 /// The audio thread: `&Shared` for its whole life — never `&mut` and never
 /// the owner object.
 fn audio_thread(shared: *const Shared) {
-    let _mmcss = crate::platform::AudioThreadClass::enter();
+    // MMCSS "Audio" on Windows, real-time priority on Linux (#5770).
+    let mut thread_class = crate::platform::AudioThreadClass::enter();
     // SAFETY: the Shared box outlives the thread — AudioOutput::drop joins
     // before tearing it down.
     let s = unsafe { &*shared };
@@ -812,6 +813,12 @@ fn audio_thread(shared: *const Shared) {
         let audio_time = start_time.wrapping_add(mul_div64(samples, 1_000_000_000, rate as u64));
 
         unsafe { os_sleepto_ns_fast(audio_time) };
+
+        if let Some((level, line)) = thread_class.notice() {
+            let line = std::ffi::CString::new(line).unwrap_or_default();
+            // SAFETY: one `%s` with one NUL-terminated string.
+            unsafe { blog(level, c"%s".as_ptr(), line.as_ptr()) };
+        }
 
         unsafe { profile_start(audio_thread_name) };
 

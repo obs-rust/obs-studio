@@ -11,6 +11,10 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Real-time audio thread through the Realtime portal and rtkit (#5770).
+gio = ["obs-util/gio"]
+
 [dependencies]
 libc = { workspace = true, default-features = true }
 obs-graphics = { path = "../obs-graphics" }
