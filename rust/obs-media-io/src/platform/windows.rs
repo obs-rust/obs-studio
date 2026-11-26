@@ -106,7 +106,7 @@ pub(crate) struct AudioThreadClass {
 }
 
 impl AudioThreadClass {
-    pub(crate) fn enter() -> Self {
+    pub(crate) fn enter(_samples_per_sec: u32) -> Self {
         let name: Vec<u16> = "Audio".encode_utf16().chain(core::iter::once(0)).collect();
         let mut index = 0u32;
         // SAFETY: `name` is NUL-terminated UTF-16 and `index` is a live

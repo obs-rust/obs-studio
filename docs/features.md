@@ -257,15 +257,21 @@ not get a line.
 - Stopping ALSA capture before its worker starts no longer revives the worker and hangs shutdown. *Linux*.
 
 - **Real-time audio thread.** The audio thread asks for real-time
-  priority, through the Realtime portal (also in Flatpak) or rtkit, so audio
-  ticks stay on time while the CPU is busy: under full load, the worst
-  wake-up delay dropped from 10-15 ms to 22 µs in the measurement in
-  [#5458](https://github.com/obs-rust/obs-studio/discussions/5458). The log
-  says at start which method applied, or why none did. If the thread uses
-  too much CPU time after a long stall, it falls back to normal priority
-  instead of OBS being stopped. *Linux*, 2026-11-26. Issue
-  [#5770](https://github.com/obs-rust/obs-studio/issues/5770), PR
-  [#5781](https://github.com/obs-rust/obs-studio/pull/5781).
+  priority, so audio ticks stay on time while the CPU is busy. On Linux it
+  asks through the Realtime portal (also in Flatpak) or rtkit: under full
+  load, the worst wake-up delay dropped from 10-15 ms to 22 µs in the
+  measurement in
+  [#5458](https://github.com/obs-rust/obs-studio/discussions/5458). If the
+  thread uses too much CPU time after a long stall, it falls back to normal
+  priority instead of OBS being stopped. On macOS it uses the
+  time-constraint policy, as Core Audio's own threads do: the share of audio
+  ticks within ±2 % of their period rose from 14 % to 99.8 % (idle and under
+  full load, profiler output at quit). The log says at start which
+  method applied, or why none did. *Linux, macOS*, 2026-11-26. Issues
+  [#5770](https://github.com/obs-rust/obs-studio/issues/5770),
+  [#5771](https://github.com/obs-rust/obs-studio/issues/5771), PRs
+  [#5781](https://github.com/obs-rust/obs-studio/pull/5781),
+  [#5783](https://github.com/obs-rust/obs-studio/pull/5783).
 - **ALSA captures 24-bit devices at 24 bits.** A USB audio interface that
   offers `S24_3LE` and `S16_LE` is opened at 24 bits, where before OBS tried
   16 bits first. *Linux*, 2026-10-16. Issue

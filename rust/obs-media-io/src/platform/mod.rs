@@ -23,6 +23,19 @@ cfg_select! {
             ($($item:item)*) => { $($item)* };
         }
     }
+    target_os = "macos" => {
+        #[allow(unsafe_code)] // pthread mutex calls; see the module docs
+        mod unix;
+        pub(crate) use unix::RecursiveMutex;
+        #[allow(unsafe_code)] // Mach thread policy calls; see the module docs
+        mod macos;
+        pub(crate) use macos::AudioThreadClass;
+
+        /// Expands its items only on hosts that build the `audio-io.c` port.
+        macro_rules! with_audio_thread_port {
+            ($($item:item)*) => { $($item)* };
+        }
+    }
     unix => {
         #[allow(unsafe_code)] // pthread mutex calls; see the module docs
         mod unix;

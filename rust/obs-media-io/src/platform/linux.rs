@@ -256,7 +256,7 @@ pub(crate) struct AudioThreadClass {
 }
 
 impl AudioThreadClass {
-    pub(crate) fn enter() -> Self {
+    pub(crate) fn enter(_samples_per_sec: u32) -> Self {
         // SAFETY: getpid and gettid have no preconditions.
         let (pid, tid) = unsafe { (libc::getpid(), libc::gettid()) };
         let mut host = LinuxHost {
