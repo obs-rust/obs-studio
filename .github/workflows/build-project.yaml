@@ -2176,6 +2176,8 @@ jobs:
       fail-fast: false
       matrix:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
+        # The dedicated Windows Link Check links the same Rust categories on the queue.
+        exclude: ${{ fromJSON(github.event_name == 'merge_group' && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.windows_link == 'true' && '[{"target":"x86_64-pc-windows-msvc"}]' || '[]') }}
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Independent of Fast Gate: no outputs/artifacts consumed (Refs #4990).
     needs: [check-event, ci-mode]
