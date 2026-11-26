@@ -123,6 +123,14 @@ class GateJobs(unittest.TestCase):
             self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
                           gate_jobs.pr_expected_jobs(selected, files, invalid))
 
+    def test_queue_uses_the_dedicated_windows_link_when_selected(self):
+        from ci_scope import scope
+        selected = scope(["libobs/obs.c.h"], event="merge_group")
+        manifest = gate_jobs.expected_jobs(selected)
+        self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)", manifest)
+        self.assertNotIn("Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)", manifest)
+        self.assertIn("Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)", manifest)
+
     def test_queue_manifest_requires_each_selected_leg_despite_proofs(self):
         from ci_scope import scope
         selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")
@@ -135,7 +143,6 @@ class GateJobs(unittest.TestCase):
             "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
             "Build 🧱 / Rust Tier 2 (macos-26)",
             "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
-            "Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)",
             "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
@@ -321,7 +328,7 @@ class GateJobs(unittest.TestCase):
         expected = gate_jobs.expected_jobs(scope(["ci/test_rust_scope.py"], event="merge_group"))
         fast_gate = "Build 🧱 / Fast Gate ⚡"
         self.assertIn(fast_gate, expected)
-        self.assertEqual(sum("Rust Cross Test Link" in name for name in expected), 2)
+        self.assertEqual(sum("Rust Cross Test Link" in name for name in expected), 1)
         self.assertFalse(any("Rust Cross Lint" in name for name in expected))
         for conclusion in ("failure", "cancelled"):
             with self.subTest(conclusion=conclusion):

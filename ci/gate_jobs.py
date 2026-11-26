@@ -135,19 +135,19 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
     """The queue execution manifest: exact job names, never proof credit.
 
     Keep names identical to build-project.yaml, including matrix mode/part names.
-    The queue retains the test links for both main cross targets.
+    The queue links both cross targets, using the dedicated Windows job when selected.
     """
     expected = {SCOPE_JOB, "Build 🧱 / CI Mode 🛂", "Format 🔍 / checks"}
     if not selected.docs_only:
         expected.add("Build 🧱 / Fast Gate ⚡")
-    if selected.windows_link:
-        expected.add("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)")
+    if selected.windows_link or selected.cross_lint:
+        expected.add(
+            "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)" if selected.windows_link
+            else "Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)"
+        )
     expected.update(cmocka_jobs(selected))
     if selected.cross_lint:
-        expected.update({
-            "Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)",
-            "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
-        })
+        expected.add("Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)")
     if selected.cross_targets:
         expected.add(f"Build 🧱 / Cross Compile 🧰 ({selected.cross_targets})")
     if selected.tier2:
