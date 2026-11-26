@@ -18607,6 +18607,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_output_cea708": {
+      "sources": [
+        "test/cmocka/test_source_output_cea708.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_output_flags": {
       "libraries": [
         "OBS::libobs",
@@ -30126,6 +30141,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_output_cea708": {
+      "target": "test_source_output_cea708",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_output_flags": {
       "command": [

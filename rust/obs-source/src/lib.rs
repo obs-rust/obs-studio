@@ -246,6 +246,7 @@ pub mod media_controls;
 pub mod missing_files_getter;
 pub mod monitoring;
 pub mod mute_monitor_hotkeys;
+pub mod output_cea708;
 pub mod output_flags;
 pub mod own_clock_drift;
 pub mod private_settings;
