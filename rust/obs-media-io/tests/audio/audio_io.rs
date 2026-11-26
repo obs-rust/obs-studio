@@ -430,3 +430,84 @@ mod close_overlap {
         );
     }
 }
+
+/// Runs `test` (its `module_path!()` path) alone in a child process of this
+/// binary, for checks of process-wide state that a test running in
+/// parallel would disturb. In the child this returns `true` and the caller
+/// measures there; in the parent it runs the child, asserts that exactly
+/// that one test passed, and returns `false` (as obs-util's `isolated`).
+fn run_alone(test: &str) -> bool {
+    const MARKER: &str = "OBS_MEDIA_IO_ISOLATED_TEST";
+    let test = test
+        .strip_prefix(concat!(env!("CARGO_CRATE_NAME"), "::"))
+        .unwrap_or(test);
+    if std::env::var(MARKER).as_deref() == Ok(test) {
+        return true;
+    }
+    let exe = std::env::current_exe().expect("path of the test binary");
+    let out = std::process::Command::new(exe)
+        .args([test, "--exact", "--test-threads=1", "--nocapture"])
+        .env(MARKER, test)
+        .output()
+        .expect("start the isolated test process");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        out.status.success(),
+        "isolated {test} failed:\n{stdout}\n{stderr}"
+    );
+    assert!(
+        stdout.contains("1 passed"),
+        "isolated {test} did not run exactly one test:\n{stdout}"
+    );
+    false
+}
+
+/// #5769: the audio thread registers itself as a profiler root with the
+/// tick period as its expected time between calls, as the graphics thread
+/// does, so the profiler output at quit shows how regularly it runs. The
+/// oracle's name store is NULL in this binary, so every audio thread
+/// registers the same (NULL-named) root: the test runs in its own process,
+/// or an audio thread of a parallel test overwrites the expected time.
+#[test]
+fn audio_thread_registers_profiler_root_with_tick_period() {
+    use obs_media_io::audio_io::{AUDIO_OUTPUT_FRAMES, audio_frames_to_ns};
+    use obs_util::profiler as prof;
+
+    if !run_alone(concat!(
+        module_path!(),
+        "::audio_thread_registers_profiler_root_with_tick_period"
+    )) {
+        return;
+    }
+    prof::profiler_start();
+    for rate in [48_000u32, 44_100] {
+        let counter = AtomicUsize::new(0);
+        let mut info = stereo_info(c"t-profiler-root", &counter as *const _ as *mut c_void);
+        info.samples_per_sec = rate;
+        let mut audio = ptr::null_mut();
+        unsafe {
+            assert_eq!(
+                audio_output_open(&mut audio, &mut info),
+                AUDIO_OUTPUT_SUCCESS
+            );
+            let deadline = Instant::now() + Duration::from_secs(3);
+            while counter.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
+                std::thread::yield_now();
+            }
+            audio_output_close(audio);
+        }
+        let period_ns = audio_frames_to_ns(rate as usize, AUDIO_OUTPUT_FRAMES as u64);
+        let expected_us = period_ns.wrapping_add(500) / 1000;
+        let roots: Vec<u64> = prof::profile_snapshot_create()
+            .roots
+            .iter()
+            .map(|root| root.expected_time_between_calls)
+            .collect();
+        assert!(
+            roots.contains(&expected_us),
+            "{rate} Hz: no profiler root expects {expected_us} us between calls (roots: {roots:?})"
+        );
+    }
+    prof::profiler_free();
+}
