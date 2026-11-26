@@ -106,6 +106,7 @@ mod item_hotkeys;
 mod item_hotkeys_parity;
 mod item_order_position;
 mod item_order_position_parity;
+mod item_set_order;
 mod item_visible;
 mod item_visible_parity;
 
