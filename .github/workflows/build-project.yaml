@@ -42,6 +42,10 @@ on:
         description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
         default: false
+      flatpak-expect-compiler-reuse:
+        description: Fail the Flatpak Zccache Stats step on zero hits (set only when the compiler cache is known warm)
+        type: boolean
+        default: false
       full:
         # obs-rust/obs-studio#436: the release gate. PRs and master pushes (the
         # dev cycle) skip Flatpak, the macOS/Windows OBS builds, Ubuntu with
@@ -1046,7 +1050,7 @@ jobs:
           echo '::endgroup::'
 
       - name: Zccache Stats 📊
-        run: uv run --no-project ci/flatpak_compiler_cache.py report --cache .flatpak-builder/ccache/obs-zccache --app flatpak_app/files
+        run: uv run --no-project ci/flatpak_compiler_cache.py report --cache .flatpak-builder/ccache/obs-zccache --app flatpak_app/files ${{ inputs.flatpak-expect-compiler-reuse && '--expect-reuse' || '' }}
 
       - name: Validate AppStream
         uses: ./.github/actions/flatpak-builder-lint
@@ -1286,6 +1290,8 @@ jobs:
         run: |
           uv run --no-project ci/flatpak_dependency_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \
             --cache .flatpak-builder/cache --artifact "$RUNNER_TEMP/flatpak-dependency-transfer"
+      - name: Compiler Consumer Zccache Stats 📊
+        run: uv run --no-project ci/flatpak_compiler_cache.py report --cache .flatpak-builder/ccache/obs-zccache --app flatpak_app/files --expect-reuse
       - name: Verify Substantial Cross Runner Compiler Reuse
         run: |
           uv run --no-project ci/flatpak_compiler_cache.py verify --manifest build-aux/io.github.obs_rust.OBSStudioRust.json \

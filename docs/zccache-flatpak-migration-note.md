@@ -56,8 +56,13 @@ hits and at least 80% hits among cacheable compilations.
 The hosted `flatpak-build` job in `.github/workflows/build-project.yaml`
 must exercise the SDK's Ninja entry point, launcher and daemon shutdown.
 Its `Zccache Stats` line reports warm hits, cold misses and uncacheable
-compiles for that session. Zero hits emits a warning; missing or empty
-session evidence fails. The opt-in same-runner and cross-runner probes
+compiles for that session. Zero hits emits a warning on a cold build;
+missing or empty session evidence fails. When reuse is expected the step
+runs with `--expect-reuse` and zero hits fails: the compiler-transfer
+consumer always passes it, and the main build passes it only for the
+`flatpak-expect-compiler-reuse` dispatch input (#5788). Run IDs cited as
+evidence must appear in [the evidence ledger](evidence/zccache-flatpak.json),
+which `ci/test_zccache.py` checks. The opt-in same-runner and cross-runner probes
 qualify warm hits, and the saved-profile runtime job qualifies the
 installed export. Run `ci/flatpak_pch_probe.py --zccache /path/to/zccache
 --output /path/to/evidence` in the matching SDK to repeat the same-size,

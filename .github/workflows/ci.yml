@@ -37,6 +37,10 @@ on:
         description: Validate dependency-only application rebuild and subsequent compiler reuse
         type: boolean
         default: false
+      flatpak-expect-compiler-reuse:
+        description: Fail the Flatpak Zccache Stats step on zero hits (set only when the compiler cache is known warm)
+        type: boolean
+        default: false
       tier2-setup-probe:
         description: Measure cold prepared-environment transfer against locked stock setup (one producer and six fresh consumers)
         type: boolean
@@ -197,6 +201,7 @@ jobs:
       flatpak-compiler-transfer-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-compiler-transfer-probe }}
       flatpak-cache-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-cache-probe }}
       flatpak-pruned-build-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-pruned-build-probe }}
+      flatpak-expect-compiler-reuse: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-expect-compiler-reuse }}
       native-cache-reuse-source: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-reuse-source || '' }}
       native-cache-transport-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-transport-probe }}
       native-cache-probe: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-probe }}
