@@ -704,6 +704,7 @@ class AllowPermissionsTest(unittest.TestCase):
                 ("ci-pre", "actions: write"),
                 ("build-project", "contents: write"),
                 ("build-project", "id-token: write"),
+                ("reserve-event-data", "id-token: write"),
                 ("validate-data", "checks: write"),
             },
             "ci.yml's job-level write scopes")

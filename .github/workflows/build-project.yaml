@@ -6,6 +6,10 @@ on:
         description: Capacity-checked merge-queue labels for Linux heavy jobs; empty uses hosted runners
         type: string
         default: ''
+      mq-event-labels:
+        description: Ready merge-queue lease labels or an empty value for hosted Event Data
+        type: string
+        default: ''
       native-cache-measurement-only:
         description: Measure only native cache protocols and lightweight gates on trusted manual master runs
         type: boolean
@@ -166,8 +170,9 @@ jobs:
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    # Full history and scope scripts need a build runner. Keep hosted fallback.
-    runs-on: ${{ github.event_name == 'merge_group' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
+    # Wait for a ready lease or run hosted so an unclaimed pool job cannot
+    # indefinitely block scheduling every lane.
+    runs-on: ${{ inputs.mq-event-labels != '' && fromJSON(inputs.mq-event-labels) || 'ubuntu-latest' }}
     defaults:
       run:
         shell: bash
