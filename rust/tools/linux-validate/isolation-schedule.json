@@ -1,0 +1,13 @@
+{
+  "test_async_audio_own_clock": 52,
+  "test_async_delay_audio": 60,
+  "test_deinterlace_2x_field_order_50i_into_30": 25,
+  "test_deinterlace_2x_field_order_50i_into_50": 26,
+  "test_deinterlace_2x_field_order_50i_into_60": 25,
+  "test_deinterlace_2x_field_order_60i_into_50": 22,
+  "test_deinterlace_2x_field_order_60i_into_60": 21,
+  "test_pipewire_screencast_resume": 40,
+  "test_pulse_default_follow": 26,
+  "test_pulse_stream_restart": 35,
+  "test_slideshow_mem_cap": 60
+}

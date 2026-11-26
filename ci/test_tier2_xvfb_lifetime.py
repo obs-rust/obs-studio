@@ -20,13 +20,14 @@ class Tier2DisplayLifetimeTest(unittest.TestCase):
         # between tests (#1355). The opt-in concurrent branch of #2773 gives
         # every RUN_SERIAL test its own display instead.
         concurrent = source.split('    if [ -n "$serial_cpus" ]; then\n', 1)[1]
-        invocation = concurrent.split('    else\n', 1)[1].split('    fi\n', 1)[0]
+        invocation = concurrent.split('\n    else\n', 1)[1].split('\n    fi\n', 1)[0]
         with tempfile.TemporaryDirectory() as directory:
             argv = Path(directory) / 'argv'
             prefix = '''
 set -euo pipefail
 mode_env=()
 mode_shard_args=()
+known_flaky=()
 ctest_status=0
 xvfb-run() { printf '%s\\n' "$@" > "$argv_file"; return 17; }
 '''

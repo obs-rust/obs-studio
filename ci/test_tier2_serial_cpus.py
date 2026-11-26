@@ -88,6 +88,16 @@ class AffinityTest(unittest.TestCase):
 
 
 class SerialRunTest(unittest.TestCase):
+    def test_tier2_isolation_reaches_the_measured_four_pair_bound(self):
+        spec = importlib.util.spec_from_file_location("tier2_serial_runner", RUNNER)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        plan = json.loads((TOOLS / "isolation-schedule.json").read_text(encoding="utf-8"))
+        lanes = module.schedule_lanes(plan, 4)
+        self.assertCountEqual([name for lane in lanes for name in lane], plan)
+        self.assertEqual(max(sum(plan[name] for name in lane) for lane in lanes), 100)
+
     def probe(self, tmp: Path) -> list[str]:
         """A command that records its CPUs, its start and its end, then sleeps 1 s."""
         script = tmp / "probe.py"
@@ -155,6 +165,24 @@ class SerialRunTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("serial", result.stdout)
         self.assertNotIn("suite", result.stdout)
+
+    def test_explicit_schedule_runs_multiple_tests_on_one_cpu_pair(self):
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        tests = registry(
+            [[sys.executable, "-c", "print('probe')"]] * 3, [True, False, True],
+        )
+        registry_path = tmp / "registry.json"
+        registry_path.write_text(json.dumps(tests), encoding="utf-8")
+        schedule = tmp / "schedule.json"
+        schedule.write_text(json.dumps({"test_probe_0": 4, "test_probe_1": 3}), encoding="utf-8")
+        result = runner(
+            "run", str(registry_path), "--schedule", str(schedule),
+            "--cpus", cpus_argument(self.pins(tmp, 1)),
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("test_probe_0: PASS", result.stdout)
+        self.assertIn("test_probe_1: PASS", result.stdout)
+        self.assertNotIn("test_probe_2", result.stdout)
 
     def test_a_failing_test_fails_the_run_and_keeps_its_output(self):
         tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))

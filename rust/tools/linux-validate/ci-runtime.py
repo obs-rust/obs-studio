@@ -43,6 +43,9 @@ spec = importlib.util.spec_from_file_location(
     'host_apt_mirrors', Path(__file__).resolve().parents[3] / 'ci' / 'host_apt_mirrors.py')
 host_apt_mirrors = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(host_apt_mirrors)
+spec = importlib.util.spec_from_file_location('serial_runner', Path(__file__).with_name('serial-runner.py'))
+serial_runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(serial_runner)
 
 
 def command(*args: str, capture_stderr: bool = False) -> str:
@@ -174,6 +177,49 @@ def part_env(part: str) -> list[str]:
     if not shard or int(shard[1]) > int(shard[2]):
         raise ValueError(f'Invalid Tier 2 part: {part}')
     return ['OBS_CTEST_PART=serial', f'OBS_CTEST_SERIAL_SHARD={shard[1]}/{shard[2]}']
+
+
+def cpu_plan(part: str, reservation: str, isolation: str, parent: str = '') -> tuple[list[str], list[str]]:
+    environment = [*part_env(part), 'OBS_CTEST_JOBS=8']
+    if not reservation and not isolation and not parent:
+        return ['--cpus', '4'], environment
+    if part != 'all' or not reservation or not isolation:
+        raise ValueError('CPU reservation and isolation must both be supplied for the complete suite')
+    cpus = set(serial_runner.parse_cpus(reservation))
+    isolated = set(serial_runner.parse_cpus(isolation))
+    suite = cpus - isolated
+    if parent and not re.fullmatch(r'obs_tier2_[a-z0-9_]+\.slice', parent):
+        raise ValueError('invalid Tier 2 CPU reservation slice')
+    if (not isolated < cpus or len(isolated) < 2 or len(isolated) % 2
+            or (not parent and not cpus <= os.sched_getaffinity(0)) or len(suite) < 2):
+        raise ValueError('CPU reservation needs complete isolated pairs and separate suite CPUs within runner affinity')
+    # On the measured eight-core suite, twelve workers hide I/O and timer
+    # waits. The kernel still restricts those workers to the same CPU set.
+    workers = 12 if len(suite) == 8 else len(suite)
+    parent_args = ['--cgroup-parent', parent] if parent else []
+    return [*parent_args, '--cpuset-cpus', serial_runner.format_cpus(sorted(cpus)), '--cpus', str(len(cpus))], [
+        'OBS_CTEST_PART=', 'OBS_CTEST_SHARD=', 'OBS_CTEST_SERIAL_SHARD=',
+        f'OBS_TIER2_SERIAL_CPUS={serial_runner.format_cpus(sorted(isolated))}',
+        f'OBS_TIER2_ISOLATED_SCHEDULE={SOURCE}/rust/tools/linux-validate/isolation-schedule.json',
+        f'OBS_CTEST_JOBS={workers}',
+    ]
+
+
+def use_cpu_grant(args: argparse.Namespace, grant: object) -> None:
+    if args.part != 'all' or getattr(args, 'reserved_cpus', '') or getattr(args, 'isolated_cpus', '') or grant is None:
+        return
+    if not isinstance(grant, dict) or grant.keys() != {'parent', 'reserved', 'isolated'} or any(
+            not isinstance(value, str) or not value for value in grant.values()):
+        print('Invalid Tier 2 CPU grant. Using ordinary CTest scheduling.', flush=True)
+        return
+    try:
+        cpu_plan(args.part, grant['reserved'], grant['isolated'], grant['parent'])
+    except ValueError:
+        print('Invalid Tier 2 CPU grant. Using ordinary CTest scheduling.', flush=True)
+        return
+    args.cpu_parent = grant['parent']
+    args.reserved_cpus = grant['reserved']
+    args.isolated_cpus = grant['isolated']
 
 
 def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> list[str]:
@@ -407,7 +453,9 @@ def execute(args: argparse.Namespace) -> None:
         summary_path.touch(exist_ok=True)
         summary_args = ['--mount', f'type=bind,src={summary_path},dst=/tier2-step-summary',
                         '--env', 'GITHUB_STEP_SUMMARY=/tier2-step-summary']
-    ident = command('docker', 'create', '--platform', 'linux/amd64', '--cpus', '4',
+    cpu_args, test_env = cpu_plan(args.part, getattr(args, 'reserved_cpus', ''),
+                                  getattr(args, 'isolated_cpus', ''), getattr(args, 'cpu_parent', ''))
+    ident = command('docker', 'create', '--platform', 'linux/amd64', *cpu_args,
                     '--env', 'DEBIAN_FRONTEND=noninteractive',
                     *summary_args,
                     *mounts(args.source, args.build, args.cost, args.uv, args.archives),
@@ -426,16 +474,25 @@ def execute(args: argparse.Namespace) -> None:
         report = {'variant': variant, 'setup_seconds': time.monotonic() - started,
                   'image': image or BASE, 'mode': args.mode, 'part': args.part, 'delta': changed,
                   'inventory_verified': True}
+        if parent := getattr(args, 'cpu_parent', ''):
+            report['cpu_plan'] = {'parent': parent, 'reserved': args.reserved_cpus, 'isolated': args.isolated_cpus}
         (args.state / 'runtime-measurement.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report), flush=True)
         subprocess.run(['docker', 'exec', '--workdir', SOURCE,
                         '--env', f'OBS_TIER2_SRC={SOURCE}', '--env', f'OBS_TIER2_BUILD={BUILD}',
                         '--env', f'OBS_TIER2_COST_DIR={COST}', '--env', 'OBS_TIER2_STAGE=test',
-                        '--env', f'OBS_TIER2_MODES={args.mode}', '--env', 'OBS_CTEST_JOBS=8',
-                        *(arg for env in part_env(args.part) for arg in ('--env', env)),
+                        '--env', f'OBS_TIER2_MODES={args.mode}',
+                        *(arg for env in test_env for arg in ('--env', env)),
                         ident, 'bash', f'{SOURCE}/rust/tools/linux-validate/validate.sh'], check=True)
     finally:
         command('docker', 'stop', '--timeout', '1', ident)
+
+
+def supports_cpu_plan(socket_path: Path) -> bool:
+    try:
+        return socket_path.with_name('cpu-plan-v1').read_text().strip() == str(socket_path.stat().st_ino)
+    except OSError:
+        return False
 
 
 def execute_shared(args: argparse.Namespace) -> int:
@@ -443,11 +500,17 @@ def execute_shared(args: argparse.Namespace) -> int:
     token = os.environ.pop('OBS_TIER2_ARTIFACT_TOKEN', '')
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as lease, tempfile.TemporaryDirectory() as temp:
         try:
+            address = os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', '')
+            wants_cpu = (getattr(args, 'part', '') == 'all' and not getattr(args, 'reserved_cpus', '')
+                         and not getattr(args, 'isolated_cpus', '') and address
+                         and supports_cpu_plan(Path(address)))
             lease.settimeout(5)
-            lease.connect(os.environ.get('OBS_TIER2_ARTIFACT_SOCKET', ''))
-            # A cold fill includes the GitHub transfer and image materialization.
-            lease.settimeout(600)
+            lease.connect(address)
+            # A cold fill can also be followed by a bounded same-run CPU wait.
+            lease.settimeout(780 if wants_cpu else 600)
             request = dict(run=os.environ.get('GITHUB_RUN_ID', ''), head=os.environ.get('GITHUB_SHA', ''), token=token)
+            if wants_cpu:
+                request['cpu'] = True
             lease.sendall((json.dumps(request) + '\n').encode())
             with lease.makefile('rb') as response:
                 reply = json.loads(response.readline(2 << 20))
@@ -462,6 +525,8 @@ def execute_shared(args: argparse.Namespace) -> int:
             args.build = Path(path)
             args.packages = Path(temp) / 'runtime-packages.txt'
             args.packages.write_text(packages)
+            if reply.get('cpu_plan') is not None and hasattr(args, 'part'):
+                use_cpu_grant(args, reply['cpu_plan'])
         except (OSError, ValueError):
             print('Tier 2 shared artifact unavailable. Using normal artifact delivery.', flush=True)
             return 75
@@ -479,6 +544,8 @@ def main() -> int:
     parser.add_argument('--prebaked-image', default='', help='Selected public Dell image, pinned by digest')
     parser.add_argument('--mode', choices=('OFF', 'ON'), required=True)
     parser.add_argument('--part', required=True, help='all, suite, serial or serial-<i>-of-<n>')
+    parser.add_argument('--reserved-cpus', default='', help='Physical CPU set reserved for this job by the runner host')
+    parser.add_argument('--isolated-cpus', default='', help='Even subset of reserved CPUs for isolated test pairs')
     args = parser.parse_args()
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         parser.error('Docker execution requires a disposable CI runner; local Docker work uses bosn')

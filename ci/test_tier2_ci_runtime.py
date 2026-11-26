@@ -19,6 +19,51 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_cpu_protocol_marker_is_bound_to_the_current_socket(self):
+        with tempfile.TemporaryDirectory() as directory, runtime.socket.socket(runtime.socket.AF_UNIX) as listener:
+            socket_path = Path(directory) / "lease.sock"
+            listener.bind(str(socket_path))
+            marker = socket_path.with_name("cpu-plan-v1")
+            self.assertFalse(runtime.supports_cpu_plan(socket_path))
+            marker.write_text(str(socket_path.stat().st_ino + 1))
+            self.assertFalse(runtime.supports_cpu_plan(socket_path))
+            marker.write_text(str(socket_path.stat().st_ino))
+            self.assertTrue(runtime.supports_cpu_plan(socket_path))
+
+    def test_cpu_reservation_partitions_the_complete_suite(self):
+        with patch.object(runtime.os, "sched_getaffinity", return_value=set(range(16))):
+            docker, environment = runtime.cpu_plan("all", "0-15", "8-15")
+            self.assertEqual(docker, ["--cpuset-cpus", "0-15", "--cpus", "16"])
+            self.assertIn("OBS_TIER2_SERIAL_CPUS=8-15", environment)
+            self.assertIn("OBS_CTEST_JOBS=12", environment)
+            self.assertTrue(any(value.endswith("/isolation-schedule.json") for value in environment))
+            for part, isolated in (("suite", "8-15"), ("all", "8-14"), ("all", "14-17")):
+                with self.subTest(part=part, isolated=isolated), self.assertRaises(ValueError):
+                    runtime.cpu_plan(part, "0-15", isolated)
+
+    def test_cpu_plan_defaults_to_complete_ctest(self):
+        docker, environment = runtime.cpu_plan("all", "", "")
+        self.assertEqual(docker, ["--cpus", "4"])
+        self.assertIn("OBS_TIER2_SERIAL_CPUS=", environment)
+        self.assertFalse(any(value.startswith("OBS_TIER2_ISOLATED_SCHEDULE=") for value in environment))
+
+    def test_shared_artifact_lends_cpu_plan_only_to_complete_suites(self):
+        grant = {"parent": "obs_tier2_a.slice", "reserved": "0-15", "isolated": "8-15"}
+        with patch.object(runtime.os, "sched_getaffinity", return_value=set(range(16, 32))):
+            docker, environment = runtime.cpu_plan("all", "0-15", "8-15", grant["parent"])
+            self.assertEqual(docker[:2], ["--cgroup-parent", grant["parent"]])
+            self.assertIn("OBS_TIER2_SERIAL_CPUS=8-15", environment)
+        args = argparse.Namespace(part="all")
+        runtime.use_cpu_grant(args, {**grant, "parent": "system.slice"})
+        self.assertFalse(hasattr(args, "cpu_parent"))
+        runtime.use_cpu_grant(args, grant)
+        self.assertEqual((args.cpu_parent, args.reserved_cpus, args.isolated_cpus),
+                         (grant["parent"], grant["reserved"], grant["isolated"]))
+        for part in ("suite", "serial-1-of-2"):
+            args = argparse.Namespace(part=part)
+            runtime.use_cpu_grant(args, grant)
+            self.assertFalse(hasattr(args, "cpu_parent"))
+
     def test_shared_mount_error_falls_back_before_docker(self):
         with patch.dict(os.environ, {"OBS_TIER2_ARTIFACT_SOCKET": "/nonexistent/lease.sock"}), \
                 patch.object(runtime, "execute") as execute:
