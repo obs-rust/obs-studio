@@ -77,6 +77,7 @@ unsafe extern "C" {
     fn os_set_thread_name(name: *const c_char);
     fn obs_get_profiler_name_store() -> *mut c_void;
     fn profile_store_name(store: *mut c_void, format: *const c_char, ...) -> *const c_char;
+    fn profile_register_root(name: *const c_char, expected_time_between_calls: u64);
     fn profile_start(name: *const c_char);
     fn profile_end(name: *const c_char);
     fn profile_reenable_thread();
@@ -794,6 +795,15 @@ fn audio_thread(shared: *const Shared) {
             obs_get_profiler_name_store(),
             c"audio_thread(%s)".as_ptr(),
             s.info.name,
+        )
+    };
+    // A root with the tick period, as the graphics thread registers its own
+    // frame interval: the profiler output at quit then shows how regularly
+    // the audio thread runs (#5769).
+    unsafe {
+        profile_register_root(
+            audio_thread_name,
+            crate::audio_io::audio_frames_to_ns(rate, AUDIO_OUTPUT_FRAMES as u64),
         )
     };
 

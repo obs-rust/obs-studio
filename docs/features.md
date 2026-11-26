@@ -495,6 +495,12 @@ not get a line.
   original C code. *All*, 2026-10-21. Issue
   [#1296](https://github.com/obs-rust/obs-studio/issues/1296), PR
   [#1619](https://github.com/obs-rust/obs-studio/pull/1619).
+- **Audio thread regularity in the log.** The profiler output at quit shows
+  how regularly the audio thread mixes (the share of ticks within ±2 % of
+  the 21.3 ms period at 48 kHz), next to the graphics thread's line, so a
+  log shows when audio ran late. *All*, 2026-11-26. Issue
+  [#5769](https://github.com/obs-rust/obs-studio/issues/5769), PR
+  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
 
 ### Stability
 
