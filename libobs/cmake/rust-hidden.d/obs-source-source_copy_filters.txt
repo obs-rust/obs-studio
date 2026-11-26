@@ -1,0 +1,4 @@
+# obs-source-copy-filters.c.h (#5792): obs_source_duplicate() calls it
+# inside libobs. Declared in obs-internal.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_source_duplicate_filters

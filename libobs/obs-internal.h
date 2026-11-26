@@ -1574,6 +1574,14 @@ extern void obs_source_filter_index_unlock(obs_source_t *source);
  * filter_mutex held; obs-source-filter-set-order.c.h calls it after a move. */
 extern void reorder_filter_targets(obs_source_t *source);
 
+/* obs-source.c.h's filter naming and compatibility check, called by the
+ * filter copies of obs-source-copy-filters.c.h. */
+extern char *get_new_filter_name(obs_source_t *dst, const char *name);
+extern bool filter_compatible(obs_source_t *source, obs_source_t *filter);
+/* Copies src's filters onto dst (obs-source-copy-filters.c.h); called by
+ * obs_source_duplicate() and obs_source_copy_filters(). */
+extern void obs_source_duplicate_filters(obs_source_t *dst, obs_source_t *src, bool private);
+
 /* Read-only missing-files dispatch snapshot; caller rejects NULL first. */
 struct obs_source_missing_files_getter_fields {
 	void *data;
