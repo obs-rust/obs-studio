@@ -19,8 +19,6 @@
 
 #define get_weak(source) ((obs_weak_source_t *)source->context.control)
 
-static bool filter_compatible(obs_source_t *source, obs_source_t *filter);
-
 static inline bool data_valid(const struct obs_source *source, const char *f)
 {
 	return obs_source_valid(source, f) && source->context.data;
@@ -376,7 +374,7 @@ _Static_assert(OBS_SOURCE_DUPLICATE_DUP_COPY == OBS_SCENE_DUP_COPY, "OBS_SCENE_D
 _Static_assert(OBS_SOURCE_DUPLICATE_DUP_PRIVATE_REFS == OBS_SCENE_DUP_PRIVATE_REFS, "OBS_SCENE_DUP_PRIVATE_REFS");
 _Static_assert(OBS_SOURCE_DUPLICATE_DUP_PRIVATE_COPY == OBS_SCENE_DUP_PRIVATE_COPY, "OBS_SCENE_DUP_PRIVATE_COPY");
 
-static char *get_new_filter_name(obs_source_t *dst, const char *name)
+char *get_new_filter_name(obs_source_t *dst, const char *name)
 {
 	struct dstr new_name = {0};
 	int inc = 0;
@@ -394,74 +392,6 @@ static char *get_new_filter_name(obs_source_t *dst, const char *name)
 	}
 
 	return new_name.array;
-}
-
-static void duplicate_filters(obs_source_t *dst, obs_source_t *src, bool private)
-{
-	DARRAY(obs_source_t *) filters;
-
-	da_init(filters);
-
-	pthread_mutex_lock(&src->filter_mutex);
-	da_reserve(filters, src->filters.num);
-	for (size_t i = 0; i < src->filters.num; i++) {
-		obs_source_t *s = obs_source_get_ref(src->filters.array[i]);
-		if (s)
-			da_push_back(filters, &s);
-	}
-	pthread_mutex_unlock(&src->filter_mutex);
-
-	for (size_t i = filters.num; i > 0; i--) {
-		obs_source_t *src_filter = filters.array[i - 1];
-		char *new_name = get_new_filter_name(dst, src_filter->context.name);
-		bool enabled = obs_source_enabled(src_filter);
-
-		obs_source_t *dst_filter = obs_source_duplicate(src_filter, new_name, private);
-		obs_source_set_enabled(dst_filter, enabled);
-
-		bfree(new_name);
-		obs_source_filter_add(dst, dst_filter);
-		obs_source_release(dst_filter);
-		obs_source_release(src_filter);
-	}
-
-	da_free(filters);
-}
-
-void obs_source_copy_filters(obs_source_t *dst, obs_source_t *src)
-{
-	if (!obs_source_valid(dst, "obs_source_copy_filters"))
-		return;
-	if (!obs_source_valid(src, "obs_source_copy_filters"))
-		return;
-
-	duplicate_filters(dst, src, dst->context.private);
-}
-
-static void duplicate_filter(obs_source_t *dst, obs_source_t *filter)
-{
-	if (!filter_compatible(dst, filter))
-		return;
-
-	char *new_name = get_new_filter_name(dst, filter->context.name);
-	bool enabled = obs_source_enabled(filter);
-
-	obs_source_t *dst_filter = obs_source_duplicate(filter, new_name, true);
-	obs_source_set_enabled(dst_filter, enabled);
-
-	bfree(new_name);
-	obs_source_filter_add(dst, dst_filter);
-	obs_source_release(dst_filter);
-}
-
-void obs_source_copy_single_filter(obs_source_t *dst, obs_source_t *filter)
-{
-	if (!obs_source_valid(dst, "obs_source_copy_single_filter"))
-		return;
-	if (!obs_source_valid(filter, "obs_source_copy_single_filter"))
-		return;
-
-	duplicate_filter(dst, filter);
 }
 
 obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, bool create_private)
@@ -518,7 +448,7 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 	obs_data_apply(new_source->private_settings, source->private_settings);
 
 	if (obs_source_duplicate_copies_filters((int)source->info.type))
-		duplicate_filters(new_source, source, create_private);
+		obs_source_duplicate_filters(new_source, source, create_private);
 
 	obs_data_release(settings);
 	return new_source;
@@ -1928,7 +1858,7 @@ _Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_DOWN == OBS_ORDER_MOVE_DOWN, "OBS_OR
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_TOP == OBS_ORDER_MOVE_TOP, "OBS_ORDER_MOVE_TOP");
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_MOVE_BOTTOM == OBS_ORDER_MOVE_BOTTOM, "OBS_ORDER_MOVE_BOTTOM");
 
-static bool filter_compatible(obs_source_t *source, obs_source_t *filter)
+bool filter_compatible(obs_source_t *source, obs_source_t *filter)
 {
 	return obs_source_filter_chain_compatible(source->info.output_flags, filter->info.output_flags);
 }
