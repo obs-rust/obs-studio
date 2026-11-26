@@ -677,15 +677,6 @@ static void obs_source_deferred_update(obs_source_t *source)
 	}
 }
 
-void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
-{
-	if (!obs_source_valid(source, "obs_source_reset_settings"))
-		return;
-
-	obs_data_clear(source->context.settings);
-	obs_source_update(source, settings);
-}
-
 static void activate_source(obs_source_t *source)
 {
 	if (source->context.data && source->info.activate)
