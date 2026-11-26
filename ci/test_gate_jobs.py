@@ -123,6 +123,14 @@ class GateJobs(unittest.TestCase):
             self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
                           gate_jobs.pr_expected_jobs(selected, files, invalid))
 
+    def test_queue_uses_the_dedicated_windows_link_when_selected(self):
+        from ci_scope import scope
+        selected = scope(["libobs/obs.c.h"], event="merge_group")
+        manifest = gate_jobs.expected_jobs(selected)
+        self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)", manifest)
+        self.assertNotIn("Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)", manifest)
+        self.assertIn("Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)", manifest)
+
     def test_queue_manifest_requires_each_selected_leg_despite_proofs(self):
         from ci_scope import scope
         selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")
