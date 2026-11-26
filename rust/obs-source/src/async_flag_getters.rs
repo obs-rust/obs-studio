@@ -33,3 +33,10 @@ pub fn set_unbuffered(
         None => log(c"obs_source_set_async_unbuffered", c"source"),
     }
 }
+
+/// `obs_source_get_last_async_ts()` (#5766): the timestamp of the last async
+/// frame rendered, as stored. The C has no NULL check, so neither does this.
+pub fn last_async_ts(value: &u64) -> u64 {
+    let _ = value;
+    todo!("#5766")
+}
