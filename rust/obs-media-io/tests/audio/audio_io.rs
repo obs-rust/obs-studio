@@ -430,3 +430,45 @@ mod close_overlap {
         );
     }
 }
+
+/// #5769: the audio thread registers itself as a profiler root with the
+/// tick period as its expected time between calls, as the graphics thread
+/// does, so the profiler output at quit shows how regularly it runs. The
+/// oracle's name store is NULL in this binary, so the root is found by its
+/// expected time (the real obs-util profiler records it).
+#[test]
+fn audio_thread_registers_profiler_root_with_tick_period() {
+    use obs_media_io::audio_io::{AUDIO_OUTPUT_FRAMES, audio_frames_to_ns};
+    use obs_util::profiler as prof;
+
+    prof::profiler_start();
+    for rate in [48_000u32, 44_100] {
+        let counter = AtomicUsize::new(0);
+        let mut info = stereo_info(c"t-profiler-root", &counter as *const _ as *mut c_void);
+        info.samples_per_sec = rate;
+        let mut audio = ptr::null_mut();
+        unsafe {
+            assert_eq!(
+                audio_output_open(&mut audio, &mut info),
+                AUDIO_OUTPUT_SUCCESS
+            );
+            let deadline = Instant::now() + Duration::from_secs(3);
+            while counter.load(Ordering::SeqCst) == 0 && Instant::now() < deadline {
+                std::thread::yield_now();
+            }
+            audio_output_close(audio);
+        }
+        let period_ns = audio_frames_to_ns(rate as usize, AUDIO_OUTPUT_FRAMES as u64);
+        let expected_us = period_ns.wrapping_add(500) / 1000;
+        let roots: Vec<u64> = prof::profile_snapshot_create()
+            .roots
+            .iter()
+            .map(|root| root.expected_time_between_calls)
+            .collect();
+        assert!(
+            roots.contains(&expected_us),
+            "{rate} Hz: no profiler root expects {expected_us} us between calls (roots: {roots:?})"
+        );
+    }
+    prof::profiler_free();
+}
