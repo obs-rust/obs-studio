@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83618,
-      "libobs": 100490,
+      "libobs": 100591,
       "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.57,
-    "ported_lines": 61994,
-    "total_lines": 352897
+    "percent": 17.63,
+    "ported_lines": 62231,
+    "total_lines": 352998
   },
-  "commit": "8a195424",
-  "date": "2026-11-25",
+  "commit": "c268c02b",
+  "date": "2026-11-26",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 52.87,
-          "ported_lines": 36024,
-          "total_lines": 68137
+          "percent": 53.14,
+          "ported_lines": 36261,
+          "total_lines": 68238
         },
         "graphics": {
           "percent": 72.22,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 1010,
-      "hybrid_lines": 38496,
-      "percent": 61.69,
-      "ported_lines": 61994,
-      "total_lines": 100490
+      "files": 1018,
+      "hybrid_lines": 38360,
+      "percent": 61.87,
+      "ported_lines": 62231,
+      "total_lines": 100591
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 54.9,
-            "ported_lines": 34671,
-            "total_lines": 63148
+            "percent": 55.19,
+            "ported_lines": 34908,
+            "total_lines": 63249
           },
           "graphics": {
             "percent": 72.74,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 975,
-        "hybrid_lines": 34177,
-        "percent": 62.85,
+        "files": 983,
+        "hybrid_lines": 34041,
+        "percent": 63.03,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -527,6 +527,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -557,6 +558,7 @@
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
           "obs-source-default-flags.c.h",
+          "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -564,6 +566,7 @@
           "obs-source-deinterlace-texture.c.h",
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-draw.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
@@ -574,6 +577,7 @@
           "obs-source-filter-relationship-getters.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
+          "obs-source-frame-init.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
@@ -602,6 +606,7 @@
           "obs-source-push-to-enable.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-replace-missing-file.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -631,10 +636,12 @@
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
+          "obs-source-update.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-source-weak-predicates.c.h",
+          "obs-source-weak-refs.c.h",
           "obs-task-queue.c.h",
           "obs-type-catalog-enum.c.h",
           "obs-ui-task-handler.c.h",
@@ -698,15 +705,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 57808,
-        "total_lines": 91985
+        "ported_lines": 58045,
+        "total_lines": 92086
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 54.34,
-            "ported_lines": 31071,
-            "total_lines": 57174
+            "percent": 54.66,
+            "ported_lines": 31308,
+            "total_lines": 57275
           },
           "graphics": {
             "percent": 72.74,
@@ -724,9 +731,9 @@
             "total_lines": 9978
           }
         },
-        "files": 953,
-        "hybrid_lines": 31803,
-        "percent": 62.99,
+        "files": 961,
+        "hybrid_lines": 31667,
+        "percent": 63.19,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -1157,6 +1164,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -1187,6 +1195,7 @@
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
           "obs-source-default-flags.c.h",
+          "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -1194,6 +1203,7 @@
           "obs-source-deinterlace-texture.c.h",
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-draw.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
@@ -1204,6 +1214,7 @@
           "obs-source-filter-relationship-getters.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
+          "obs-source-frame-init.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
@@ -1232,6 +1243,7 @@
           "obs-source-push-to-enable.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-replace-missing-file.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -1261,10 +1273,12 @@
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
+          "obs-source-update.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-source-weak-predicates.c.h",
+          "obs-source-weak-refs.c.h",
           "obs-task-queue.c.h",
           "obs-type-catalog-enum.c.h",
           "obs-ui-task-handler.c.h",
@@ -1326,15 +1340,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 54129,
-        "total_lines": 85932
+        "ported_lines": 54366,
+        "total_lines": 86033
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 54.44,
-            "ported_lines": 32012,
-            "total_lines": 58805
+            "percent": 54.75,
+            "ported_lines": 32249,
+            "total_lines": 58906
           },
           "graphics": {
             "percent": 72.29,
@@ -1352,9 +1366,9 @@
             "total_lines": 10704
           }
         },
-        "files": 964,
-        "hybrid_lines": 33161,
-        "percent": 62.52,
+        "files": 972,
+        "hybrid_lines": 33025,
+        "percent": 62.71,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1787,6 +1801,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
@@ -1817,6 +1832,7 @@
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
           "obs-source-default-flags.c.h",
+          "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -1824,6 +1840,7 @@
           "obs-source-deinterlace-texture.c.h",
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
+          "obs-source-draw.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
@@ -1834,6 +1851,7 @@
           "obs-source-filter-relationship-getters.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy.c.h",
+          "obs-source-frame-init.c.h",
           "obs-source-get-name.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
@@ -1862,6 +1880,7 @@
           "obs-source-push-to-enable.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-replace-missing-file.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -1891,10 +1910,12 @@
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
+          "obs-source-update.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
           "obs-source-weak-predicates.c.h",
+          "obs-source-weak-refs.c.h",
           "obs-task-queue.c.h",
           "obs-type-catalog-enum.c.h",
           "obs-ui-task-handler.c.h",
@@ -1961,12 +1982,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 55307,
-        "total_lines": 88468
+        "ported_lines": 55544,
+        "total_lines": 88569
       }
     }
   },
   "rust": {
-    "lines": 242167
+    "lines": 243559
   }
 }
