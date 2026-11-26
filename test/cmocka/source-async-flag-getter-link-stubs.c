@@ -8,3 +8,9 @@ struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_sourc
 	(void)source;
 	abort();
 }
+
+const uint64_t *obs_source_async_last_ts_field(const obs_source_t *source)
+{
+	(void)source;
+	abort();
+}

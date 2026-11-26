@@ -1532,6 +1532,9 @@ struct obs_source_async_flag_fields {
 	const bool *decoupled;
 };
 struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
+/* The async_last_rendered_ts address, for the Rust obs_source_get_last_async_ts()
+ * (#5766). Non-NULL only: the C getter dereferences without a check. */
+const uint64_t *obs_source_async_last_ts_field(const obs_source_t *source);
 
 /* Private operations for the Rust async-decoupling core; source is live and non-NULL. */
 void obs_source_async_decoupled_store(obs_source_t *source, bool value);

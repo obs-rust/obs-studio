@@ -1,4 +1,4 @@
-use obs_source::async_flag_getters::{decoupled, set_unbuffered, unbuffered};
+use obs_source::async_flag_getters::{decoupled, last_async_ts, set_unbuffered, unbuffered};
 
 #[test]
 fn mirrors_c_null_defaults() {
@@ -48,6 +48,37 @@ fn set_unbuffered_stores_only_the_flag() {
                 unbuffered(Some(flags[0]), |_, _| panic!("unexpected log")),
                 requested
             );
+        }
+    }
+}
+
+/// Tier 1 mirror of test_source_last_async_ts.c (#5766): the stored timestamp
+/// exactly, for edge values and every single bit.
+#[test]
+fn last_async_ts_answers_the_stored_timestamp() {
+    let values = [
+        0,
+        1,
+        33_333_333,
+        1_000_000_000 * 60 * 60 * 24,
+        0x8000_0000_0000_0000,
+        0x7fff_ffff_ffff_ffff,
+        0x0123_4567_89ab_cdef,
+        u64::MAX,
+    ];
+    for value in values.into_iter().chain((0..64).map(|bit| 1u64 << bit)) {
+        assert_eq!(last_async_ts(&value), value);
+    }
+}
+
+#[test]
+fn last_async_ts_writes_nothing() {
+    for value in [0, 33_333_333, u64::MAX] {
+        // The neighbouring timing fields hold other values and stay as they are.
+        let fields = [!value, value, value ^ 0x5555_5555_5555_5555];
+        for _ in 0..3 {
+            assert_eq!(last_async_ts(&fields[1]), value);
+            assert_eq!(fields, [!value, value, value ^ 0x5555_5555_5555_5555]);
         }
     }
 }

@@ -3419,11 +3419,6 @@ void obs_source_restore_filters(obs_source_t *source, obs_data_array_t *array)
 	da_free(cur_filters);
 }
 
-uint64_t obs_source_get_last_async_ts(const obs_source_t *source)
-{
-	return source->async_last_rendered_ts;
-}
-
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
 
