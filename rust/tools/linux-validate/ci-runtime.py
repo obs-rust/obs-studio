@@ -179,27 +179,47 @@ def part_env(part: str) -> list[str]:
     return ['OBS_CTEST_PART=serial', f'OBS_CTEST_SERIAL_SHARD={shard[1]}/{shard[2]}']
 
 
-def cpu_plan(part: str, reservation: str, isolation: str) -> tuple[list[str], list[str]]:
+def cpu_plan(part: str, reservation: str, isolation: str, parent: str = '') -> tuple[list[str], list[str]]:
     environment = [*part_env(part), 'OBS_CTEST_JOBS=8']
-    if not reservation and not isolation:
+    if not reservation and not isolation and not parent:
         return ['--cpus', '4'], environment
     if part != 'all' or not reservation or not isolation:
         raise ValueError('CPU reservation and isolation must both be supplied for the complete suite')
     cpus = set(serial_runner.parse_cpus(reservation))
     isolated = set(serial_runner.parse_cpus(isolation))
     suite = cpus - isolated
+    if parent and not re.fullmatch(r'obs_tier2_[a-z0-9_]+\.slice', parent):
+        raise ValueError('invalid Tier 2 CPU reservation slice')
     if (not isolated < cpus or len(isolated) < 2 or len(isolated) % 2
-            or not cpus <= os.sched_getaffinity(0) or len(suite) < 2):
+            or (not parent and not cpus <= os.sched_getaffinity(0)) or len(suite) < 2):
         raise ValueError('CPU reservation needs complete isolated pairs and separate suite CPUs within runner affinity')
     # On the measured eight-core suite, twelve workers hide I/O and timer
     # waits. The kernel still restricts those workers to the same CPU set.
     workers = 12 if len(suite) == 8 else len(suite)
-    return ['--cpuset-cpus', serial_runner.format_cpus(sorted(cpus)), '--cpus', str(len(cpus))], [
+    parent_args = ['--cgroup-parent', parent] if parent else []
+    return [*parent_args, '--cpuset-cpus', serial_runner.format_cpus(sorted(cpus)), '--cpus', str(len(cpus))], [
         'OBS_CTEST_PART=', 'OBS_CTEST_SHARD=', 'OBS_CTEST_SERIAL_SHARD=',
         f'OBS_TIER2_SERIAL_CPUS={serial_runner.format_cpus(sorted(isolated))}',
         f'OBS_TIER2_ISOLATED_SCHEDULE={SOURCE}/rust/tools/linux-validate/isolation-schedule.json',
         f'OBS_CTEST_JOBS={workers}',
     ]
+
+
+def use_cpu_grant(args: argparse.Namespace, grant: object) -> None:
+    if args.part != 'all' or getattr(args, 'reserved_cpus', '') or getattr(args, 'isolated_cpus', '') or grant is None:
+        return
+    if not isinstance(grant, dict) or grant.keys() != {'parent', 'reserved', 'isolated'} or any(
+            not isinstance(value, str) or not value for value in grant.values()):
+        print('Invalid Tier 2 CPU grant. Using ordinary CTest scheduling.', flush=True)
+        return
+    try:
+        cpu_plan(args.part, grant['reserved'], grant['isolated'], grant['parent'])
+    except ValueError:
+        print('Invalid Tier 2 CPU grant. Using ordinary CTest scheduling.', flush=True)
+        return
+    args.cpu_parent = grant['parent']
+    args.reserved_cpus = grant['reserved']
+    args.isolated_cpus = grant['isolated']
 
 
 def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> list[str]:
@@ -433,7 +453,8 @@ def execute(args: argparse.Namespace) -> None:
         summary_path.touch(exist_ok=True)
         summary_args = ['--mount', f'type=bind,src={summary_path},dst=/tier2-step-summary',
                         '--env', 'GITHUB_STEP_SUMMARY=/tier2-step-summary']
-    cpu_args, test_env = cpu_plan(args.part, getattr(args, 'reserved_cpus', ''), getattr(args, 'isolated_cpus', ''))
+    cpu_args, test_env = cpu_plan(args.part, getattr(args, 'reserved_cpus', ''),
+                                  getattr(args, 'isolated_cpus', ''), getattr(args, 'cpu_parent', ''))
     ident = command('docker', 'create', '--platform', 'linux/amd64', *cpu_args,
                     '--env', 'DEBIAN_FRONTEND=noninteractive',
                     *summary_args,
@@ -453,6 +474,8 @@ def execute(args: argparse.Namespace) -> None:
         report = {'variant': variant, 'setup_seconds': time.monotonic() - started,
                   'image': image or BASE, 'mode': args.mode, 'part': args.part, 'delta': changed,
                   'inventory_verified': True}
+        if parent := getattr(args, 'cpu_parent', ''):
+            report['cpu_plan'] = {'parent': parent, 'reserved': args.reserved_cpus, 'isolated': args.isolated_cpus}
         (args.state / 'runtime-measurement.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report), flush=True)
         subprocess.run(['docker', 'exec', '--workdir', SOURCE,
@@ -489,6 +512,8 @@ def execute_shared(args: argparse.Namespace) -> int:
             args.build = Path(path)
             args.packages = Path(temp) / 'runtime-packages.txt'
             args.packages.write_text(packages)
+            if reply.get('cpu_plan') is not None and hasattr(args, 'part'):
+                use_cpu_grant(args, reply['cpu_plan'])
         except (OSError, ValueError):
             print('Tier 2 shared artifact unavailable. Using normal artifact delivery.', flush=True)
             return 75

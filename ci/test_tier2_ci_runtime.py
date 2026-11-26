@@ -36,6 +36,23 @@ class RuntimeTest(unittest.TestCase):
         self.assertIn("OBS_TIER2_SERIAL_CPUS=", environment)
         self.assertFalse(any(value.startswith("OBS_TIER2_ISOLATED_SCHEDULE=") for value in environment))
 
+    def test_shared_artifact_lends_cpu_plan_only_to_complete_suites(self):
+        grant = {"parent": "obs_tier2_a.slice", "reserved": "0-15", "isolated": "8-15"}
+        with patch.object(runtime.os, "sched_getaffinity", return_value=set(range(16, 32))):
+            docker, environment = runtime.cpu_plan("all", "0-15", "8-15", grant["parent"])
+            self.assertEqual(docker[:2], ["--cgroup-parent", grant["parent"]])
+            self.assertIn("OBS_TIER2_SERIAL_CPUS=8-15", environment)
+        args = argparse.Namespace(part="all")
+        runtime.use_cpu_grant(args, {**grant, "parent": "system.slice"})
+        self.assertFalse(hasattr(args, "cpu_parent"))
+        runtime.use_cpu_grant(args, grant)
+        self.assertEqual((args.cpu_parent, args.reserved_cpus, args.isolated_cpus),
+                         (grant["parent"], grant["reserved"], grant["isolated"]))
+        for part in ("suite", "serial-1-of-2"):
+            args = argparse.Namespace(part=part)
+            runtime.use_cpu_grant(args, grant)
+            self.assertFalse(hasattr(args, "cpu_parent"))
+
     def test_shared_mount_error_falls_back_before_docker(self):
         with patch.dict(os.environ, {"OBS_TIER2_ARTIFACT_SOCKET": "/nonexistent/lease.sock"}), \
                 patch.object(runtime, "execute") as execute:
