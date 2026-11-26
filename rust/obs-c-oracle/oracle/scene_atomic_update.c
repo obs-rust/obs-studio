@@ -56,35 +56,48 @@ void oracle_obs_scene_atomic_update(obs_scene_t *, obs_scene_atomic_update_func,
 #undef obs_scene_atomic_full_lock
 
 /* Functional lifetime/lock boundary for the Rust ABI under test. These use
- * the same instrumented scene as the original C body, rather than link stubs. */
+ * the same instrumented scene as the original C body, rather than link stubs.
+ * A set-order probe active on this thread (scene_item_set_order.c) owns the
+ * source reference instead. */
+bool oracle_scene_set_order_source_ref(obs_source_t *source, bool acquire, bool *acquired);
 bool oracle_atomic_source_acquire(obs_source_t *source);
 bool oracle_atomic_source_acquire(obs_source_t *source)
 {
+	bool acquired;
+	if (oracle_scene_set_order_source_ref(source, true, &acquired))
+		return acquired;
 	struct atomic_fixture *f = source->context.data;
 	return atomic_acquire(&f->scene) != NULL;
 }
 void oracle_atomic_source_release(obs_source_t *source);
 void oracle_atomic_source_release(obs_source_t *source)
 {
+	bool released;
+	if (oracle_scene_set_order_source_ref(source, false, &released))
+		return;
 	struct atomic_fixture *f = source->context.data;
 	atomic_release(&f->scene);
 }
 /* The one real-named full-lock stand-in: a parent-group probe
- * (scene_item_get_group.c) or an order-position probe
- * (scene_item_order_position.c) active on this thread owns the call,
- * otherwise this recorder. */
+ * (scene_item_get_group.c), an order-position probe
+ * (scene_item_order_position.c) or a set-order probe
+ * (scene_item_set_order.c) active on this thread owns the call, otherwise
+ * this recorder. */
 bool oracle_scene_get_group_full_lock(obs_scene_t *scene, bool lock);
 bool oracle_scene_order_position_full_lock(obs_scene_t *scene, bool lock);
+bool oracle_scene_set_order_full_lock(obs_scene_t *scene, bool lock);
 void obs_scene_atomic_full_lock(obs_scene_t *scene);
 void obs_scene_atomic_full_unlock(obs_scene_t *scene);
 void obs_scene_atomic_full_lock(obs_scene_t *scene)
 {
-	if (!oracle_scene_get_group_full_lock(scene, true) && !oracle_scene_order_position_full_lock(scene, true))
+	if (!oracle_scene_get_group_full_lock(scene, true) && !oracle_scene_order_position_full_lock(scene, true) &&
+	    !oracle_scene_set_order_full_lock(scene, true))
 		oracle_atomic_full_lock(scene);
 }
 void obs_scene_atomic_full_unlock(obs_scene_t *scene)
 {
-	if (!oracle_scene_get_group_full_lock(scene, false) && !oracle_scene_order_position_full_lock(scene, false))
+	if (!oracle_scene_get_group_full_lock(scene, false) && !oracle_scene_order_position_full_lock(scene, false) &&
+	    !oracle_scene_set_order_full_lock(scene, false))
 		oracle_atomic_full_unlock(scene);
 }
 

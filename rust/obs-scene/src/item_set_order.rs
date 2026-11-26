@@ -49,6 +49,49 @@ pub trait SetOrderScene {
 /// lock is released, `reorder` signalled and the reference released.
 /// [`Anchor::Stay`] unlocks and releases without a signal.
 pub fn set_order<S: SetOrderScene>(scene_list: &mut S, item: Option<S::Item>, movement: i32) {
-    let _ = (scene_list, item, movement, anchor, Anchor::Stay);
-    todo!("#5787")
+    let Some(item) = item else {
+        return;
+    };
+    let Some(scene) = scene_list.parent_ref(item) else {
+        return;
+    };
+
+    scene_list.lock(scene);
+
+    let next = scene_list.next(item);
+    let prev = scene_list.prev(item);
+
+    let found = anchor(movement, prev.is_some(), next.is_some());
+
+    if found == Anchor::Stay {
+        scene_list.unlock(scene);
+        scene_list.release(scene);
+        return;
+    }
+
+    scene_list.detach(item);
+
+    // Each neighbour read here comes after the detach, as in the C, which
+    // leaves `prev->prev` and the links above `next` as they were.
+    let after = match found {
+        Anchor::PrevPrev => prev.and_then(|prev| scene_list.prev(prev)),
+        Anchor::Next => next,
+        Anchor::Prev => prev,
+        Anchor::Last => match next {
+            None => prev,
+            Some(mut last) => {
+                while let Some(above) = scene_list.next(last) {
+                    last = above;
+                }
+                Some(last)
+            }
+        },
+        Anchor::Bottom | Anchor::Stay => None,
+    };
+    scene_list.attach(scene, item, after);
+
+    scene_list.unlock(scene);
+
+    scene_list.signal_reorder(item);
+    scene_list.release(scene);
 }
