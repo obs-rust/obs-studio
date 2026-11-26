@@ -1596,6 +1596,8 @@ extern void obs_source_audio_capture_callback_unlock(obs_source_t *source);
 extern struct darray *obs_source_caption_callback_fields(obs_source_t *source);
 extern void obs_source_caption_callback_lock(obs_source_t *source);
 extern void obs_source_caption_callback_unlock(obs_source_t *source);
+/* destroying(source), for the Rust obs_source_output_cea708(). Non-NULL only. */
+extern bool obs_source_caption_callback_destroying(const obs_source_t *source);
 
 /* Borrowed signal and procedure handler addresses. Caller rejects NULL before access. */
 struct obs_source_handler_getters_fields {

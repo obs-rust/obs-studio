@@ -14,3 +14,8 @@ void obs_source_caption_callback_unlock(obs_source_t *source)
 {
 	pthread_mutex_unlock(&source->caption_cb_mutex);
 }
+
+bool obs_source_caption_callback_destroying(const obs_source_t *source)
+{
+	return destroying(source);
+}

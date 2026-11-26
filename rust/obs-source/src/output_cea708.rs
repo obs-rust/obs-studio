@@ -45,6 +45,11 @@ pub trait Source {
 /// `obs_source_output_cea708(source, captions)`; `has_captions` is
 /// `captions != NULL`.
 pub fn output<S: Source>(source: &S, has_captions: bool) {
-    let _ = (source, has_captions);
-    todo!("obs_source_output_cea708 safe core (#5750)")
+    if source.destroying() || !has_captions {
+        return;
+    }
+    let mut list = source.lock();
+    for index in (0..list.count()).rev() {
+        list.call(index);
+    }
 }
