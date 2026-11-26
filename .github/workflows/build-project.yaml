@@ -3316,8 +3316,22 @@ jobs:
           key: tier2-ctest-cost-${{ github.sha }}
           restore-keys: tier2-ctest-cost-
 
+      # On the Dell the build job left the pack in the host's handoff dir
+      # (#4954 P7). Probe it before asking the shared broker to fetch the artifact.
+      - name: Take Tier 2 Tree Handoff 🤝
+        id: handoff
+        run: |
+          root=/var/cache/obs-runner/handoff
+          if [ -d "$root" ]; then
+            uv run --no-project ci/tier2_kept_tree.py handoff-get \
+              --root "$root" --key ${{ github.run_id }} --dest "$RUNNER_TEMP/tier2-pack"
+          else
+            echo "no handoff dir on this runner"
+          fi
+
       - name: Test Tier 2 From Shared Artifact
         id: shared-tier2
+        if: steps.handoff.outputs.hit != 'true'
         env:
           OBS_TIER2_ARTIFACT_TOKEN: ${{ github.token }}
         run: |
@@ -3335,20 +3349,6 @@ jobs:
             75) ;;
             *) exit "$status" ;;
           esac
-
-      # On the Dell the build job left the pack in the host's handoff dir
-      # (#4954 P7); a missing or unverifiable one falls back to the artifact.
-      - name: Take Tier 2 Tree Handoff 🤝
-        id: handoff
-        if: steps.shared-tier2.outputs.used != 'true'
-        run: |
-          root=/var/cache/obs-runner/handoff
-          if [ -d "$root" ]; then
-            uv run --no-project ci/tier2_kept_tree.py handoff-get \
-              --root "$root" --key ${{ github.run_id }} --dest "$RUNNER_TEMP/tier2-pack"
-          else
-            echo "no handoff dir on this runner"
-          fi
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         if: steps.shared-tier2.outputs.used != 'true' && steps.handoff.outputs.hit != 'true'

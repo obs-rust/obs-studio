@@ -207,17 +207,19 @@ class DellKeptTreeAndHandoffTest(unittest.TestCase):
         self.assertIn("if: steps.handoff.outputs.local != 'true'", upload)
         self.assertLess(job.index("- name: Hand Off Tier 2 Tree 🤝"), job.index("- name: Upload Tier 2 Tree 🧾"))
 
-    def test_test_jobs_try_the_shared_lease_and_handoff_before_downloading(self):
+    def test_test_jobs_prefer_verified_local_handoff_before_shared_lease(self):
         job = test_job()
         take = step(job, "Take Tier 2 Tree Handoff 🤝")
-        self.assertIn("if: steps.shared-tier2.outputs.used != 'true'", take)
+        self.assertNotIn("steps.shared-tier2.outputs", take)
+        shared = step(job, "Test Tier 2 From Shared Artifact")
+        self.assertIn("if: steps.handoff.outputs.hit != 'true'", shared)
         self.assertIn("id: handoff", take)
         self.assertIn("ci/tier2_kept_tree.py handoff-get", take)
         self.assertIn("--key ${{ github.run_id }}", take)
         download = re.search(r"- uses: actions/download-artifact@[0-9a-f]{40}.*?(?=\n      - |\Z)", job, re.S)[0]
         self.assertIn("if: steps.shared-tier2.outputs.used != 'true' && steps.handoff.outputs.hit != 'true'", download)
-        self.assertLess(job.index("- name: Test Tier 2 From Shared Artifact"), job.index("- name: Take Tier 2 Tree Handoff 🤝"))
-        self.assertLess(job.index("- name: Take Tier 2 Tree Handoff 🤝"), job.index("- uses: actions/download-artifact"))
+        self.assertLess(job.index("- name: Take Tier 2 Tree Handoff 🤝"), job.index("- name: Test Tier 2 From Shared Artifact"))
+        self.assertLess(job.index("- name: Test Tier 2 From Shared Artifact"), job.index("- uses: actions/download-artifact"))
 
     def test_setup_soldr_has_a_no_commit_kill_switch(self):
         # setup-soldr's persistent-root auto-detects the Dell's marker; the
