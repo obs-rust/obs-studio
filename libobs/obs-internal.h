@@ -1570,6 +1570,10 @@ extern long *obs_source_async_rotation_fields(obs_source_t *source);
 extern obs_source_t *const *obs_source_filter_index_lock(obs_source_t *source, size_t *count);
 extern void obs_source_filter_index_unlock(obs_source_t *source);
 
+/* Retargets every filter of the list (obs-source.c.h), called with
+ * filter_mutex held; obs-source-filter-set-order.c.h calls it after a move. */
+extern void reorder_filter_targets(obs_source_t *source);
+
 /* Read-only missing-files dispatch snapshot; caller rejects NULL first. */
 struct obs_source_missing_files_getter_fields {
 	void *data;
