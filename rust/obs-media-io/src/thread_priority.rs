@@ -316,14 +316,24 @@ pub struct TimeConstraint {
 
 /// The time-constraint values for an audio output at `samples_per_sec`.
 pub fn time_constraint(samples_per_sec: u32) -> TimeConstraint {
-    let _ = samples_per_sec;
-    todo!("#5771")
+    let period_ns = crate::audio_io::audio_frames_to_ns(
+        samples_per_sec as usize,
+        crate::audio_io::AUDIO_OUTPUT_FRAMES as u64,
+    );
+    TimeConstraint {
+        period_ns,
+        computation_ns: period_ns / 4,
+        constraint_ns: period_ns / 2,
+    }
 }
 
 /// Nanoseconds to Mach absolute time units for the timebase `numer/denom`
 /// (`mach_timebase_info`), truncated and saturated at `u32::MAX`, the width
 /// of the policy fields.
 pub fn ns_to_mach_abs(ns: u64, numer: u32, denom: u32) -> u32 {
-    let _ = (ns, numer, denom);
-    todo!("#5771")
+    if numer == 0 {
+        return u32::MAX;
+    }
+    let abs = u128::from(ns) * u128::from(denom) / u128::from(numer);
+    u32::try_from(abs).unwrap_or(u32::MAX)
 }

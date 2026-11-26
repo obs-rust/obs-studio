@@ -779,12 +779,14 @@ impl Drop for AudioOutput {
 /// The audio thread: `&Shared` for its whole life — never `&mut` and never
 /// the owner object.
 fn audio_thread(shared: *const Shared) {
-    // MMCSS "Audio" on Windows, real-time priority on Linux (#5770).
-    let mut thread_class = crate::platform::AudioThreadClass::enter();
     // SAFETY: the Shared box outlives the thread — AudioOutput::drop joins
     // before tearing it down.
     let s = unsafe { &*shared };
     let rate = s.info.samples_per_sec as usize;
+    // MMCSS "Audio" on Windows, real-time priority on Linux (#5770), the
+    // time-constraint policy on macOS (#5771). Before the start time, so a
+    // slow request does not count as lateness.
+    let mut thread_class = crate::platform::AudioThreadClass::enter(s.info.samples_per_sec);
     let mut samples: u64 = 0;
     let start_time = unsafe { os_gettime_ns() };
     let mut prev_time = start_time;
