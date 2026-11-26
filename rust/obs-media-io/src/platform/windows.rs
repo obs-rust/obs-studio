@@ -114,6 +114,11 @@ impl AudioThreadClass {
         let handle = unsafe { AvSetMmThreadCharacteristicsW(name.as_ptr(), &mut index) };
         Self { handle }
     }
+
+    /// No log line: the C worker logs nothing for MMCSS either.
+    pub(crate) fn notice(&mut self) -> Option<(i32, String)> {
+        None
+    }
 }
 
 impl Drop for AudioThreadClass {

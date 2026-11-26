@@ -22,7 +22,7 @@ doctest = false
 # Cargo build matches a libobs built with GIO; libobs/cmake/os-linux.cmake
 # and os-freebsd.cmake drop the default and set it from find_package(Gio).
 default = ["gio"]
-gio = ["obs-util/gio"]
+gio = ["obs-util/gio", "obs-media-io/gio"]
 # The tsan pass only: libobs/cmake/rust.cmake sets it from OBS_RUST_TSAN (#3507).
 tsan = ["obs-util/tsan"]
 

@@ -118,17 +118,187 @@ pub struct Outcome {
 impl Outcome {
     /// The startup log line.
     pub fn log_line(&self) -> String {
-        todo!("#5770")
+        let reasons = if self.reasons.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", self.reasons.join("; "))
+        };
+        match self.method {
+            Some(Method::Direct) => format!(
+                "audio thread: real-time priority {} (SCHED_RR){reasons}",
+                self.priority
+            ),
+            Some(Method::Realtime(service)) => format!(
+                "audio thread: real-time priority {} through {}{reasons}",
+                self.priority,
+                service.name()
+            ),
+            Some(Method::HighPriority(service)) => format!(
+                "audio thread: high priority, nice {}, through {}{reasons}",
+                self.priority,
+                service.name()
+            ),
+            None => format!("audio thread: default priority{reasons}"),
+        }
     }
 
     /// What the next audio thread of this process should do.
     pub fn previous(&self) -> Previous {
-        todo!("#5770")
+        match self.method {
+            Some(method) => Previous::Worked(method),
+            None => Previous::Nothing,
+        }
     }
+}
+
+/// The steps one call runs: everything, or only the method that worked.
+struct Steps {
+    direct: bool,
+    realtime: Option<Service>,
+    high: Option<Service>,
+    services: &'static [Service],
+}
+
+fn steps(previous: Previous) -> Option<Steps> {
+    const ALL: &[Service] = &Service::ORDER;
+    const PORTAL: &[Service] = &[Service::Portal];
+    const RTKIT: &[Service] = &[Service::Rtkit];
+    let only = |service| match service {
+        Service::Portal => PORTAL,
+        Service::Rtkit => RTKIT,
+    };
+    match previous {
+        Previous::Nothing => None,
+        Previous::Unknown => Some(Steps {
+            direct: true,
+            realtime: None,
+            high: None,
+            services: ALL,
+        }),
+        Previous::Worked(Method::Direct) => Some(Steps {
+            direct: true,
+            realtime: None,
+            high: None,
+            services: &[],
+        }),
+        Previous::Worked(Method::Realtime(service)) => Some(Steps {
+            direct: false,
+            realtime: Some(service),
+            high: None,
+            services: only(service),
+        }),
+        Previous::Worked(Method::HighPriority(service)) => Some(Steps {
+            direct: false,
+            realtime: None,
+            high: Some(service),
+            services: only(service),
+        }),
+    }
+}
+
+/// `RLIMIT_RTTIME` for a service maximum: hard at the maximum, soft at half,
+/// so the `SIGXCPU` guard runs before the kernel kills at the hard limit.
+fn rttime_limits(limits: &Limits) -> Option<(u64, u64)> {
+    let hard = u64::try_from(limits.rttime_usec_max)
+        .ok()
+        .filter(|&hard| hard > 1)?;
+    Some((hard / 2, hard))
 }
 
 /// Raises the calling thread's priority with the first method that applies.
 pub fn raise(host: &mut impl RealtimeHost, previous: Previous) -> Outcome {
-    let _ = (host, previous);
-    todo!("#5770")
+    let mut reasons = Vec::new();
+    let Some(steps) = steps(previous) else {
+        return Outcome {
+            method: None,
+            priority: 0,
+            reasons: vec!["no method applied for an earlier audio thread".into()],
+        };
+    };
+    let done = |method, priority, reasons| Outcome {
+        method: Some(method),
+        priority,
+        reasons,
+    };
+
+    if steps.direct {
+        let limit = host.rtprio_limit();
+        if limit > 0 {
+            let priority = AUDIO_RT_PRIORITY.min(u32::try_from(limit).unwrap_or(u32::MAX));
+            // An in-process PipeWire client can set RLIMIT_RTTIME for the
+            // process, so the direct path needs the guard as well.
+            match host.arm_demotion() {
+                Err(error) => reasons.push(format!("SIGXCPU guard: {error}")),
+                Ok(()) => match host.set_direct_realtime(priority) {
+                    Ok(()) => return done(Method::Direct, priority as i32, reasons),
+                    Err(error) => reasons.push(format!("SCHED_RR: {error}")),
+                },
+            }
+        }
+    }
+
+    // Real time through the first service that grants it.
+    let mut reachable = Vec::new();
+    for &service in steps.services {
+        let limits = match host.limits(service) {
+            Ok(limits) => limits,
+            Err(error) => {
+                reasons.push(format!("{}: {error}", service.name()));
+                continue;
+            }
+        };
+        reachable.push((service, limits));
+        if steps.high.is_some() || steps.realtime.is_some_and(|only| only != service) {
+            continue;
+        }
+        let Ok(max) = u32::try_from(limits.max_realtime_priority) else {
+            reasons.push(format!("{}: no real-time priority allowed", service.name()));
+            continue;
+        };
+        if max == 0 {
+            reasons.push(format!("{}: no real-time priority allowed", service.name()));
+            continue;
+        }
+        let Some((soft, hard)) = rttime_limits(&limits) else {
+            reasons.push(format!("{}: no RLIMIT_RTTIME maximum", service.name()));
+            continue;
+        };
+        if let Err(error) = host.set_rttime_limit(soft, hard) {
+            reasons.push(format!("RLIMIT_RTTIME: {error}"));
+            continue;
+        }
+        if let Err(error) = host.arm_demotion() {
+            reasons.push(format!("SIGXCPU guard: {error}"));
+            continue;
+        }
+        let priority = AUDIO_RT_PRIORITY.min(max);
+        match host.make_realtime(service, priority) {
+            Ok(()) => return done(Method::Realtime(service), priority as i32, reasons),
+            Err(error) => reasons.push(format!("{}: {error}", service.name())),
+        }
+    }
+
+    // High priority through the first reachable service that grants it.
+    for (service, limits) in reachable {
+        if steps.high.is_some_and(|only| only != service) {
+            continue;
+        }
+        let nice = HIGH_PRIORITY_NICE.max(limits.min_nice_level);
+        if nice >= 0 {
+            // A service without rtkit behind it reports MinNiceLevel 0: the
+            // request could not raise anything.
+            reasons.push(format!("{}: no higher priority allowed", service.name()));
+            continue;
+        }
+        match host.make_high_priority(service, nice) {
+            Ok(()) => return done(Method::HighPriority(service), nice, reasons),
+            Err(error) => reasons.push(format!("{} (high priority): {error}", service.name())),
+        }
+    }
+
+    Outcome {
+        method: None,
+        priority: 0,
+        reasons,
+    }
 }
