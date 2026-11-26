@@ -1806,6 +1806,37 @@ records before successful fallback transfers. Hosted outcomes must still be
 measured; this observation is not a controlled speedup estimate or proof of
 the underlying network fault.
 
+### Windows compiler cache migration hold
+
+The Windows app, Tier 2 and release packaging still use the Visual Studio
+generator and ccache. zccache 1.15.17 supports MSVC's `/Fd` with embedded
+debug information (`/Z7`). A compiler invocation that writes a shared PDB
+(`/Zi` or `/ZI`) remains outside that cache path. The release CLI dispatches
+by executable name only for its daemons, so copying zccache to `cl.exe`
+cannot implement the existing MSBuild tool override. See the
+[CLI entry point](https://github.com/forge-ci/zccache/blob/1.15.17/crates/zccache/src/bin/zccache.rs#L30-L59)
+and [MSVC side-output classifier](https://github.com/forge-ci/zccache/blob/1.15.17/crates/zccache-compiler/src/side_outputs.rs#L19-L31).
+
+A second blocker is explicit MSVC PCH handling. CMake adds `/Fp` when it
+creates and consumes a PCH, and zccache's MSVC parser deliberately bypasses
+compiles carrying that flag. The 1.15.22 source retains the same check. On
+Linux, driving zccache 1.15.17 with a stand-in named `cl.exe` and
+`/c /Z7 /Fdunit.pdb /Yuunit.h /Fpunit.pch` twice reported two
+non-cacheable compilations. The stand-in verifies classification only.
+See the [CMake MSVC PCH flags](https://github.com/Kitware/CMake/blob/v4.1.3/Modules/Platform/Windows-MSVC.cmake#L448-L449)
+and the [zccache parser test](https://github.com/forge-ci/zccache/blob/1.15.22/crates/zccache-compiler/src/parse_msvc.rs#L740-L752).
+
+A native executable shim needs qualification with the real MSBuild tool
+task, including response files, embedded debug information, PCH creation
+and reuse, and a warm build on x64 and ARM64. The Ninja alternative also
+needs changes to the app's multi-architecture build setup.
+`cmake/windows/architecture.cmake` reads Visual Studio platform metadata and
+configures helper builds with the generator's `-A` option. Preserve the
+current cache transport until a replacement demonstrates real hits and
+the expected package contents. The
+[Flatpak migration note](zccache-flatpak-migration-note.md) covers the
+separate dependency on the shared CMake launcher and PCH helper.
+
 ### Optional Windows cache budget experiment (#1269)
 
 Manual `ci.yml` dispatches accept `native-cache-probe` (default `false`).
