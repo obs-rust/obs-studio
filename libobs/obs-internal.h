@@ -1582,6 +1582,11 @@ extern bool filter_compatible(obs_source_t *source, obs_source_t *filter);
  * obs_source_duplicate() and obs_source_copy_filters(). */
 extern void obs_source_duplicate_filters(obs_source_t *dst, obs_source_t *src, bool private);
 
+/* Takes filter off source's list without releasing it
+ * (obs-source-filter-remove.c.h); obs_source_destroy() calls it for a filter
+ * leaving its parent, obs_source_filter_remove() before its release. */
+extern bool obs_source_filter_remove_refless(obs_source_t *source, obs_source_t *filter);
+
 /* Read-only missing-files dispatch snapshot; caller rejects NULL first. */
 struct obs_source_missing_files_getter_fields {
 	void *data;
