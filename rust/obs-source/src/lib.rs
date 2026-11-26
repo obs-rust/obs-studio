@@ -67,6 +67,9 @@
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
+//! `libobs/obs-source-frame-copy-data.c.h`, `obs_source_frame_copy()` and
+//! the `copy_frame_data()` it runs (the metadata, the colour range and the
+//! plane copies of the plan above);
 //! `libobs/obs-source-info-lookup.c.h`, the source type lookup of
 //! `get_source_info()` (the first registered type with the asked ID; a NULL
 //! ID finds nothing, an intentional difference);
@@ -230,6 +233,7 @@ pub mod filter_index;
 pub mod filter_relationship_getters;
 pub mod flags_mixers;
 pub mod frame_copy;
+pub mod frame_copy_data;
 pub mod frame_init;
 pub mod get_weak;
 pub mod handler_getters;
