@@ -500,7 +500,7 @@ not get a line.
   the 21.3 ms period at 48 kHz), next to the graphics thread's line, so a
   log shows when audio ran late. *All*, 2026-11-26. Issue
   [#5769](https://github.com/obs-rust/obs-studio/issues/5769), PR
-  [#PR](https://github.com/obs-rust/obs-studio/pull/PR).
+  [#5774](https://github.com/obs-rust/obs-studio/pull/5774).
 
 ### Stability
 
