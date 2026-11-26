@@ -70,6 +70,11 @@ fi
 # CI keeps the separate runners of #2071/#2072; this is for a local host that
 # has the cores but not a second runner. Unset, nothing changes.
 serial_cpus="${OBS_TIER2_SERIAL_CPUS:-}"
+isolated_schedule="${OBS_TIER2_ISOLATED_SCHEDULE:-}"
+if [ -n "$isolated_schedule" ] && [ -z "$serial_cpus" ]; then
+  echo "FAIL: OBS_TIER2_ISOLATED_SCHEDULE requires OBS_TIER2_SERIAL_CPUS" >&2
+  exit 2
+fi
 if [ -n "$serial_cpus" ] && { [ -n "$part" ] || [ -n "${OBS_CTEST_SHARD:-}" ]; }; then
   echo "FAIL: OBS_TIER2_SERIAL_CPUS cannot be combined with OBS_CTEST_PART or OBS_CTEST_SHARD" >&2
   exit 2
@@ -453,7 +458,13 @@ if [ "$stage" != build ]; then
       # either part failing fails the mode.
       registry="$build/tier2-registry-$mode.json"
       ctest --test-dir "$build" --show-only=json-v1 >"$registry"
-      serial_regex=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-tests.py "$registry")
+      serial_schedule_args=()
+      if [ -n "$isolated_schedule" ]; then
+        serial_regex=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py select "$registry" "$isolated_schedule")
+        serial_schedule_args=(--schedule "$isolated_schedule")
+      else
+        serial_regex=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-tests.py "$registry")
+      fi
       suite_cpu_list=$(uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py suite-cpus --serial "$serial_cpus")
       serial_env_args=()
       for name_value in "${test_env_pairs[@]}" "LD_LIBRARY_PATH=$want_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; do
@@ -470,10 +481,13 @@ if [ "$stage" != build ]; then
       # matters when several tests share one display, as in the suite part.
       uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py run "$registry" \
         --cpus "$serial_cpus" --log-dir "$build/serial-$mode" --xvfb=-a \
-        "${serial_env_args[@]}" >"$build.serial-$mode.log" 2>&1 &
+        "${serial_schedule_args[@]}" "${serial_env_args[@]}" >"$build.serial-$mode.log" 2>&1 &
       serial_pid=$!
       wait "$suite_pid" || ctest_status=$?
       wait "$serial_pid" || serial_status=$?
+      if [ -n "$isolated_schedule" ]; then
+        cat "$build.ctest-$mode.log" "$build.serial-$mode.log"
+      fi
       [ "$serial_status" -eq 0 ] || echo "FAIL: [$mode] the RUN_SERIAL part failed, see $build.serial-$mode.log"
     else
       "${known_flaky[@]}" "${mode_env[@]}" xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" "${mode_shard_args[@]}" 2>&1 | tee "$build.ctest-$mode.log" ||

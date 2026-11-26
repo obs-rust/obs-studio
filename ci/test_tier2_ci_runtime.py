@@ -19,6 +19,23 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_cpu_reservation_partitions_the_complete_suite(self):
+        with patch.object(runtime.os, "sched_getaffinity", return_value=set(range(16))):
+            docker, environment = runtime.cpu_plan("all", "0-15", "8-15")
+            self.assertEqual(docker, ["--cpuset-cpus", "0-15", "--cpus", "16"])
+            self.assertIn("OBS_TIER2_SERIAL_CPUS=8-15", environment)
+            self.assertIn("OBS_CTEST_JOBS=8", environment)
+            self.assertTrue(any(value.endswith("/isolation-schedule.json") for value in environment))
+            for part, isolated in (("suite", "8-15"), ("all", "8-14"), ("all", "14-17")):
+                with self.subTest(part=part, isolated=isolated), self.assertRaises(ValueError):
+                    runtime.cpu_plan(part, "0-15", isolated)
+
+    def test_cpu_plan_defaults_to_complete_ctest(self):
+        docker, environment = runtime.cpu_plan("all", "", "")
+        self.assertEqual(docker, ["--cpus", "4"])
+        self.assertIn("OBS_TIER2_SERIAL_CPUS=", environment)
+        self.assertFalse(any(value.startswith("OBS_TIER2_ISOLATED_SCHEDULE=") for value in environment))
+
     def test_shared_mount_error_falls_back_before_docker(self):
         with patch.dict(os.environ, {"OBS_TIER2_ARTIFACT_SOCKET": "/nonexistent/lease.sock"}), \
                 patch.object(runtime, "execute") as execute:

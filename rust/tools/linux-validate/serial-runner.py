@@ -30,8 +30,11 @@ Exit status: 0 when every test passed, 1 when one failed, 2 on a usage error.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
+import math
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -103,21 +106,21 @@ def start_test(
         environment[key] = value
     handle = (log_dir / f"{name}.log").open("wb") if log_dir else None
     process = subprocess.Popen(
-        command,
+        [sys.executable, __file__, "pin", "--cpus", format_cpus(pair), "--", *command],
         cwd=props.get("WORKING_DIRECTORY") or None,
         env=environment,
         stdin=subprocess.DEVNULL,
         stdout=handle or subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         start_new_session=True,
-        preexec_fn=lambda cpus=set(pair): os.sched_setaffinity(0, cpus),
     )
     print(f"== [serial] {name}: started on CPUs {format_cpus(pair)}", flush=True)
     path = log_dir / f"{name}.log" if log_dir else None
     return name, process, path, time.monotonic(), handle
 
 
-def collect(started: list[tuple[str, subprocess.Popen, Path | None, float, object]], timeout: float) -> int:
+def collect(started: list[tuple[str, subprocess.Popen, Path | None, float, object]], timeout: float,
+            skip_code: int | None = None) -> int:
     """Wait for every started test, print a verdict each; the number that failed."""
     failures = 0
     for name, process, path, since, handle in started:
@@ -130,6 +133,10 @@ def collect(started: list[tuple[str, subprocess.Popen, Path | None, float, objec
         if handle:
             handle.close()
         elapsed = time.monotonic() - since
+        if skip_code is not None and status == skip_code:
+            print(f"== [serial] {name}: FAIL (unexpected skip, {elapsed:.1f} s)", flush=True)
+            failures += 1
+            continue
         if status == 0:
             print(f"== [serial] {name}: PASS ({elapsed:.1f} s)", flush=True)
             continue
@@ -141,6 +148,55 @@ def collect(started: list[tuple[str, subprocess.Popen, Path | None, float, objec
             print("\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-40:]), flush=True)
     print(f"== [serial] {len(started) - failures}/{len(started)} passed", flush=True)
     return failures
+
+
+def scheduled_tests(registry: dict, path: Path) -> tuple[dict[str, dict], dict[str, float]]:
+    tests = {test["name"]: test for test in registry["tests"]}
+    durations = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(durations, dict) or not durations:
+        raise ValueError("isolation schedule must map test names to estimated durations")
+    for name, duration in durations.items():
+        if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name not in tests:
+            raise ValueError(f"unknown or invalid isolation test: {name}")
+        if isinstance(duration, bool) or not isinstance(duration, (float, int)) or not math.isfinite(duration) or duration <= 0:
+            raise ValueError(f"invalid estimated duration for {name}")
+        unsupported = properties(tests[name]).keys() - {
+            "ENVIRONMENT", "LABELS", "RESOURCE_LOCK", "RUN_SERIAL", "SKIP_RETURN_CODE", "TIMEOUT", "WORKING_DIRECTORY",
+        }
+        if unsupported:
+            raise ValueError(f"{name} uses unsupported CTest properties: {', '.join(sorted(unsupported))}")
+    return tests, durations
+
+
+def run_schedule(registry: dict, args: argparse.Namespace) -> int:
+    tests, durations = scheduled_tests(registry, args.schedule)
+    cpus = parse_cpus(args.cpus)
+    if len(cpus) < 2 or len(cpus) % 2 or not set(cpus) <= os.sched_getaffinity(0):
+        raise ValueError("scheduled tests require complete CPU pairs within this process's affinity")
+    pairs = cpu_pairs(cpus, len(cpus) // 2)
+    lanes: list[list[dict]] = [[] for _ in pairs]
+    lane_costs = [0.0] * len(lanes)
+    for name in sorted(durations, key=lambda name: (-durations[name], name)):
+        index = min(range(len(lanes)), key=lane_costs.__getitem__)
+        lane_costs[index] += durations[name]
+        lanes[index].append(tests[name])
+    log_dir = Path(args.log_dir) if args.log_dir else None
+    if log_dir:
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+    def run_lane(pair: list[int], lane: list[dict]) -> int:
+        failures = 0
+        for test in lane:
+            props = properties(test)
+            failures += collect(
+                [start_test(test, pair, args, log_dir)],
+                float(props.get("TIMEOUT") or args.timeout), props.get("SKIP_RETURN_CODE"),
+            )
+        return failures
+
+    with ThreadPoolExecutor(max_workers=len(lanes)) as pool:
+        results = pool.map(run_lane, pairs, lanes)
+        return int(sum(results) != 0)
 
 
 def run_serial_tests(tests: list[dict], args: argparse.Namespace) -> int:
@@ -205,6 +261,11 @@ def main(argv: list[str]) -> int:
     run.add_argument("--timeout", type=float, default=900.0, help="seconds per test (default 900)")
     run.add_argument("--xvfb", help="wrap each command in `xvfb-run <ARGS>`")
     run.add_argument("--env", action="append", default=[], help="NAME=VALUE for the children")
+    run.add_argument("--schedule", type=Path, help="explicit test names and estimated seconds to run on CPU pairs")
+
+    select = commands.add_parser("select", help="print the CTest exclusion regex for a validated schedule")
+    select.add_argument("registry", type=Path)
+    select.add_argument("schedule", type=Path)
 
     suite = commands.add_parser("suite-cpus", help="print the affinity minus the serial CPUs")
     suite.add_argument("--serial", required=True)
@@ -227,6 +288,12 @@ def main(argv: list[str]) -> int:
                 return 2
             return pinned(args)
         registry = json.loads(args.registry.read_text(encoding="utf-8"))
+        if args.subcommand == "select":
+            _, durations = scheduled_tests(registry, args.schedule)
+            print("^(" + "|".join(sorted(durations)) + ")$")
+            return 0
+        if args.schedule:
+            return run_schedule(registry, args)
         return run_serial_tests(serial_tests(registry), args)
     except ValueError as error:
         print(f"FAIL: {error}", file=sys.stderr)

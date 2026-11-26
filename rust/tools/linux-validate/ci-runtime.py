@@ -43,6 +43,9 @@ spec = importlib.util.spec_from_file_location(
     'host_apt_mirrors', Path(__file__).resolve().parents[3] / 'ci' / 'host_apt_mirrors.py')
 host_apt_mirrors = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(host_apt_mirrors)
+spec = importlib.util.spec_from_file_location('serial_runner', Path(__file__).with_name('serial-runner.py'))
+serial_runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(serial_runner)
 
 
 def command(*args: str, capture_stderr: bool = False) -> str:
@@ -174,6 +177,26 @@ def part_env(part: str) -> list[str]:
     if not shard or int(shard[1]) > int(shard[2]):
         raise ValueError(f'Invalid Tier 2 part: {part}')
     return ['OBS_CTEST_PART=serial', f'OBS_CTEST_SERIAL_SHARD={shard[1]}/{shard[2]}']
+
+
+def cpu_plan(part: str, reservation: str, isolation: str) -> tuple[list[str], list[str]]:
+    environment = [*part_env(part), 'OBS_CTEST_JOBS=8']
+    if not reservation and not isolation:
+        return ['--cpus', '4'], environment
+    if part != 'all' or not reservation or not isolation:
+        raise ValueError('CPU reservation and isolation must both be supplied for the complete suite')
+    cpus = set(serial_runner.parse_cpus(reservation))
+    isolated = set(serial_runner.parse_cpus(isolation))
+    suite = cpus - isolated
+    if (not isolated < cpus or len(isolated) < 2 or len(isolated) % 2
+            or not cpus <= os.sched_getaffinity(0) or len(suite) < 2):
+        raise ValueError('CPU reservation needs complete isolated pairs and separate suite CPUs within runner affinity')
+    return ['--cpuset-cpus', serial_runner.format_cpus(sorted(cpus)), '--cpus', str(len(cpus))], [
+        'OBS_CTEST_PART=', 'OBS_CTEST_SHARD=', 'OBS_CTEST_SERIAL_SHARD=',
+        f'OBS_TIER2_SERIAL_CPUS={serial_runner.format_cpus(sorted(isolated))}',
+        f'OBS_TIER2_ISOLATED_SCHEDULE={SOURCE}/rust/tools/linux-validate/isolation-schedule.json',
+        f'OBS_CTEST_JOBS={len(suite)}',
+    ]
 
 
 def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> list[str]:
@@ -407,7 +430,8 @@ def execute(args: argparse.Namespace) -> None:
         summary_path.touch(exist_ok=True)
         summary_args = ['--mount', f'type=bind,src={summary_path},dst=/tier2-step-summary',
                         '--env', 'GITHUB_STEP_SUMMARY=/tier2-step-summary']
-    ident = command('docker', 'create', '--platform', 'linux/amd64', '--cpus', '4',
+    cpu_args, test_env = cpu_plan(args.part, getattr(args, 'reserved_cpus', ''), getattr(args, 'isolated_cpus', ''))
+    ident = command('docker', 'create', '--platform', 'linux/amd64', *cpu_args,
                     '--env', 'DEBIAN_FRONTEND=noninteractive',
                     *summary_args,
                     *mounts(args.source, args.build, args.cost, args.uv, args.archives),
@@ -431,8 +455,8 @@ def execute(args: argparse.Namespace) -> None:
         subprocess.run(['docker', 'exec', '--workdir', SOURCE,
                         '--env', f'OBS_TIER2_SRC={SOURCE}', '--env', f'OBS_TIER2_BUILD={BUILD}',
                         '--env', f'OBS_TIER2_COST_DIR={COST}', '--env', 'OBS_TIER2_STAGE=test',
-                        '--env', f'OBS_TIER2_MODES={args.mode}', '--env', 'OBS_CTEST_JOBS=8',
-                        *(arg for env in part_env(args.part) for arg in ('--env', env)),
+                        '--env', f'OBS_TIER2_MODES={args.mode}',
+                        *(arg for env in test_env for arg in ('--env', env)),
                         ident, 'bash', f'{SOURCE}/rust/tools/linux-validate/validate.sh'], check=True)
     finally:
         command('docker', 'stop', '--timeout', '1', ident)
@@ -479,6 +503,8 @@ def main() -> int:
     parser.add_argument('--prebaked-image', default='', help='Selected public Dell image, pinned by digest')
     parser.add_argument('--mode', choices=('OFF', 'ON'), required=True)
     parser.add_argument('--part', required=True, help='all, suite, serial or serial-<i>-of-<n>')
+    parser.add_argument('--reserved-cpus', default='', help='Physical CPU set reserved for this job by the runner host')
+    parser.add_argument('--isolated-cpus', default='', help='Even subset of reserved CPUs for isolated test pairs')
     args = parser.parse_args()
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         parser.error('Docker execution requires a disposable CI runner; local Docker work uses bosn')
