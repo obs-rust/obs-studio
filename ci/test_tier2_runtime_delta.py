@@ -64,7 +64,7 @@ class AptInstallTest(unittest.TestCase):
               'env', 'LC_ALL=C', 'apt-get', '-o', 'Acquire::Retries=3',
               '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
 
-    def install(self, failures=(), host_list=None, archives=None):
+    def install(self, failures=(), host_list=None, archives=None, variant='prepared'):
         calls = []
         errors = iter(failures)
         tmp = tempfile.TemporaryDirectory()
@@ -84,9 +84,14 @@ class AptInstallTest(unittest.TestCase):
         with patch.object(runtime, 'command', side_effect=command), \
                 patch.object(runtime, 'HOST_MIRRORS', host):
             try:
-                runtime.install_packages('container', 'prepared', '', self.packages,
-                                         *([archives] if archives else []))
+                if variant == 'stock':
+                    runtime.install_packages('container', 'stock', '\n'.join(self.packages) + '\n', [],
+                                             *([archives] if archives else []))
+                else:
+                    runtime.install_packages('container', variant, '', self.packages,
+                                             *([archives] if archives else []))
             finally:
+                self.raw_calls = list(calls)
                 self.calls = [c for c in calls if 'apt-get' in c]
                 self.all_calls = [c for c in calls if 'apt-get' in c or 'dpkg' in c or self.mirror_of(c)]
                 self.mirrors = [self.mirror_of(c) for c in calls if self.mirror_of(c)]
@@ -214,6 +219,73 @@ class AptInstallTest(unittest.TestCase):
                           return_value=io.BytesIO(json.dumps(reply).encode())), \
                 self.assertRaises(ValueError):
             runtime.snapshot_before_supersession([('libc6', '2.43-2ubuntu2.7', 'amd64')])
+
+    # #5777, master run 45808643652: the build pinned libasound2t64
+    # 1.2.15.3-1ubuntu1.1 an hour before resolute-security published
+    # 1.2.15.3-1ubuntu1.2; apt then picks the new libasound2-data, which
+    # Breaks every older libasound2t64, so the exact closure is unsatisfiable.
+    CONFLICT = (100, 'E: Unable to satisfy dependencies. Reached two conflicting assignments:\n'
+                     '   1. libasound2-data:amd64=1.2.15.3-1ubuntu1.2 is selected for install because:\n'
+                     '      1. libasound2t64:amd64=1.2.15.3-1ubuntu1.1 is selected for install\n'
+                     '      2. libasound2t64:amd64=1.2.15.3-1ubuntu1.1 Depends libasound2-data '
+                     '(>= 1.2.15.3-1ubuntu1.1)\n'
+                     '   2. libasound2-data:amd64=1.2.15.3-1ubuntu1.2 is not selected for install because:\n'
+                     '      2. libasound2-data:amd64=1.2.15.3-1ubuntu1.2 Breaks libasound2t64 '
+                     '(< 1.2.15.3-1ubuntu1.2)\n')
+    ALSA = ['libc6:amd64=2.43-2ubuntu2.7', 'libasound2t64:amd64=1.2.15.3-1ubuntu1.1']
+    STOCK_TOOLS = ('git', 'ca-certificates', 'curl', 'sudo', 'zstd')
+
+    def stock_prefix(self):
+        return (*self.prefix[:5], '600s', *self.prefix[6:])
+
+    def test_a_conflict_naming_a_superseded_pin_installs_the_pins_from_the_snapshot(self):
+        self.packages = self.ALSA
+        with patch.object(runtime, 'snapshot_before_supersession', return_value=SNAPSHOT) as before:
+            self.install([None, self.CONFLICT])
+        before.assert_called_once_with([('libasound2t64', '1.2.15.3-1ubuntu1.1', 'amd64')])
+        install = ('install', '-y', '--no-install-recommends', *self.packages)
+        # No refresh: the index still lists the pin; it is the archive's
+        # newer neighbour that conflicts with it.
+        self.assertEqual(self.calls, [(*self.prefix, 'update', '-qq'), (*self.prefix, *install),
+                                      (*self.prefix, '--snapshot', SNAPSHOT, 'update', '-qq'),
+                                      (*self.prefix, '--snapshot', SNAPSHOT, *install)])
+
+    def test_a_conflict_without_a_superseded_pin_still_fails(self):
+        self.packages = self.ALSA
+        with patch.object(runtime, 'snapshot_before_supersession', side_effect=ValueError('none')), \
+                self.assertRaises(RuntimeError) as error:
+            self.install([None, self.CONFLICT])
+        self.assertEqual(len(self.calls), 2)
+        self.assertIn('Breaks libasound2t64', str(error.exception))
+
+    def test_the_stock_closure_installs_through_the_same_recovery(self):
+        # #5777: more than MAX_DELTA packages behind sends every job to the
+        # stock base, whose single unbounded install had none of the delta's
+        # mirror, timeout, refresh, cached .deb or snapshot handling.
+        stock = self.stock_prefix()
+        closure = (*self.packages, *self.STOCK_TOOLS)
+        self.install(variant='stock')
+        self.assertEqual(self.mirrors, ['http://archive.ubuntu.com/ubuntu/'])
+        self.assertEqual(self.calls, [(*stock, 'update', '-qq'),
+                                      (*stock, 'install', '-y', '--no-install-recommends', *closure)])
+
+    def test_the_stock_snapshot_trusts_the_hosts_ca_bundle(self):
+        # The stock base has no CA certificates, and snapshot.ubuntu.com
+        # redirects plain HTTP to HTTPS; its indexes stay signature-checked.
+        stock = self.stock_prefix()
+        closure = (*self.ALSA, *self.STOCK_TOOLS)
+        self.packages = self.ALSA
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        bundle = Path(tmp.name) / 'ca-certificates.crt'
+        bundle.write_text('certs')
+        with patch.object(runtime, 'snapshot_before_supersession', return_value=SNAPSHOT), \
+                patch.object(runtime, 'HOST_CA', bundle):
+            self.install([None, self.CONFLICT], variant='stock')
+        self.assertIn(('docker', 'cp', '-L', str(bundle), 'container:' + runtime.CONTAINER_CA), self.raw_calls)
+        at = (*stock, '-o', f'Acquire::https::CaInfo={runtime.CONTAINER_CA}', '--snapshot', SNAPSHOT)
+        self.assertEqual(self.calls[2:], [(*at, 'update', '-qq'),
+                                          (*at, 'install', '-y', '--no-install-recommends', *closure)])
 
     def test_a_cached_deb_does_not_stand_in_for_other_failures(self):
         archives = self.cached(f'zlib1g_{NEW.replace(":", "%3a")}_amd64.deb')
