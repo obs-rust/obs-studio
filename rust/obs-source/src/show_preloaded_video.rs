@@ -71,6 +71,32 @@ pub trait Host {
 
 /// `obs_source_show_preloaded_video(source)`.
 pub fn show_preloaded_video<H: Host>(host: &H, source: Option<H::Source>) {
-    let _ = (host, source);
-    todo!()
+    let Some(source) = source else {
+        host.null_source(c"obs_source_show_preloaded_video");
+        return;
+    };
+    if host.destroying(source) || !host.has_preload_frame(source) {
+        return;
+    }
+
+    host.enter_graphics();
+    host.set_texture_size(source);
+    host.update_textures(source);
+    host.mark_textures_fresh(source);
+    host.mark_active(source);
+    host.leave_graphics();
+
+    host.lock_async(source);
+    let last_frame_ts = host.last_frame_ts(source);
+    host.unlock_async(source);
+
+    host.lock_audio(source);
+    let sys_ts = if host.monitor_only(source) {
+        0
+    } else {
+        host.now()
+    };
+    host.reset_audio_timing(source, last_frame_ts, sys_ts);
+    host.reset_audio_data(source, sys_ts);
+    host.unlock_audio(source);
 }
