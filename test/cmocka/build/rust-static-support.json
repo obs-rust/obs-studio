@@ -54,6 +54,7 @@
     "test/cmocka/set-locale-link-support.c",
     "test/cmocka/set-video-levels-link-support.c",
     "test/cmocka/source-audio-capture-callback-link-support.c",
+    "test/cmocka/source-get-release-frame-link-support.c",
     "test/cmocka/source-save-load-link-support.c",
     "test/cmocka/source-settings-getter-link-support.c",
     "test/cmocka/source-weak-control-link-support.c",

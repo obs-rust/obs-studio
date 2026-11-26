@@ -18212,6 +18212,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_get_release_frame": {
+      "sources": [
+        "test/cmocka/test_source_get_release_frame.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_get_weak": {
       "sources": [
         "test/cmocka/test_source_get_weak.c"
@@ -30088,6 +30103,13 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_source_get_release_frame": {
+      "target": "test_source_get_release_frame",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_get_weak": {
       "target": "test_source_get_weak",

@@ -59,6 +59,8 @@ mod canonical_source_flags_mixers_swap_is_registered;
 mod canonical_source_frame_copy_data_swap_is_registered;
 #[path = "native/registration/canonical_source_frame_wrappers_swap_is_registered.rs"]
 mod canonical_source_frame_wrappers_swap_is_registered;
+#[path = "native/registration/canonical_source_get_release_frame_swap_is_registered.rs"]
+mod canonical_source_get_release_frame_swap_is_registered;
 #[path = "native/registration/canonical_source_get_weak_swap_is_registered.rs"]
 mod canonical_source_get_weak_swap_is_registered;
 #[path = "native/registration/canonical_source_last_async_ts_swap_is_registered.rs"]
