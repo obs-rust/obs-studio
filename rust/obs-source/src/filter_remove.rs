@@ -19,6 +19,7 @@
     clippy::unreachable
 )]
 
+use crate::source_filter_chain::remove_retarget;
 use core::ffi::CStr;
 
 /// The public function named in the NULL diagnostics.
@@ -76,8 +77,17 @@ pub fn remove<L: FilterList>(
     filter: Option<L::Source>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (source, filter, log);
-    todo!("#5795")
+    let Some(source) = source else {
+        log(REMOVE_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    let Some(filter) = filter else {
+        log(REMOVE_FUNCTION, FILTER_PARAMETER);
+        return;
+    };
+    if remove_refless(source, filter) {
+        source.release(filter);
+    }
 }
 
 /// `obs_source_filter_remove_refless()`: under the lock, looks `filter` up
@@ -86,6 +96,36 @@ pub fn remove<L: FilterList>(
 /// the callback when the type has one, then the filter's parent and target
 /// cleared. `true` when it was removed; the reference is the caller's.
 pub fn remove_refless<L: FilterList>(source: &L, filter: L::Source) -> bool {
-    let _ = (source, filter);
-    todo!("#5795")
+    source.lock();
+    let Some(idx) = find(source, filter) else {
+        source.unlock();
+        return false;
+    };
+    if let Some(prev_idx) = remove_retarget(idx) {
+        let prev = source.filter(prev_idx);
+        source.set_target(prev, source.target(filter));
+    }
+    source.erase(idx);
+    source.unlock();
+
+    source.signal(filter);
+    source.log_removed(filter);
+    if source.has_remove_callback(filter) {
+        source.call_remove_callback(filter);
+    }
+    source.clear_links(filter);
+    true
+}
+
+/// `da_find()`: the first index holding `filter`, the count read before
+/// each entry.
+fn find<L: FilterList>(source: &L, filter: L::Source) -> Option<usize> {
+    let mut index = 0;
+    while index < source.count() {
+        if source.filter(index) == filter {
+            return Some(index);
+        }
+        index = index.wrapping_add(1);
+    }
+    None
 }
