@@ -141,6 +141,24 @@ class MergeQueue(unittest.TestCase):
         mode = job_block(BUILD, "ci-mode")
         self.assertNotIn("ci/lane_proof.py check", mode)
 
+    def test_queue_keeps_checks_and_test_links_without_repeating_rust_lints(self):
+        for job, step in (
+            ("rust-tests-linux", "Local Gate (lint) 🧪"),
+            ("rust-cross-lint", "Local Gate (cross) 🧪"),
+            ("rust-tests-macos-build", "Run Clippy 📎"),
+            ("rust-tests-windows", "Run Clippy 📎"),
+        ):
+            with self.subTest(job=job, step=step):
+                block = job_block(BUILD, job).split(f"      - name: {step}\n", 1)[1]
+                block = block.split("      - ", 1)[0]
+                self.assertIn("if: github.event_name != 'merge_group'", block)
+        fast = job_block(BUILD, "rust-tests-linux")
+        self.assertIn("--lane lint --queue-checks", fast)
+        cross = job_block(BUILD, "rust-cross-lint")
+        self.assertRegex(cross, r"--lane cross --cross-target .+ --queue-checks")
+        release = job_block(BUILD, "rust-cross-lint-release")
+        self.assertNotIn("github.event_name == 'merge_group'", release)
+
     def test_queue_disables_command_verdict_replay(self):
         for text in (BUILD, (ROOT / ".github/workflows/check-format.yaml").read_text()):
             self.assertIn("SOLDR_VERDICTS: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && 'off' || 'auto' }}", text)
@@ -158,7 +176,7 @@ class MergeQueue(unittest.TestCase):
         self.assertIn("fetch-depth: 0", gate)
         self.assertNotIn("needs.build-project.outputs.core", gate)
         extra = job_block(BUILD, "rust-cross-lint-release")
-        self.assertIn("github.event_name == 'merge_group'", extra)
+        self.assertIn("github.event_name != 'merge_group'", extra)
         self.assertIn("inputs.mq-heavy-labels", extra)
 
     def test_cross_job_declares_host_uic_runtime_on_minimal_runners(self):

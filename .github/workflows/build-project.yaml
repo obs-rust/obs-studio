@@ -1861,6 +1861,7 @@ jobs:
       # The ci/ self-tests run in the Checks job on the standard pool (#427).
       - name: Local Gate (lint) 🧪
         id: local-gate
+        if: github.event_name != 'merge_group'
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.sha }}
@@ -1872,8 +1873,14 @@ jobs:
           uv run --no-project ci/lane_proof.py key --lane dylint --base "${BASE}"
           touch "${{ runner.temp }}/dylint-lane-proof"
 
+      - name: Local Gate (queue checks) 🧪
+        if: github.event_name == 'merge_group'
+        env:
+          OBS_GATE_SKIP_SELF_TEST: "1"
+        run: uv run --no-project ci/local_gate.py --lane lint --queue-checks
+
       - name: Upload Dylint Lane Proof 🧾
-        if: steps.local-gate.outputs.name != ''
+        if: github.event_name != 'merge_group' && steps.local-gate.outputs.name != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.local-gate.outputs.name }}
@@ -2163,7 +2170,7 @@ jobs:
   # attested for the same gates (the `cross` local-gate lane).
   rust-cross-lint:
     timeout-minutes: 45
-    name: Rust Cross Lint 🦀 (${{ matrix.target }})
+    name: ${{ github.event_name == 'merge_group' && 'Rust Cross Test Link 🔗' || 'Rust Cross Lint 🦀' }} (${{ matrix.target }})
     # Each target gets a fresh disk; two linked test graphs exhaust one runner.
     strategy:
       fail-fast: false
@@ -2194,7 +2201,7 @@ jobs:
           # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
           # hosted runners, so the shared hosted key is unchanged (#2661).
           prebuild-deps-recipes: |
-            ${{ inputs.mq-heavy-labels != '' && format('--profile dev --target {0} -- --tests --check', matrix.target) || '' }}
+            ${{ inputs.mq-heavy-labels != '' && github.event_name != 'merge_group' && format('--profile dev --target {0} -- --tests --check', matrix.target) || '' }}
             ${{ inputs.mq-heavy-labels != '' && format('--profile dev --target {0} -- --tests', matrix.target) || '' }}
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
@@ -2218,7 +2225,12 @@ jobs:
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Local Gate (cross) 🧪
+        if: github.event_name != 'merge_group'
         run: uv run --no-project ci/local_gate.py --lane cross --cross-target ${{ matrix.target }}
+
+      - name: Local Gate (queue cross test link) 🔗
+        if: github.event_name == 'merge_group'
+        run: uv run --no-project ci/local_gate.py --lane cross --cross-target ${{ matrix.target }} --queue-checks
 
   # A proof represents BOTH targets. Never publish it from a single matrix leg.
   rust-cross-proof:
@@ -2226,7 +2238,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [ci-mode, rust-cross-lint]
-    if: ${{ success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
+    if: ${{ github.event_name != 'merge_group' && success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
     steps:
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
@@ -2356,11 +2368,10 @@ jobs:
   rust-cross-lint-release:
     timeout-minutes: 45
     name: Rust Cross Lint 🦀 (release targets)
-    # Queue and release lint-only targets: Windows arm64, macOS x64 and Linux
-    # arm64. The main cross matrix retains its independent test-link legs.
+    # PR fallback and release lint-only targets: Windows arm64, macOS x64 and Linux arm64.
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || needs.check-event.outputs.full == 'true' || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true')) }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name != 'merge_group' && needs.check-event.outputs.full == 'true')) }}
     defaults:
       run:
         shell: bash
@@ -2468,14 +2479,11 @@ jobs:
       - name: Prepare Darwin standard library
         run: uv run --no-project ci/macos_test_artifact.py prepare-target
 
-      # Preserve #4999: the required queue cross leg already owns this analysis.
-      # Other events still analyze the Darwin target, now on Linux.
       - name: Run Clippy 📎
-        if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
+        if: github.event_name != 'merge_group'
         run: soldr cargo clippy --locked --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
 
       - name: Check Formatting 🎨
-        if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
         run: soldr cargo fmt --all --check
 
       # Same changed-crate selector as the former PR consumer; queue/master
@@ -2695,6 +2703,7 @@ jobs:
         run: soldr cargo test --workspace --locked
 
       - name: Run Clippy 📎
+        if: github.event_name != 'merge_group'
         run: soldr cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Check Formatting 🎨

@@ -135,8 +135,7 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
     """The queue execution manifest: exact job names, never proof credit.
 
     Keep names identical to build-project.yaml, including matrix mode/part names.
-    The extra cross lane executes all three lint-only targets in one job; the two
-    main targets retain independent runners and test linking.
+    The queue retains the test links for both main cross targets.
     """
     expected = {SCOPE_JOB, "Build 🧱 / CI Mode 🛂", "Format 🔍 / checks"}
     if not selected.docs_only:
@@ -146,9 +145,8 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
     expected.update(cmocka_jobs(selected))
     if selected.cross_lint:
         expected.update({
-            "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
-            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
-            "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+            "Build 🧱 / Rust Cross Test Link 🔗 (x86_64-pc-windows-msvc)",
+            "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
         })
     if selected.cross_targets:
         expected.add(f"Build 🧱 / Cross Compile 🧰 ({selected.cross_targets})")
@@ -177,8 +175,13 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
     workflow outputs. Old Local-Gate/verifier output is compatible via real CI.
     """
     selected = SimpleNamespace(**vars(selected))
-    selected.cross_lint = not selected.docs_only
+    selected.cross_lint = False
     expected = expected_jobs(selected, files)
+    cross_lint_jobs = {f"Build 🧱 / Rust Cross Lint 🦀 ({target})" for target in (
+        "x86_64-pc-windows-msvc", "aarch64-apple-darwin", "release targets"
+    )}
+    if not selected.docs_only:
+        expected.update(cross_lint_jobs)
     if data_selected(files):
         expected.add("Validate Data 🕵️")
     valid = (plan.get("admission_version") == 1 and plan.get("queue_policy") == "heavy-v1"
@@ -190,11 +193,7 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
         "check-format.yaml:swift-format": {"Format 🔍 / swift-format"},
         "ci.yml:validate-data": {"Validate Data 🕵️"},
         "build-project.yaml:rust-tests-linux": {"Build 🧱 / Fast Gate ⚡"},
-        "build-project.yaml:rust-cross-lint": {
-            "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
-            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
-            "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
-        },
+        "build-project.yaml:rust-cross-lint": cross_lint_jobs,
     }
     heavy = expected - {SCOPE_JOB, "Build 🧱 / CI Mode 🛂"} - set().union(*names.values())
     gates = plan["gates"]
