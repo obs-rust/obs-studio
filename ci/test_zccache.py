@@ -10,7 +10,7 @@ installed by rust/tools/linux-validate/install_zccache.py with its SHA-256.
 
 Not covered, on purpose: the Windows job (zccache does not run as a cl.exe
 stand-in for the Visual Studio generator; see build-project.yaml), the
-Flatpak (flatpak-builder --ccache runs the SDK's own ccache inside the
+Flatpak (the OBS module stages its own pinned zccache inside the
 sandbox) and macOS (Xcode's compilation cache, not ccache).
 """
 

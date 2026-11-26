@@ -10,6 +10,9 @@ build-aux/appimage/**
 build-aux/format-manifest.py
 build-aux/io.github.obs_rust.OBSStudioRust.json
 build-aux/prepare_flatpak_rust.py
+# Flatpak build shims, staged by the manifest above and consumed only inside
+# the flatpak-build sandbox; the flatpak job exercises them end-to-end.
+build-aux/flatpak/**
 # Steam depot descriptors: consumed by the steam-upload job, not a compile.
 build-aux/steam/obs_build.vdf
 build-aux/steam/obs_playtest_build.vdf

@@ -128,6 +128,8 @@ zccache = { prefix = "zccache-", max = "500MB", evict = "lru", shapes = { appima
 # 42 restores, all on nightly, dispatch and release runs. The release-asset
 # transport (#782) can bring them back outside this budget.
 # The standalone compiler migration reader/writer is retired (#1801).
+# Flatpak OBS zccache has no Actions key or reservation. The optional transfer
+# is a workflow artifact, separate from dependency ccache in builder state.
 # AppImage (appimage.yaml): cargo and the test images' packages.
 # Legacy apt-appimage- and ccache-appimage- have no consumers or live entries;
 # they deliberately have no retention family (#1269).

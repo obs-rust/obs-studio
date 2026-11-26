@@ -1263,11 +1263,11 @@ are cached per run/attempt, and each record/summary includes recognized
 per-job archive byte observations, compiler reports, saved keys and CTest
 counts. Missing logs or counters remain unknown.
 
-Flatpak's pinned builder can restore cumulative ccache statistics along with
-the build state. Those reports carry `counter_scope: restored-cumulative`
-and `job_delta_available: false`; their raw counts are preserved, without
-inventing a baseline after the action's final restore. Do not present them
-as compiler hits from that job alone.
+The Flatpak OBS build reports zccache hits, misses and uncacheable compiles
+from its Ninja build session. Log evidence marks those counts
+`counter_scope: job-session`. Historical Flatpak ccache reports can
+include cumulative restored statistics and carry
+`counter_scope: restored-cumulative` and `job_delta_available: false`.
 
 The existing full Ubuntu app lane captures a native zccache session journal
 to diagnose misses such as the observed 137 cold OFF calls. Its IPC endpoint
@@ -2043,8 +2043,8 @@ gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f flatpak-measur
 `workflow_dispatch`. Ordinary PR, merge-group, push, schedule and release
 selection is preserved. Format/Fast Gate remain, and the entire Flatpak job
 is unchanged: setup, compilation, debug processing, export, validators,
-pruning and cleanup all stay in its clock. Every Flatpak build starts cold
-(no Actions cache since #1801 phase A). Keep other probe inputs off for a
+compiler reporting and cleanup all stay in its clock. Routine Flatpak builds
+start cold (no Actions cache since #1801 phase A). Keep other probe inputs off for a
 routine observation; optional Flatpak qualification probes remain separate
 extra work when explicitly requested.
 
@@ -2056,11 +2056,14 @@ the entire preceding manual master workflow to finish before starting another.
 
 ### Flatpak cache retention after migration (#1801)
 
-The production build restores one projected Actions archive containing
-`.flatpak-builder/cache` and `.flatpak-builder/ccache`. A miss builds cold;
-the old whole-builder and standalone compiler migration restores are retired.
-Current builds reset counters after restoration and still execute the full
-build, export and validators before trusted publication.
+The production build leaves Actions cache restore and save disabled.
+Flatpak Builder's SDK ccache wrappers remain available for dependency
+modules. The OBS module stages a checksum-pinned zccache launcher under the
+source mount and uses a separate store inside the writable compiler cache
+mount. Its Ninja wrapper closes the statistics session and stops the daemon
+before writing the completed report. The explicit manual transfer probe
+archives only durable state and checks the consumer's toolchain identity
+before restoring. See the [migration decision](zccache-flatpak-migration-note.md).
 
 The obsolete standalone compiler family no longer reserves 200 MiB. The
 [saved policy replay](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-22-flatpak-legacy-retirement.md)

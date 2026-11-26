@@ -1,5 +1,10 @@
 # Flatpak PCH cache qualification (#1760)
 
+The measurements below record the SDK ccache configuration and results
+before the OBS module's zccache migration. See the
+[Flatpak compiler cache decision](zccache-flatpak-migration-note.md) for
+the current configuration and the zccache PCH qualification command.
+
 > The `docs/ci-evidence/` snapshots linked below are retired from `master`
 > (#2686); each link resolves to the commit that last held the file
 > (`c2af3f9c3`), and the commands quoted below name those paths as they were

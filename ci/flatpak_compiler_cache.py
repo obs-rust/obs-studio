@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import shutil
 import stat
@@ -14,14 +15,41 @@ import time
 
 MAX_PAYLOAD_BYTES = 2 * 1024 ** 3
 MAX_FILES = 100_000
-BUILDER_WRAPPERS = frozenset('bin/' + name for name in ('cc', 'c++', 'gcc', 'g++'))
+CACHE_SUBDIR = Path('ccache/obs-zccache')
+FORMAT = 2
+DURABLE_FILES = frozenset(('index.bin', 'metadata.bin', 'compiler_hash.bin',
+                           'system_includes.bin', 'depgraph/depgraph.bin'))
 
 
-def builder_wrapper(path, root):
-    # flatpak-builder 1.4.9 regenerates these four sandbox launchers. They are
-    # scaffolding, not compiler results, and must never enter the archive.
-    return (path.relative_to(root).as_posix() in BUILDER_WRAPPERS
-            and path.is_symlink() and str(path.readlink()) == '/usr/bin/ccache')
+def durable(path):
+    version, *parts = path.parts
+    if not version.startswith('v') or not version[1:].replace('.', '').isdigit() or not parts:
+        return False
+    return ('/'.join(parts) in DURABLE_FILES or
+            (parts[0] == 'artifacts' and parts[-1] != '.store.lock'))
+
+
+def read_session(cache):
+    stats = json.loads((cache / 'session.json').read_text())
+    keys = ('hits', 'misses', 'compilations', 'non_cacheable', 'errors')
+    if stats.get('status') != 'ok' or any(type(stats.get(key)) is not int or stats[key] < 0 for key in keys):
+        raise ValueError('invalid completed Flatpak zccache session')
+    if not stats['compilations']:
+        raise ValueError('Flatpak zccache session observed zero compilations')
+    return stats
+
+
+def require_reuse(stats):
+    hits, misses = stats['hits'], stats['misses']
+    return hits >= 100 and hits / max(1, hits + misses) >= 0.8
+
+
+def verify_package(app):
+    if not app.is_dir():
+        raise ValueError(f'missing Flatpak application directory: {app}')
+    for path in app.rglob('*'):
+        if path.name in {'.flatpak-zccache', '.flatpak-zccache-state', 'obs-zccache', 'zccache', 'zccache-fp', 'zccache-daemon'}:
+            raise ValueError(f'build-only zccache leaked into Flatpak application: {path.relative_to(app)}')
 
 
 def digest(path):
@@ -34,13 +62,22 @@ def context(manifest):
     sdk = recipe['sdk'] + '//' + recipe['runtime-version']
     def query(command):
         return subprocess.check_output(command, text=True, timeout=60).strip()
+    architecture = query(['uname', '-m'])
+    obs = next(module for module in recipe['modules'] if isinstance(module, dict) and module.get('name') == 'obs')
+    source = next(source for source in obs['sources']
+                  if source.get('dest') == '.flatpak-zccache' and source.get('only-arches') == [architecture])
+    # Journal configuration affects observability, not the compiler cache identity.
+    env = obs['build-options']['env']
+    env.pop('OBS_FLATPAK_ZCCACHE_JOURNAL', None)
+    manifest_identity = hashlib.sha256(json.dumps(recipe, sort_keys=True).encode()).hexdigest()
     return {
+        'zccache': source['sha256'],
         'source': query(['git', 'rev-parse', 'HEAD']),
-        'manifest': digest(manifest),
+        'manifest': manifest_identity,
         'sdk': query(['flatpak', 'info', '--show-commit', sdk]),
         'compiler': query(['flatpak', 'run', '--command=sh', sdk, '-ec',
-                           'sha256sum /usr/bin/cc /usr/bin/c++; ccache --version']),
-        'architecture': query(['uname', '-m']),
+                           'sha256sum /usr/bin/cc /usr/bin/c++']),
+        'architecture': architecture,
     }
 
 
@@ -52,14 +89,18 @@ def pack(source, artifact, profile):
     files, size, omitted = [], 0, []
     for entry in sorted(source.rglob('*')):
         mode = entry.lstat().st_mode
-        if builder_wrapper(entry, source):
-            omitted.append(entry.relative_to(source).as_posix())
-            continue
+        relative = entry.relative_to(source)
         if stat.S_ISDIR(mode):
             continue
-        if not stat.S_ISREG(mode) or entry.relative_to(source).parts[0] == 'bin':
+        # The stopped daemon can leave its socket inode in the mount.
+        if stat.S_ISSOCK(mode) and entry.name == f'daemon-{relative.parts[0]}.sock' and len(relative.parts) == 2:
+            omitted.append(relative.as_posix())
+            continue
+        if not stat.S_ISREG(mode) or relative.parts[0] == 'bin':
             raise ValueError('compiler cache contains an unsupported link/non-regular file or wrapper entry: '
-                             + entry.relative_to(source).as_posix())
+                             + relative.as_posix())
+        if not durable(relative):
+            continue
         size += entry.stat().st_size
         files.append(entry)
         if size > MAX_PAYLOAD_BYTES or len(files) > MAX_FILES:
@@ -68,7 +109,7 @@ def pack(source, artifact, profile):
         raise ValueError('compiler cache is empty')
     artifact.mkdir(parents=True, exist_ok=False)
     archive = artifact / 'compiler-cache.tar'
-    # Ccache results are already compressed; retain real archive bytes and avoid
+    # Retain real archive bytes and avoid
     # hiding another compression pass outside the producer clock.
     with tarfile.open(archive, 'w') as output:
         for entry in files:
@@ -77,9 +118,9 @@ def pack(source, artifact, profile):
             member.mode = 0o600
             with entry.open('rb') as stream:
                 output.addfile(member, stream)
-    report = {'format': 1, 'profile': profile, 'sha256': digest(archive),
+    report = {'format': FORMAT, 'profile': profile, 'sha256': digest(archive),
               'archive_bytes': archive.stat().st_size, 'payload_bytes': size,
-              'files': len(files), 'omitted_builder_wrappers': omitted,
+              'files': len(files), 'omitted_daemon_sockets': omitted,
               'pack_seconds': time.monotonic() - start}
     (artifact / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n')
     return report
@@ -89,7 +130,7 @@ def restore(artifact, destination, profile):  # noqa: C901
     start = time.monotonic()
     artifact, destination = Path(artifact), Path(destination)
     report = json.loads((artifact / 'manifest.json').read_text())
-    if report.get('format') != 1 or report.get('profile') != profile:
+    if report.get('format') != FORMAT or report.get('profile') != profile:
         producer = report.get('profile', {})
         mismatch = {'producer': producer, 'consumer': profile,
                     'different_fields': sorted(key for key in set(producer) | set(profile)
@@ -117,7 +158,7 @@ def restore(artifact, destination, profile):  # noqa: C901
         for member in members:
             path = PurePosixPath(member.name)
             if (not member.isfile() or path.is_absolute() or '..' in path.parts
-                    or not path.parts or path.parts[0] == 'bin'
+                    or not path.parts or not durable(path) or member.name != path.as_posix()
                     or member.name in names or '\\' in member.name):
                 raise ValueError('unsafe compiler archive member')
             names.add(member.name)
@@ -129,8 +170,7 @@ def restore(artifact, destination, profile):  # noqa: C901
         if any(parent.is_symlink() for parent in [destination, *destination.parents]):
             raise ValueError('compiler destination contains links')
         if destination.exists() and (not destination.is_dir()
-                                     or any(p.is_symlink() and not builder_wrapper(p, destination)
-                                            for p in destination.rglob('*'))):
+                                     or any(p.is_symlink() for p in destination.rglob('*'))):
             raise ValueError('compiler destination contains links or is not a directory')
         destination.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='flatpak-compiler-transfer-', dir=destination.parent) as directory:
@@ -144,13 +184,18 @@ def restore(artifact, destination, profile):  # noqa: C901
     return dict(report, restore_seconds=time.monotonic() - start)
 
 
-def main():
+def main():  # noqa: C901
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['pack', 'restore', 'reset', 'verify', 'force'])
-    parser.add_argument('--manifest', type=Path, required=True)
+    parser.add_argument('operation', choices=['pack', 'restore', 'reset', 'report', 'verify', 'force'])
+    parser.add_argument('--manifest', type=Path)
     parser.add_argument('--cache', type=Path, required=True)
-    parser.add_argument('--artifact', type=Path, required=True)
+    parser.add_argument('--artifact', type=Path)
+    parser.add_argument('--app', type=Path)
     args = parser.parse_args()
+    if args.operation in ('force', 'pack', 'restore') and args.manifest is None:
+        parser.error(f'{args.operation} requires --manifest')
+    if args.operation in ('pack', 'restore', 'verify') and args.artifact is None:
+        parser.error(f'{args.operation} requires --artifact')
     if args.operation == 'force':
         recipe = json.loads(args.manifest.read_text())
         if recipe['modules'][-1]['name'] != 'obs':
@@ -158,27 +203,34 @@ def main():
         recipe['modules'][-1].setdefault('post-install', []).append("printf '%s\\n' OBS_COMPILER_CONSUMER_EXECUTED")
         args.manifest.write_text(json.dumps(recipe, indent=2) + '\n')
         result = {'forced': 'application post-install checksum only; source and compiler configuration preserved'}
-    elif args.operation in ('reset', 'verify'):
-        recipe = json.loads(args.manifest.read_text())
-        command = ['flatpak', 'run', '--command=ccache', '--filesystem=' + str(args.cache.resolve()),
-                   '--env=CCACHE_DIR=' + str(args.cache.resolve()), recipe['sdk'] + '//' + recipe['runtime-version']]
-        if args.operation == 'reset':
-            result = {'reset': subprocess.check_output([*command, '--zero-stats'], text=True, timeout=60).strip()}
-        else:
-            stats = dict(line.split() for line in subprocess.check_output([*command, '--print-stats'], text=True, timeout=60).splitlines()
-                         if len(line.split()) == 2)
-            hits = int(stats.get('direct_cache_hit', 0)) + int(stats.get('preprocessed_cache_hit', 0))
-            misses = int(stats.get('cache_miss', 0))
-            result = {'hits': hits, 'misses': misses, 'stats': stats, 'status': 'success'}
-            if hits < 100 or hits / max(1, hits + misses) < 0.8:
-                result['status'] = 'failed'
-            (args.artifact / 'consumer-result.json').write_text(json.dumps(result, indent=2) + '\n')
-            if result['status'] != 'success':
-                raise ValueError(f'insufficient cross-runner compiler reuse: {hits} hits, {misses} misses')
+    elif args.operation == 'reset':
+        (args.cache / 'session.json').unlink(missing_ok=True)
+        result = {'reset': 'previous session report removed'}
+    elif args.operation in ('report', 'verify'):
+        if args.app is not None:
+            verify_package(args.app)
+        stats = read_session(args.cache)
+        hits, misses = stats['hits'], stats['misses']
+        if args.operation == 'report':
+            summary = (f"Flatpak Zccache Stats (this build): warm_hits={hits} cold_misses={misses} "
+                       f"uncacheable={stats['non_cacheable']} compilations={stats['compilations']}")
+            print(summary)
+            if output := os.environ.get('GITHUB_STEP_SUMMARY'):
+                with Path(output).open('a', encoding='utf-8') as stream:
+                    print(summary, file=stream)
+            if not hits:
+                print('::warning::Flatpak zccache reported no hits for this build')
+            return
+        result = {'hits': hits, 'misses': misses, 'stats': stats,
+                  'status': 'success' if require_reuse(stats) else 'failed'}
+        (args.artifact / 'consumer-result.json').write_text(json.dumps(result, indent=2) + '\n')
+        if result['status'] != 'success':
+            raise ValueError(f'insufficient cross-runner compiler reuse: {hits} hits, {misses} misses')
+    elif args.operation == 'pack':
+        read_session(args.cache)
+        result = pack(args.cache / 'state', args.artifact, context(args.manifest))
     else:
-        profile = context(args.manifest)
-        result = (pack(args.cache, args.artifact, profile) if args.operation == 'pack'
-                  else restore(args.artifact, args.cache, profile))
+        result = restore(args.artifact, args.cache / 'state', context(args.manifest))
     print(json.dumps(result, indent=2))
 
 

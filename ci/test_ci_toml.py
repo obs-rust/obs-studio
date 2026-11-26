@@ -142,11 +142,14 @@ class FlatpakCacheWriterTest(unittest.TestCase):
         marker = "- name: Reset Flatpak Compiler Counters"
         self.assertIn(marker, job)
         reset = job.split(marker, 1)[1].split("\n      - ", 1)[0]
-        self.assertIn("--zero-stats", reset)
-        self.assertIn('CCACHE_DIR=', reset)
+        self.assertIn('ci/flatpak_compiler_cache.py reset --cache .flatpak-builder/ccache/obs-zccache', reset)
         self.assertNotIn('continue-on-error', reset)
         self.assertLess(job.index(marker), job.index('- name: Build Flatpak Manifest'))
-        self.assertIn('Flatpak Ccache Stats (this build)', job)
+        stats = job.split('- name: Zccache Stats 📊', 1)[1].split('\n      - ', 1)[0]
+        self.assertIn('report --cache .flatpak-builder/ccache/obs-zccache', stats)
+        self.assertIn('--app flatpak_app/files', stats)
+        self.assertNotIn('continue-on-error', stats)
+        self.assertLess(job.index('- name: Zccache Stats'), job.index('ci/flatpak_compiler_cache.py pack'))
 
     def test_retired_standalone_compiler_cache_has_no_reader_writer_or_reservation(self):
         for workflow in WORKFLOWS.glob('*.y*ml'):

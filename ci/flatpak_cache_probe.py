@@ -73,6 +73,8 @@ def measure(state, manifest, arch, builder='flatpak-builder', temp_root=None):
         for condition, exclusions in (
             ('full', []),
             ('without_downloads', ['downloads']),
+            # Exclude both dependency ccache and the isolated OBS zccache
+            # store nested in the same builder-provided mount.
             ('without_downloads_or_compiler', ['downloads', 'ccache']),
         ):
             options = ['--exclude=' + state.name + '/' + name for name in exclusions]
