@@ -98,6 +98,7 @@ pub mod item_get_group;
 pub mod item_group_scene;
 pub mod item_hotkeys;
 pub mod item_order_position;
+pub mod item_set_order;
 pub mod item_visible;
 
 pub mod item_blending_method;
