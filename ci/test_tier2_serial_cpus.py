@@ -156,6 +156,24 @@ class SerialRunTest(unittest.TestCase):
         self.assertIn("serial", result.stdout)
         self.assertNotIn("suite", result.stdout)
 
+    def test_explicit_schedule_runs_multiple_tests_on_one_cpu_pair(self):
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        tests = registry(
+            [[sys.executable, "-c", "print('probe')"]] * 3, [True, False, True],
+        )
+        registry_path = tmp / "registry.json"
+        registry_path.write_text(json.dumps(tests), encoding="utf-8")
+        schedule = tmp / "schedule.json"
+        schedule.write_text(json.dumps({"test_probe_0": 4, "test_probe_1": 3}), encoding="utf-8")
+        result = runner(
+            "run", str(registry_path), "--schedule", str(schedule),
+            "--cpus", cpus_argument(self.pins(tmp, 1)),
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("test_probe_0: PASS", result.stdout)
+        self.assertIn("test_probe_1: PASS", result.stdout)
+        self.assertNotIn("test_probe_2", result.stdout)
+
     def test_a_failing_test_fails_the_run_and_keeps_its_output(self):
         tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
         (tmp / "registry.json").write_text(
