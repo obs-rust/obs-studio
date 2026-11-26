@@ -2325,7 +2325,7 @@ static inline struct obs_source_frame *cache_video(struct obs_source *source, co
 	return new_frame;
 }
 
-static void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
+void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
 {
 	if (!obs_source_valid(source, "obs_source_output_video"))
 		return;
@@ -2367,54 +2367,6 @@ static void obs_source_output_video_internal(obs_source_t *source, const struct 
 	pthread_mutex_unlock(&source->async_mutex);
 }
 
-void obs_source_output_video(obs_source_t *source, const struct obs_source_frame *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_output_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
-
-	obs_source_output_video_internal(source, &new_frame);
-}
-
-void obs_source_output_video2(obs_source_t *source, const struct obs_source_frame2 *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_output_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = {0};
-
-	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
-		new_frame.data[i] = frame->data[i];
-		new_frame.linesize[i] = frame->linesize[i];
-	}
-
-	new_frame.width = frame->width;
-	new_frame.height = frame->height;
-	new_frame.timestamp = frame->timestamp;
-	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
-	new_frame.max_luminance = 0;
-	new_frame.flip = frame->flip;
-	new_frame.flags = frame->flags;
-	new_frame.trc = frame->trc;
-
-	memcpy(&new_frame.color_matrix, &frame->color_matrix, sizeof(frame->color_matrix));
-	memcpy(&new_frame.color_range_min, &frame->color_range_min, sizeof(frame->color_range_min));
-	memcpy(&new_frame.color_range_max, &frame->color_range_max, sizeof(frame->color_range_max));
-
-	obs_source_output_video_internal(source, &new_frame);
-}
-
 static inline struct obs_source_frame_copy_shape frame_copy_shape(const struct obs_source_frame *frame)
 {
 	const struct obs_source_frame_copy_shape shape = {
@@ -2434,7 +2386,7 @@ static inline bool preload_frame_changed(obs_source_t *source, const struct obs_
 		has_preload, has_preload ? frame_copy_shape(source->async_preload_frame) : none, frame_copy_shape(in));
 }
 
-static void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
+void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
 {
 	if (!obs_source_valid(source, "obs_source_preload_video"))
 		return;
@@ -2453,54 +2405,6 @@ static void obs_source_preload_video_internal(obs_source_t *source, const struct
 	pthread_mutex_lock(&source->async_mutex);
 	source->last_frame_ts = frame->timestamp;
 	pthread_mutex_unlock(&source->async_mutex);
-}
-
-void obs_source_preload_video(obs_source_t *source, const struct obs_source_frame *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_preload_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
-
-	obs_source_preload_video_internal(source, &new_frame);
-}
-
-void obs_source_preload_video2(obs_source_t *source, const struct obs_source_frame2 *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_preload_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = {0};
-
-	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
-		new_frame.data[i] = frame->data[i];
-		new_frame.linesize[i] = frame->linesize[i];
-	}
-
-	new_frame.width = frame->width;
-	new_frame.height = frame->height;
-	new_frame.timestamp = frame->timestamp;
-	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
-	new_frame.max_luminance = 0;
-	new_frame.flip = frame->flip;
-	new_frame.flags = frame->flags;
-	new_frame.trc = frame->trc;
-
-	memcpy(&new_frame.color_matrix, &frame->color_matrix, sizeof(frame->color_matrix));
-	memcpy(&new_frame.color_range_min, &frame->color_range_min, sizeof(frame->color_range_min));
-	memcpy(&new_frame.color_range_max, &frame->color_range_max, sizeof(frame->color_range_max));
-
-	obs_source_preload_video_internal(source, &new_frame);
 }
 
 void obs_source_show_preloaded_video(obs_source_t *source)
@@ -2535,7 +2439,7 @@ void obs_source_show_preloaded_video(obs_source_t *source)
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 }
 
-static void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame)
+void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame)
 {
 	if (!obs_source_valid(source, "obs_source_set_video_frame"))
 		return;
@@ -2559,54 +2463,6 @@ static void obs_source_set_video_frame_internal(obs_source_t *source, const stru
 	pthread_mutex_unlock(&source->async_mutex);
 
 	obs_leave_graphics();
-}
-
-void obs_source_set_video_frame(obs_source_t *source, const struct obs_source_frame *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_preload_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = *frame;
-	new_frame.full_range = obs_source_frame_copy_full_range((int)frame->format, new_frame.full_range);
-
-	obs_source_set_video_frame_internal(source, &new_frame);
-}
-
-void obs_source_set_video_frame2(obs_source_t *source, const struct obs_source_frame2 *frame)
-{
-	if (destroying(source))
-		return;
-	if (!frame) {
-		obs_source_preload_video_internal(source, NULL);
-		return;
-	}
-
-	struct obs_source_frame new_frame = {0};
-
-	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
-		new_frame.data[i] = frame->data[i];
-		new_frame.linesize[i] = frame->linesize[i];
-	}
-
-	new_frame.width = frame->width;
-	new_frame.height = frame->height;
-	new_frame.timestamp = frame->timestamp;
-	new_frame.format = frame->format;
-	new_frame.full_range = obs_source_frame_copy_full_range2((int)frame->format, (int)frame->range);
-	new_frame.max_luminance = 0;
-	new_frame.flip = frame->flip;
-	new_frame.flags = frame->flags;
-	new_frame.trc = frame->trc;
-
-	memcpy(&new_frame.color_matrix, &frame->color_matrix, sizeof(frame->color_matrix));
-	memcpy(&new_frame.color_range_min, &frame->color_range_min, sizeof(frame->color_range_min));
-	memcpy(&new_frame.color_range_max, &frame->color_range_max, sizeof(frame->color_range_max));
-
-	obs_source_set_video_frame_internal(source, &new_frame);
 }
 
 struct obs_audio_data *filter_async_audio(obs_source_t *source, struct obs_audio_data *in)

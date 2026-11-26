@@ -1865,6 +1865,12 @@ extern bool update_async_textures(struct obs_source *source, const struct obs_so
 				  gs_texture_t *tex[MAX_AV_PLANES], gs_texrender_t *texrender);
 extern bool set_async_texture_size(struct obs_source *source, const struct obs_source_frame *frame);
 extern void remove_async_frame(obs_source_t *source, struct obs_source_frame *frame);
+/* The async-frame workers behind obs_source_output_video(), _preload_video()
+ * and _set_video_frame() and their *2() variants
+ * (obs-source-frame-wrappers.c.h). */
+extern void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
+extern void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
+extern void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame);
 
 extern void set_deinterlace_texture_size(obs_source_t *source);
 extern void deinterlace_process_last_frame(obs_source_t *source, uint64_t sys_time);
