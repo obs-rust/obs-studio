@@ -1322,9 +1322,10 @@ host formatting/clippy/Dylint and touched Linux targets, selected C/C++ cross
 compilation, complete Linux Tier 2 OFF and ON suites, Qt, and selected native
 Windows/macOS Rust tests and Tier 2. Shared/core changes select both native
 hosts, matching core master-push coverage; platform paths retain their existing
-selection. Every non-docs group runs Windows MSVC test linking and all six
-clippy/Dylint targets. Main Windows x64/macOS arm64 cross legs retain test
-`--no-run`; the extra three targets lint only. GNU-oracle linking remains in
+selection. Every non-docs group runs Windows MSVC test linking. The Windows
+x64 and macOS arm64 cross legs retain test linking. Clippy and Dylint run for
+all six targets during PR verification or PR fallback, before queue entry.
+GNU-oracle linking remains in
 Fast Gate when its inputs select it. Docs-only groups retain their Fast Gate skip.
 
 Client trailers, hosted lane proofs and command verdict caches cannot suppress

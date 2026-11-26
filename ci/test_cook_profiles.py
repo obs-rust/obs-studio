@@ -135,7 +135,13 @@ class CookProfilesTest(unittest.TestCase):
                 self.assertIsNotNone(block, f"{name} must declare prebuild-deps-recipes")
                 assert block is not None
                 lines = [line.strip() for line in block[2].splitlines() if line.strip()]
-                self.assertEqual(lines, [f"${{{{ {guard} && {recipe} || '' }}}}" for recipe in recipes])
+                guards = [guard] * len(recipes)
+                if name == "rust-cross-lint":
+                    guards[0] += " && github.event_name != 'merge_group'"
+                self.assertEqual(lines, [
+                    f"${{{{ {recipe_guard} && {recipe} || '' }}}}"
+                    for recipe_guard, recipe in zip(guards, recipes, strict=True)
+                ])
 
     def test_release_static_library_uses_release_cook(self):
         found = 0

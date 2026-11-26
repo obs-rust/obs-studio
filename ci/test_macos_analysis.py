@@ -25,30 +25,22 @@ def step(name: str) -> str:
                       job("rust-tests-macos-build"), re.S)[1]
 
 
-def runs(condition: str, event: str, selected: str, flatpak: bool = False, native: bool = False) -> bool:
-    """Evaluate the small Actions boolean expression from the actual workflow."""
-    expression = condition.removeprefix("${{").removesuffix("}}")
-    expression = expression.replace("github.event_name", repr(event))
-    expression = expression.replace("needs.check-event.outputs.cross_lint", repr(selected))
-    expression = expression.replace("inputs.flatpak-measurement-only", repr(flatpak))
-    expression = expression.replace("inputs.native-cache-measurement-only", repr(native))
-    expression = expression.replace("&&", " and ").replace("||", " or ")
-    expression = re.sub(r"!(?!=)", " not ", expression)
-    return bool(eval(expression, {"__builtins__": {}}))
-
-
 class MacosAnalysis(unittest.TestCase):
-    def test_only_explicit_queue_replacement_skips_native_analysis(self):
-        for name in ("Run Clippy", "Check Formatting"):
-            with self.subTest(step=name):
-                condition = re.search(r"^        if: (.+)$", step(name), re.M)
-                self.assertIsNotNone(condition, "native analysis must defer to required queue analysis")
-                for event in ("merge_group", "pull_request", "push", "schedule", "workflow_dispatch"):
-                    for selected in ("true", "false", "", "unknown"):
-                        for flatpak, native in ((False, False), (True, False), (False, True)):
-                            with self.subTest(event=event, selected=selected, flatpak=flatpak, native=native):
-                                replacement = event == "merge_group" and selected == "true" and not flatpak and not native
-                                self.assertEqual(runs(condition[1], event, selected, flatpak, native), not replacement)
+    def test_queue_skips_clippy_and_keeps_formatting(self):
+        self.assertIn("if: github.event_name != 'merge_group'", step("Run Clippy"))
+        self.assertNotIn("        if:", step("Check Formatting"))
+
+    def test_queue_cross_lane_only_links_tests(self):
+        target = "aarch64-apple-darwin"
+        with mock.patch.object(local_gate.sys, "argv", [
+            "local_gate.py", "--lane", "cross", "--cross-target", target, "--queue-checks"
+        ]), mock.patch.object(local_gate, "add_target") as add_target, \
+                mock.patch.object(local_gate, "soldr_cargo") as cargo, \
+                mock.patch.object(local_gate, "soldr_dylint") as dylint:
+            local_gate.run_lane("cross", local_gate.parse_args())
+        add_target.assert_called_once_with(target)
+        cargo.assert_called_once_with(["test", "--workspace", "--no-run", "--locked", "--target", target])
+        dylint.assert_not_called()
 
     def test_replacement_clippy_includes_tests_and_oracle(self):
         target = "aarch64-apple-darwin"
@@ -81,7 +73,7 @@ class MacosAnalysis(unittest.TestCase):
         expected = gate_jobs.expected_jobs(selected)
         required = {
             "Build 🧱 / Fast Gate ⚡",
-            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+            "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
             "Build 🧱 / Rust Tests 🦀 (macos-26)",
             "Build 🧱 / Rust Tier 2 (macos-26)",
         }

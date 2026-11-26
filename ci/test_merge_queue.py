@@ -176,7 +176,7 @@ class MergeQueue(unittest.TestCase):
         self.assertIn("fetch-depth: 0", gate)
         self.assertNotIn("needs.build-project.outputs.core", gate)
         extra = job_block(BUILD, "rust-cross-lint-release")
-        self.assertIn("github.event_name == 'merge_group'", extra)
+        self.assertIn("github.event_name != 'merge_group'", extra)
         self.assertIn("inputs.mq-heavy-labels", extra)
 
     def test_cross_job_declares_host_uic_runtime_on_minimal_runners(self):

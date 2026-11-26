@@ -703,7 +703,7 @@ def check_feature_sets() -> None:
     print(f"+ Cargo feature sets: {len(FEATURE_SETS)} runs, every feature built on and off", flush=True)
 
 
-def lane_lint(fix: bool, *, self_tests: bool = True) -> None:
+def lane_lint(fix: bool, *, self_tests: bool = True, clippy: bool = True) -> None:
     files = tracked_files()
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
     fmt_files = format_scope(files, None if in_ci else changed_since_master(), in_ci)
@@ -721,9 +721,10 @@ def lane_lint(fix: bool, *, self_tests: bool = True) -> None:
     knowledge_lint(fix)
     cpp_lint()
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
-    soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
-    for args in FEATURE_SETS:
-        soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
+    if clippy:
+        soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
+        for args in FEATURE_SETS:
+            soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
 
 
 def lane_dylint(fix: bool) -> None:
@@ -824,7 +825,11 @@ def cross_lint(targets: tuple[str, ...], link: bool) -> None:
             # Every test binary, C oracle included, must also compile and link
             # for the target (#516, #695): cc compiles all the oracle's C, and
             # soldr's self-contained lld-link/ld64.lld links it on Linux.
-            soldr_cargo(["test", "--workspace", "--no-run", "--locked", "--target", target])
+            cross_test_link(target)
+
+
+def cross_test_link(target: str) -> None:
+    soldr_cargo(["test", "--workspace", "--no-run", "--locked", "--target", target])
 
 
 def lane_cross(fix: bool) -> None:
@@ -1029,8 +1034,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this check (CI format jobs)")
     parser.add_argument("--cross-target", choices=CROSS_TARGETS, help="CI: run one cross target on its own runner")
+    parser.add_argument("--queue-checks", action="store_true", help="retain formatting and links without repeating PR Rust lints")
     parser.add_argument("--client-target", choices=CLIENT_TARGETS, help="client-test: require this exact native target")
     args = parser.parse_args()
+    if args.queue_checks and (args.only or args.test_diff is not None or
+                              (args.lane != ["lint"] and not args.cross_target)):
+        parser.error("--queue-checks requires --lane lint or --lane cross with --cross-target")
     if args.client_target and args.lane != ["client-test"]:
         parser.error("--client-target requires only --lane client-test")
     if args.cross_target and (args.lane != ["cross"] or args.only or args.test_diff is not None):
@@ -1046,8 +1055,14 @@ def parse_args() -> argparse.Namespace:
 def run_lane(name: str, args: argparse.Namespace) -> None:
     if args.client_target and client_host() != args.client_target:
         raise NotApplicable(f"native {args.client_target} tests cannot run on this host")
-    if name == "cross" and args.cross_target:
-        cross_lint((args.cross_target,), link=True)
+    if name == "lint" and args.queue_checks:
+        lane_lint(args.fix, clippy=False)
+    elif name == "cross" and args.cross_target:
+        if args.queue_checks:
+            add_target(args.cross_target)
+            cross_test_link(args.cross_target)
+        else:
+            cross_lint((args.cross_target,), link=True)
     else:
         LANES[name](args.fix)
 
