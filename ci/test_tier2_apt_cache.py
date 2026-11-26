@@ -469,9 +469,12 @@ esac
                 self.assertLess(packages, j.index(updates[1].strip()), name)
                 self.assertLess(j.index(updates[1].strip()), j.index("\n      - ", packages), name)
             else:
+                # The stock closure fetches its index in the delta's bounded
+                # install (#5777); test_the_stock_closure_installs_through_the_same_recovery
+                # in test_tier2_runtime_delta checks that it fetches exactly once.
                 helper = (WORKFLOW.parents[2]/"rust/tools/linux-validate/ci-runtime.py").read_text()
-                self.assertEqual(helper.count("'apt-get', 'update'"), 1)
-                self.assertIn("if variant == 'stock':", helper)
+                self.assertNotIn("'apt-get', 'update'", helper)
+                self.assertIn("if variant in ('prepared', 'stock'):", helper)
                 self.assertEqual(len(updates), 0)
 
     def test_build_index_fetch_skips_unused_suites_and_components(self):

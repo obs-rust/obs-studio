@@ -139,7 +139,7 @@ class RuntimeTest(unittest.TestCase):
                         prebaked_image=('ghcr.io/obs-rust/tier2-linux@sha256:' + 'c' * 64
                                         if variant == 'prebaked' else ''))
 
-                    def command(*argv):
+                    def command(*argv, **_kwargs):
                         if argv[:2] == ('docker', 'create'):
                             return 'b' * 64
                         return 'a\t1' if 'dpkg-query' in argv else ''

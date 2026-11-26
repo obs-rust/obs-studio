@@ -4,7 +4,8 @@
 The prepared image is an optimization of package installation only. A closure
 that differs in up to MAX_DELTA packages (an Ubuntu update since the image was
 made) installs those exact versions on top of it; a larger difference or an
-unavailable release falls back to the pinned stock base. Corrupt
+unavailable release falls back to the pinned stock base, which installs the
+whole closure through the same recovery (#5777). Corrupt
 bytes, image identities and inventory mismatches fail instead of falling back.
 """
 from __future__ import annotations
@@ -235,6 +236,11 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
 # The host's apt mirror list and the containers' main source (#5510).
 HOST_MIRRORS = Path('/etc/apt/apt-mirrors.txt')
 SOURCES = '/etc/apt/sources.list.d/ubuntu.sources'
+# The stock base has no CA certificates, and snapshot.ubuntu.com redirects
+# HTTP to HTTPS, so its snapshot fetch trusts the runner's bundle (#5777).
+# apt still checks every index against the archive's signing key.
+HOST_CA = Path('/etc/ssl/certs/ca-certificates.crt')
+CONTAINER_CA = '/tmp/host-ca-certificates.crt'
 
 
 # Point the main source (every stanza but the security one) at a mirror, only
@@ -351,10 +357,80 @@ def snapshot_before_supersession(pins: list[tuple[str, str, str]]) -> str:
     return before.astimezone(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 
 
-def install_prepared_delta(ident: str, packages: list[str], archives: Path | None = None) -> None:
+# apt's solver names each version it chose when it reports two conflicting
+# assignments: `libasound2t64:amd64=1.2.15.3-1ubuntu1.1 is selected for install`.
+SELECTED = re.compile(r'(\S+)=(\S+) is selected for install')
+
+
+def conflicting_pins(output: str, packages: list[str]) -> list[tuple[str, str, str]]:
+    """(name, version, architecture) of each pin apt's conflict report names
+    (#5777): a newer neighbour the closure leaves unpinned can Break a pin
+    the archive has since superseded (libasound2-data 1.2.15.3-1ubuntu1.2
+    Breaks libasound2t64 << 1.2.15.3-1ubuntu1.2)."""
+    named = set(SELECTED.findall(output))
+    pins = []
+    for package in packages:
+        name, _, version = package.partition('=')
+        if (name, version) in named:
+            base, _, arch = name.partition(':')
+            pins.append((base, version, arch or 'amd64'))
+    return pins
+
+
+def install_from_snapshot(ident: str, apt: tuple[str, ...], install: tuple[str, ...],
+                          pins: list[tuple[str, str, str]], still: subprocess.CalledProcessError,
+                          stock: bool) -> None:
+    """`install` from the Ubuntu snapshot just before the first of `pins` was
+    superseded (#5578), or `still` when there is no such snapshot."""
+    try:
+        snapshot = snapshot_before_supersession(pins)
+    except (OSError, ValueError) as lookup:
+        print(f'Runtime delta snapshot lookup failed: {lookup}', flush=True)
+        raise still from lookup
+    print(f'Runtime delta pins superseded: {pins}; installing them from snapshot {snapshot}', flush=True)
+    trust = ()
+    if stock and HOST_CA.is_file():
+        command('docker', 'cp', '-L', str(HOST_CA), f'{ident}:{CONTAINER_CA}')
+        trust = ('-o', f'Acquire::https::CaInfo={CONTAINER_CA}')
+    at = (*apt, *trust, '--snapshot', snapshot)
+    command(*at, 'update', '-qq', capture_stderr=True)
+    command(*at, *install[len(apt):], capture_stderr=True)
+
+
+def install_unavailable_pin(ident: str, apt: tuple[str, ...], install: tuple[str, ...],
+                            recover: tuple[str, ...], next_mirror, packages: list[str],
+                            archives: Path | None, stock: bool) -> None:
+    """A pin the index no longer lists: refresh once, then the cached .deb of
+    that exact version, then the snapshot; never a newer version."""
+    print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
+    command(*apt, 'update', '-qq', capture_stderr=True)
+    try:
+        install_once(install, recover, next_mirror)
+    except subprocess.CalledProcessError as still:
+        if still.returncode != 100:
+            raise
+        cached = cached_pins(packages, still.output or '', archives)
+        if cached is not None:
+            print('Runtime delta pin still unavailable; installing the cached .deb of that exact version: '
+                  + ' '.join(c for c in cached if c not in packages), flush=True)
+            install_once((*apt, 'install', '-y', '--no-install-recommends', *cached), recover, next_mirror)
+            return
+        # No cached .deb (the build fetched it from a mirror that had
+        # not synced yet): take the same pins from the Ubuntu snapshot
+        # just before they were superseded (#5578).
+        pins = missing_pins(still.output or '', packages)
+        if not pins:
+            raise
+        install_from_snapshot(ident, apt, install, pins, still, stock)
+
+
+def install_prepared_delta(ident: str, packages: list[str], archives: Path | None = None,
+                           stock: bool = False) -> None:
     # Normal delta setup is about 45 s (#5237); allow 4x that per apt command.
+    # The stock closure is some 250 packages, about 75 s (#1592): allow 8x.
     # apt.conf(5) delegates per-transport Timeout to apt-transport-http/https(1).
-    bound = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '180s', 'env', 'LC_ALL=C')
+    bound = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '600s' if stock else '180s',
+             'env', 'LC_ALL=C')
     apt = (*bound, 'apt-get', '-o', 'Acquire::Retries=3',
            '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
     install = (*apt, 'install', '-y', '--no-install-recommends', *packages)
@@ -371,38 +447,17 @@ def install_prepared_delta(ident: str, packages: list[str], archives: Path | Non
         try:
             install_once(install, recover, next_mirror)
         except subprocess.CalledProcessError as error:
-            if error.returncode != 100 or not re.search(
-                    r"E: Version '[^'\n]+' for '[^'\n]+' was not found", error.output or ''):
+            if error.returncode != 100:
                 raise
-            # Refresh once for a superseded pin; never substitute newer versions.
-            print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
-            command(*apt, 'update', '-qq', capture_stderr=True)
-            try:
-                install_once(install, recover, next_mirror)
-            except subprocess.CalledProcessError as still:
-                if still.returncode != 100:
-                    raise
-                cached = cached_pins(packages, still.output or '', archives)
-                if cached is not None:
-                    print('Runtime delta pin still unavailable; installing the cached .deb of that exact version: '
-                          + ' '.join(c for c in cached if c not in packages), flush=True)
-                    install_once((*apt, 'install', '-y', '--no-install-recommends', *cached), recover, next_mirror)
-                    return
-                # No cached .deb (the build fetched it from a mirror that had
-                # not synced yet): take the same pins from the Ubuntu snapshot
-                # just before they were superseded (#5578).
-                pins = missing_pins(still.output or '', packages)
-                if not pins:
-                    raise
-                try:
-                    snapshot = snapshot_before_supersession(pins)
-                except (OSError, ValueError) as lookup:
-                    print(f'Runtime delta snapshot lookup failed: {lookup}', flush=True)
-                    raise still from lookup
-                print(f'Runtime delta pins superseded: {pins}; installing them from snapshot {snapshot}', flush=True)
-                at = (*apt, '--snapshot', snapshot)
-                command(*at, 'update', '-qq', capture_stderr=True)
-                command(*at, *install[len(apt):], capture_stderr=True)
+            if MISSING_PIN.search(error.output or ''):
+                install_unavailable_pin(ident, apt, install, recover, next_mirror, packages, archives, stock)
+                return
+            # The index lists every pin, but a newer unpinned neighbour
+            # conflicts with one the archive has superseded (#5777).
+            conflicts = conflicting_pins(error.output or '', packages)
+            if not conflicts:
+                raise
+            install_from_snapshot(ident, apt, install, conflicts, error, stock)
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
                            f'{" ".join(packages)}:\n{error.output or ""}') from error
@@ -422,11 +477,10 @@ def install_packages(ident: str, variant: str, requirements: str, changed: list[
         command('docker', 'exec', ident, 'sh', '-c',
                 'if test -f /etc/apt/apt.conf.d/docker-clean; then '
                 'mv /etc/apt/apt.conf.d/docker-clean /tmp/docker-clean.disabled; fi')
-        if variant == 'prepared':
-            install_prepared_delta(ident, packages, archives)
+        if variant in ('prepared', 'stock'):
+            # The stock closure takes the delta's mirror, bound and recovery (#5777).
+            install_prepared_delta(ident, packages, archives, stock=variant == 'stock')
             return
-        if variant != 'prebaked':
-            command('docker', 'exec', ident, 'apt-get', 'update', '-qq')
         command('docker', 'exec', ident, 'apt-get', 'install', '-y', '--no-install-recommends', *packages)
 
 
