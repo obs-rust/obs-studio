@@ -48,6 +48,7 @@ pub mod source_flags_mixers;
 pub mod source_frame_copy;
 pub mod source_frame_copy_data;
 pub mod source_frame_init;
+pub mod source_frame_wrappers;
 pub mod source_get_weak;
 pub mod source_handler_getters;
 pub mod source_hidden_setter;

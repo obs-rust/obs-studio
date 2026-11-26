@@ -18173,6 +18173,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_frame_wrappers": {
+      "sources": [
+        "test/cmocka/test_source_frame_wrappers.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_full_tree_root": {
       "sources": [
         "test/cmocka/test_source_full_tree_root.c"
@@ -29997,6 +30012,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_frame_wrappers": {
+      "target": "test_source_frame_wrappers",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_full_tree_root": {
       "target": "test_source_full_tree_root",
