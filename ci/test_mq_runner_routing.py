@@ -123,6 +123,19 @@ class HostedRunnerRoutingTest(unittest.TestCase):
                 self.assert_runner('build-project.yaml', name,
                     "${{ " + pr_only + "inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}")
 
+    def test_forge_build_jobs_share_the_persistent_checkpoint_format(self):
+        workflow = 'build-project.yaml'
+        for name in ('rust-tests-linux', 'cross-compile', 'rust-cross-lint',
+                     'rust-cross-lint-release', 'rust-windows-link', 'cmocka-link',
+                     'rust-tests-macos-build', 'rust-linux-tier2-build'):
+            with self.subTest(job=name):
+                job = self.job(workflow, name)
+                self.assertIn('uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436', job)
+                self.assertIn(
+                    "SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}",
+                    job,
+                )
+
     def test_packaging_and_setup_probes_keep_2604(self):
         for workflow, names in (
             ('build-project.yaml', ('flatpak-build', 'flatpak-compiler-consumer', 'flatpak-runtime-test')),
