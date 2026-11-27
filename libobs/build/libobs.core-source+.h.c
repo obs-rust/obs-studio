@@ -45,6 +45,7 @@
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
 #include "libobs/obs-scene-ref-fields.c.h"
+#include "libobs/obs-scene-reorder-items.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-sceneitem-addref-fields.c.h"
