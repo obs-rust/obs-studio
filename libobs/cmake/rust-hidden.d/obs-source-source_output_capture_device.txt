@@ -1,0 +1,4 @@
+# obs-source-output-capture-device.c.h (#5824): the activate signal handler
+# obs_source_audio_output_capture_device_changed() connects and disconnects.
+# Declared only in that file, without EXPORT, so the shim stays hidden.
+obs_source_audio_output_capture_device_activated

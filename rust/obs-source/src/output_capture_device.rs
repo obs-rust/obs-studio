@@ -72,14 +72,53 @@ pub trait Device {
     fn release_settings(&mut self, settings: Self::Settings);
 }
 
-/// `obs_source_audio_output_capture_device_changed(source, device_id)`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn device_changed<D: Device>(_device: &mut D, _source: D::Source, _device_id: Option<D::Id>) {
-    todo!()
+/// `obs_source_audio_output_capture_device_changed(source, device_id)`:
+/// nothing unless a monitoring device is set and the source has
+/// [`DO_NOT_SELF_MONITOR`]. Then the monitoring id is read and matched
+/// against the host's default device when the host answers (freeing a
+/// non-NULL one after the match), else against `device_id`. A match sends
+/// `deduplication_changed` with the source, connects its `activate`
+/// handler and logs the started line, whoever deduplicated before. No
+/// match stops only the deduplicating source: its handler disconnected,
+/// `deduplication_changed` with NULL, the stopped line.
+pub fn device_changed<D: Device>(device: &mut D, source: D::Source, device_id: Option<D::Id>) {
+    if !device.monitoring_device_set() {
+        return;
+    }
+    if device.output_flags(source) & DO_NOT_SELF_MONITOR == 0 {
+        return;
+    }
+    let monitoring_id = device.monitoring_id();
+    let id_match = match device.host_default(device_id) {
+        Some(def_id) => {
+            let id_match = device.devices_match(def_id, monitoring_id);
+            if let Some(def_id) = def_id {
+                device.free_default(def_id);
+            }
+            id_match
+        }
+        None => device.devices_match(device_id, monitoring_id),
+    };
+    if id_match {
+        device.signal_deduplication(Some(source));
+        device.connect_activate(source);
+        device.log_started(source);
+    } else if device.duplicating_source() == Some(source) {
+        device.disconnect_activate(source);
+        device.signal_deduplication(None);
+        device.log_stopped();
+    }
 }
 
-/// `obs_source_audio_output_capture_device_activated(NULL, cd)`.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
-pub fn device_activated<D: Device>(_device: &mut D, _cd: D::Calldata) {
-    todo!()
+/// `obs_source_audio_output_capture_device_activated(NULL, cd)`: nothing
+/// for a calldata with no source; otherwise [`device_changed`] with the
+/// `"device_id"` of the source's settings, which are released after.
+pub fn device_activated<D: Device>(device: &mut D, cd: D::Calldata) {
+    let Some(source) = device.calldata_source(cd) else {
+        return;
+    };
+    let settings = device.settings(source);
+    let device_id = device.settings_device_id(settings);
+    device_changed(device, source, device_id);
+    device.release_settings(settings);
 }

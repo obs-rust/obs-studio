@@ -69,6 +69,7 @@ pub mod source_missing_files_getter;
 pub mod source_monitoring;
 pub mod source_mute_monitor_hotkeys;
 pub mod source_name;
+pub mod source_output_capture_device;
 pub mod source_output_cea708;
 pub mod source_output_flags;
 pub mod source_private_settings;

@@ -127,6 +127,7 @@ mod monitoring_parity;
 mod mute_monitor_hotkeys;
 mod mute_monitor_hotkeys_parity;
 mod output_capture_device;
+mod output_capture_device_parity;
 mod output_cea708;
 mod output_cea708_parity;
 mod output_flags;
