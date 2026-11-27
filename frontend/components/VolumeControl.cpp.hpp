@@ -586,7 +586,7 @@ void VolumeControl::setLocked(bool locked)
 	mixerStatus().set(VolumeControl::MixerStatus::Locked, locked);
 
 	OBSBasic *main = OBSBasic::Get();
-	emit main->mixerStatusChanged(uuid);
+	emit main->mixerStatusChanged(QString::fromStdString(uuid));
 }
 
 void VolumeControl::onMuteChanged(bool muted)
@@ -730,12 +730,20 @@ void VolumeControl::setMonitoring(bool enabled)
 
 void VolumeControl::onSourceActiveChanged(bool active)
 {
+	/* Queued by "activate"/"deactivate": on quit the source can be gone by
+	 * now. Delete the control instead of reporting a change (#5809). */
+	OBSSource source = OBSGetStrongRef(weakSource());
+	if (!source) {
+		deleteLater();
+		return;
+	}
+
 	processMixerState();
 
 	mixerStatus().set(VolumeControl::MixerStatus::Active, active);
 
 	OBSBasic *main = OBSBasic::Get();
-	emit main->mixerStatusChanged(uuid);
+	emit main->mixerStatusChanged(QString::fromStdString(uuid));
 }
 
 void VolumeControl::processMixerState()
@@ -931,7 +939,7 @@ void VolumeControl::setGlobalInMixer(bool global)
 		mixerStatus().set(VolumeControl::MixerStatus::Global, global);
 
 		OBSBasic *main = OBSBasic::Get();
-		emit main->mixerStatusChanged(uuid);
+		emit main->mixerStatusChanged(QString::fromStdString(uuid));
 	}
 }
 
@@ -953,7 +961,7 @@ void VolumeControl::setPinnedInMixer(bool pinned)
 		}
 
 		OBSBasic *main = OBSBasic::Get();
-		emit main->mixerStatusChanged(uuid);
+		emit main->mixerStatusChanged(QString::fromStdString(uuid));
 	}
 }
 
@@ -970,7 +978,7 @@ void VolumeControl::setHiddenInMixer(bool hidden)
 		mixerStatus().set(VolumeControl::MixerStatus::Hidden, hidden);
 
 		OBSBasic *main = OBSBasic::Get();
-		emit main->mixerStatusChanged(uuid);
+		emit main->mixerStatusChanged(QString::fromStdString(uuid));
 	}
 }
 

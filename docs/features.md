@@ -3039,6 +3039,11 @@ area.
   (NULL) no longer crashes OBS while holding the scene's lock; the call is
   ignored and logged, as the crop setter does. *All*, 2026-11-14. Issue
   [#4392](https://github.com/obs-rust/obs-studio/issues/4392).
+- Quitting OBS with active audio sources in the Audio Mixer no longer
+  risks a crash: a mixer control whose source is already gone at shutdown
+  no longer reads the source's freed UUID. *All*, pending merge. Issue
+  [#5809](https://github.com/obs-rust/obs-studio/issues/5809), upstream
+  [obsproject/obs-studio#14262](https://github.com/obsproject/obs-studio/issues/14262).
 
 ### Security hardening
 
