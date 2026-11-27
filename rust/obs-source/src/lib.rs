@@ -231,6 +231,7 @@ pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
 pub mod enum_filters;
+pub mod filter_add;
 pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;
