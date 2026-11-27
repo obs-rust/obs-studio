@@ -61,7 +61,7 @@ def soldr_environment(uv: str):
     }
     try:
         for key in list(os.environ):
-            if key.startswith("SOLDR_") or key in selectors:
+            if (key.startswith("SOLDR_") and key != "SOLDR_CACHE_DIR") or key in selectors:
                 os.environ.pop(key)
         executable = os.environ.get("PUSH_SOLDR")
         if not executable:

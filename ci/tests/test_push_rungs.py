@@ -554,6 +554,7 @@ class PinnedSoldr(unittest.TestCase):
     def test_bootstrap_scrubs_overrides_and_restores_callers_environment(self):
         original = {
             "PATH": os.defpath, "HOME": str(Path.home()),
+            "SOLDR_CACHE_DIR": str(Path(tempfile.gettempdir()) / "caller soldr cache"),
             "SOLDR_DYLINT_TOOLCHAIN": "nightly-broken",
             "SOLDR_DYLINT_DRIVER": "/bad/driver", "SOLDR_RUSTC_WRAPPER": "/bad/wrapper",
             "RUSTUP_TOOLCHAIN": "nightly-broken", "RUSTC": "/bad/rustc",
@@ -573,6 +574,7 @@ class PinnedSoldr(unittest.TestCase):
             with push.soldr_environment("uv"):
                 self.assertEqual(os.environ["PATH"].split(os.pathsep)[0], str(Path(executable).parent))
                 self.assertEqual(os.environ["PATH"].split(os.pathsep)[1:], original["PATH"].split(os.pathsep))
+                self.assertEqual(os.environ["SOLDR_CACHE_DIR"], original["SOLDR_CACHE_DIR"])
                 self.assertFalse(any(k.startswith("SOLDR_DYLINT_") for k in os.environ))
                 self.assertNotIn("RUSTUP_TOOLCHAIN", os.environ)
                 self.assertNotIn("RUSTC", os.environ)
@@ -580,7 +582,8 @@ class PinnedSoldr(unittest.TestCase):
         self.assertIn(f"soldr=={push.soldr_pin()}", calls[0][0])
         self.assertIn("--no-build", calls[0][0])
         for _, environment in calls:
-            for key in original.keys() - {"PATH", "HOME"}:
+            self.assertEqual(environment["SOLDR_CACHE_DIR"], original["SOLDR_CACHE_DIR"])
+            for key in original.keys() - {"PATH", "HOME", "SOLDR_CACHE_DIR"}:
                 self.assertNotIn(key, environment)
 
     def test_explicit_path_still_requires_exact_ci_version(self):
