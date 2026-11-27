@@ -102,6 +102,7 @@
 #include "libobs/obs-source-module-roots.c.h"
 #include "libobs/obs-source-mute-monitor-hotkey-registration.c.h"
 #include "libobs/obs-source-name-fields.c.h"
+#include "libobs/obs-source-output-capture-device.c.h"
 #include "libobs/obs-source-properties-fields.c.h"
 #include "libobs/obs-source-push-hotkey-fields.c.h"
 #include "libobs/obs-source-push-hotkey-registration.c.h"
