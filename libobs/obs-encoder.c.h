@@ -613,7 +613,7 @@ void obs_encoder_shutdown(obs_encoder_t *encoder)
 	if (encoder->context.data) {
 		encoder->info.destroy(encoder->context.data);
 		encoder->context.data = NULL;
-		encoder->first_received = false;
+		os_atomic_set_bool(&encoder->first_received, false);
 		encoder->offset_usec = 0;
 		os_atomic_set_bool(&encoder->start_ts_set, false);
 		encoder->start_ts = 0;
@@ -1035,9 +1035,9 @@ void send_off_encoder_packet(obs_encoder_t *encoder, bool success, bool received
 	}
 
 	if (received) {
-		if (!encoder->first_received) {
+		if (!os_atomic_load_bool(&encoder->first_received)) {
 			encoder->offset_usec = obs_encoder_packet_ts_dts_usec(pkt->dts, pkt->timebase_den);
-			encoder->first_received = true;
+			os_atomic_set_bool(&encoder->first_received, true);
 		}
 
 		/* we use system time here to ensure sync with other encoders,
@@ -1213,13 +1213,13 @@ static void receive_video(void *param, struct video_data *frame)
 			goto wait_for_audio;
 	}
 
-	if (!encoder->first_received && encoder->paired_encoders.num) {
+	if (!os_atomic_load_bool(&encoder->first_received) && encoder->paired_encoders.num) {
 		for (size_t i = 0; i < encoder->paired_encoders.num; i++) {
 			obs_encoder_t *paired = obs_weak_encoder_get_encoder(encoder->paired_encoders.array[i]);
 			if (!paired)
 				continue;
 
-			if (!paired->first_received ||
+			if (!os_atomic_load_bool(&paired->first_received) ||
 			    obs_encoder_audio_start_paired_late(paired->first_raw_ts, frame->timestamp)) {
 				obs_encoder_release(paired);
 				goto wait_for_audio;
@@ -1459,9 +1459,9 @@ static void receive_audio(void *param, size_t mix_idx, struct audio_data *in)
 	struct obs_encoder *encoder = param;
 	struct audio_data audio = *in;
 
-	if (!encoder->first_received) {
+	if (!os_atomic_load_bool(&encoder->first_received)) {
 		encoder->first_raw_ts = audio.timestamp;
-		encoder->first_received = true;
+		os_atomic_set_bool(&encoder->first_received, true);
 		clear_audio(encoder);
 	}
 

@@ -2470,8 +2470,10 @@ struct obs_encoder {
 
 	/* if a video encoder is paired with an audio encoder, make it start
 	 * up at the specific timestamp.  if this is the audio encoder,
-	 * it waits until it's ready to sync up with video */
-	bool first_received;
+	 * it waits until it's ready to sync up with video.
+	 * first_raw_ts has its value once first_received is set: a paired video
+	 * encoder on another thread reads it only after this. */
+	volatile bool first_received;
 	DARRAY(struct obs_weak_encoder *) paired_encoders;
 	int64_t offset_usec;
 	uint64_t first_raw_ts;
