@@ -86,6 +86,24 @@ class DampeningTests(unittest.TestCase):
             self.assertEqual(bot.main(), 1)
             rebase.assert_not_called()
 
+    def test_unreadable_backpressure_is_a_closed_queue_not_a_crash(self):
+        # #5797: one failed GitHub read during --dirty preparation crashed the
+        # scheduled sweep with a traceback and hid gh's stderr.
+        error = bot.subprocess.CalledProcessError(1, ["gh", "pr", "list"], stderr="HTTP 502: Bad Gateway\n")
+        open_queue = {"state": "open", "headroom": 2}
+        for name, state, dirty in (("measure", error, []), ("dirty_prs", open_queue, error)):
+            with self.subTest(failing=name), \
+                    patch.object(bot.sys, "argv", ["ai_rebase.py", "--dirty"]), \
+                    patch.object(bot, "queue_state", side_effect=[state]), \
+                    patch.object(bot, "dirty_prs", side_effect=[dirty]), \
+                    patch.object(bot, "gh_json", side_effect=AssertionError("unexpected GitHub call")), \
+                    patch.object(bot, "rebase_pr") as rebase, \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(bot.main(), 0)
+                rebase.assert_not_called()
+                self.assertIn("::warning::", out.getvalue())
+                self.assertIn("HTTP 502: Bad Gateway", out.getvalue())
+
     def test_changed_head_after_selection_is_skipped(self):
         with patch.object(bot, "gh_json", return_value={"headRefOid": "b" * 40}), \
                 patch.object(bot, "run") as run:

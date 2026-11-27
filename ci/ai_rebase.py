@@ -518,6 +518,15 @@ def should_enqueue(pr: dict, merged_parent: int | None = None) -> tuple[bool, st
     return True, ""
 
 
+def queue_state() -> dict:
+    """backpressure.measure() for the merge queue, loaded beside this file."""
+    spec = importlib.util.spec_from_file_location(
+        "backpressure", Path(__file__).with_name("backpressure.py"))
+    backpressure = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(backpressure)
+    return backpressure.measure(REPO)
+
+
 def dirty_prs(limit: int) -> list[int]:
     prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--limit", "300",
                   "--json", "number,isDraft,mergeStateStatus,createdAt,body,labels,updatedAt")
@@ -815,14 +824,17 @@ def main() -> int:
     prs = list(a.prs)
     headroom = 3
     if a.dirty:
-        spec = importlib.util.spec_from_file_location(
-            "backpressure", Path(__file__).with_name("backpressure.py"))
-        backpressure = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(backpressure)
-        v = backpressure.measure(REPO)
-        # A rebase restarts CI, so it spends queue capacity like a new PR does.
-        headroom = max(0, v["headroom"]) if v["state"] == "open" else 0
-        prs += dirty_prs(300)
+        try:
+            v = queue_state()
+            # A rebase restarts CI, so it spends queue capacity like a new PR does.
+            headroom = max(0, v["headroom"]) if v["state"] == "open" else 0
+            prs += dirty_prs(300)
+        except (subprocess.CalledProcessError, OSError, ValueError, KeyError, TypeError, RuntimeError) as e:
+            # Like backpressure.py's own verdict: unreadable GitHub state is a
+            # closed queue, so this run rebases nothing (#5797).
+            err = (getattr(e, "stderr", "") or str(e)).strip().splitlines()[-1:] or [""]
+            print(f"::warning::GitHub state unavailable, no rebases this run: {err[0][:200]}")
+            return 0
         print(f"backpressure {v['state']}, rebasing {prs}")
     now = dt.datetime.now(dt.timezone.utc)
     try:
