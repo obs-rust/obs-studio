@@ -776,6 +776,7 @@ def lane_client_lint(fix: bool) -> None:
     lane_lint(fix, self_tests=False)  # client-checks owns the identical full self-test command.
     print(f"== client {host}: clippy passed", flush=True)
     # Host Clippy has finished, so Dylint can reuse the caller's build directory.
+    # Dylint has no fix mode here.
     soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"])
     print(f"== client {host}: dylint passed", flush=True)
     cross_lint(tuple(t for t in CLIENT_TARGETS if t != host), link=False)
