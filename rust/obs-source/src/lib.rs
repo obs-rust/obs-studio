@@ -282,6 +282,7 @@ pub mod showing_active;
 pub mod size_route;
 pub mod source_draw;
 pub mod source_duplicate;
+pub mod source_duplicate_entry;
 pub mod source_filter_chain;
 pub mod source_icon_type;
 pub mod source_identity_getters;
