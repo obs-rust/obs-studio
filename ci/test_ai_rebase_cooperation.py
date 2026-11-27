@@ -413,6 +413,27 @@ class RequeueTests(unittest.TestCase):
             self.assertEqual(bot.requeue_ejected([], False, 2), 0)
             self.assertEqual(retry.call_count, 3)
 
+    def test_unreadable_inventory_rearms_nothing_and_warns(self):
+        # #5807: one 502 reading the open PR list crashed the scheduled
+        # capacity-recovery job with a traceback (run 45938740402).
+        error = RuntimeError("gh pr list --repo obs-rust/obs-studio --state open --limit 1000 --json "
+                             f"{bot.REQUEUE_FIELDS}: HTTP 502: 502 Bad Gateway "
+                             "(https://api.github.com/graphql)")
+        with patch.object(bot, "gh_json", side_effect=error), \
+                patch.object(bot, "requeue_pr") as retry, \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(bot.requeue_ejected([], False, 2), 0)
+        retry.assert_not_called()
+        self.assertIn("::warning::", out.getvalue())
+        self.assertIn("HTTP 502: 502 Bad Gateway", out.getvalue())
+
+    def test_full_inventory_is_still_an_error(self):
+        with patch.object(bot, "gh_json", return_value=[self.candidate(number=i) for i in range(1000)]), \
+                patch.object(bot, "requeue_pr") as retry:
+            with self.assertRaisesRegex(RuntimeError, "incomplete open PR inventory"):
+                bot.requeue_ejected([], False, 2)
+        retry.assert_not_called()
+
     def test_mode_does_not_checkout_fetch_push_or_call_model(self):
         with patch.object(bot.sys, "argv", ["ai_rebase.py", "--requeue-ejected"]), \
                 patch.object(bot, "requeue_ejected", return_value=0) as requeue, \
