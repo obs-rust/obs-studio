@@ -736,8 +736,16 @@ def requeue_pr(pr: dict, dry_run: bool, *, now: dt.datetime | None = None) -> st
 
 
 def requeue_ejected(prs: list[int], dry_run: bool, limit: int) -> int:
-    candidates = [gh_json("pr", "view", str(n), "--repo", REPO, "--json", REQUEUE_FIELDS) for n in prs] if prs else gh_json(
-        "pr", "list", "--repo", REPO, "--state", "open", "--limit", "1000", "--json", REQUEUE_FIELDS)
+    try:
+        candidates = [gh_json("pr", "view", str(n), "--repo", REPO, "--json", REQUEUE_FIELDS)
+                      for n in prs] if prs else gh_json(
+            "pr", "list", "--repo", REPO, "--state", "open", "--limit", "1000", "--json", REQUEUE_FIELDS)
+    except (subprocess.CalledProcessError, OSError, ValueError, RuntimeError) as e:
+        # As in the --dirty sweep (#5797): unreadable GitHub state re-arms
+        # nothing this run; the next scheduled run tries again (#5807).
+        err = (getattr(e, "stderr", "") or str(e)).strip().splitlines()[-1:] or [""]
+        print(f"::warning::GitHub state unavailable, no requeues this run: {err[0][-200:]}")
+        return 0
     if len(candidates) >= 1000:
         raise RuntimeError("incomplete open PR inventory")
     mutations, rc = 0, 0
