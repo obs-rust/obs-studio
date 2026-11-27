@@ -170,6 +170,7 @@ mod showing_active_parity;
 mod size_route;
 mod size_route_parity;
 mod skip_video_filter;
+mod skip_video_filter_parity;
 mod source_draw;
 mod source_draw_parity;
 mod source_duplicate;

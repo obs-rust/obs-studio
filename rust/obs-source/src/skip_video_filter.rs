@@ -17,6 +17,8 @@
     clippy::unreachable
 )]
 
+use crate::render_route::{self, Draw, FilterCheck, draw_next, filter_check};
+
 /// What the skip reads and draws, each method one C step.
 pub trait Skip {
     /// A source as the C passes it (never NULL here: the shim checks it).
@@ -54,6 +56,43 @@ pub trait Skip {
 /// `video_render` and deinterlace mode are read only when it asks for
 /// them, in that order, and the one draw it ends on is made.
 pub fn skip_video_filter<S: Skip>(skip: &mut S, filter: Option<S::Source>) {
-    let _ = (skip, filter);
-    todo!("obs_source_skip_video_filter")
+    let Some(filter) = filter else {
+        skip.log_null_filter();
+        return;
+    };
+    let target = skip.target(filter);
+    let parent = skip.parent(filter);
+    if filter_check(target.is_some(), parent.is_some()) != FilterCheck::Ready {
+        return;
+    }
+    // Ready means both are set.
+    let (Some(target), Some(parent)) = (target, parent) else {
+        return;
+    };
+
+    let parent_flags = skip.output_flags(parent);
+    // each Read step reads one value of the target, in the old order
+    let mut route = render_route::skip(target == parent, parent_flags);
+    if route == Draw::ReadTargetVideoRender {
+        route = draw_next(route, skip.has_video_render(target));
+    }
+    if route == Draw::ReadTargetDeinterlacing {
+        route = draw_next(route, skip.deinterlacing(target));
+    }
+
+    match route {
+        Draw::Default => skip.default_render(target),
+        Draw::Main => skip.main_render(target),
+        Draw::Deinterlace => skip.deinterlace_render(target),
+        Draw::Async => skip.async_video(target),
+        Draw::Target => skip.video_render(target),
+        // not a draw of a skipped filter
+        Draw::Filters
+        | Draw::ReadRenderingFilter
+        | Draw::ReadVideoRender
+        | Draw::ReadFilterTarget
+        | Draw::ReadDeinterlacing
+        | Draw::ReadTargetVideoRender
+        | Draw::ReadTargetDeinterlacing => {}
+    }
 }

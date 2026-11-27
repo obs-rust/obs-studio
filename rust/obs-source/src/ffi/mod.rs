@@ -92,6 +92,7 @@ pub mod source_show_active_counters;
 pub mod source_show_preloaded_video;
 pub mod source_showing_active;
 pub mod source_size;
+pub mod source_skip_video_filter;
 pub mod source_state_getters;
 pub mod source_theme_icon;
 pub mod source_transition_clock;
