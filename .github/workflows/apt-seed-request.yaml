@@ -1,0 +1,71 @@
+name: Apt Seed Request
+run-name: Request an apt seed for #${{ github.event.pull_request.number }} 🌱
+# A PR that changes rust/tools/linux-validate/apt-packages.txt changes the cache
+# key, so its Tier 2 builds start against an empty archive and download ~339 MB
+# from scratch. This job lets a maintainer ask for that new key to be seeded
+# ahead of time instead of waiting for a build to survive the download.
+#
+# It cannot seed directly: a cache written by a pull_request run is scoped to
+# that PR's ref and is invisible to the merge queue. So the label only requests
+# a workflow_dispatch of apt-seed.yaml on refs/heads/master -- the one ref whose
+# cache writes every consumer can read. apt-seed.yaml then checks out the PR's
+# package list (and only that file) while running master's script, so no PR code
+# executes in the privileged run.
+on:
+  pull_request:
+    types: [labeled]
+# actions: write is what dispatching another workflow requires; the rest is the
+# read-only floor this job needs to identify the PR and its author.
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+concurrency:
+  group: apt-seed-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  request:
+    name: Request Seed 🌱
+    # The label name is the whole trigger condition; without it every label
+    # event would start a run. The repository guard keeps forks out.
+    if: >-
+      github.event.label.name == 'seed-apt' &&
+      github.repository == 'obs-rust/obs-studio'
+    timeout-minutes: 5
+    runs-on: ubuntu-26.04
+    steps:
+      # A label can be applied by anyone with triage or write, and a seed costs
+      # runner minutes, so the actor's permission is checked rather than assumed.
+      # "admin" and "write" are the only roles that may spend it.
+      - name: Check Actor Permission 🛡️
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.event.sender.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          permission=$(gh api "repos/${REPO}/collaborators/${ACTOR}/permission" \
+            --jq '.permission' 2>/dev/null || echo none)
+          echo "actor ${ACTOR} has permission: ${permission}"
+          case "${permission}" in
+            admin|write) ;;
+            *)
+              echo "::error::${ACTOR} has '${permission}' permission; seeding needs admin or write"
+              exit 1
+              ;;
+          esac
+      # refs/pull/<n>/head resolves for fork PRs too, where a branch name would
+      # not exist in this repository.
+      - name: Dispatch Seed at master 🌱
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh workflow run apt-seed.yaml \
+            --repo "${REPO}" \
+            --ref master \
+            -f "source_ref=refs/pull/${NUMBER}/head"
+          echo "requested an apt seed for refs/pull/${NUMBER}/head"
+          echo "watch: gh run list --repo ${REPO} --workflow apt-seed.yaml --limit 1"
