@@ -68,6 +68,7 @@ static obs_source_t *readd_target;
 
 /* A probe thread that is still waiting for filter_mutex. */
 static pthread_t stuck_probe;
+static struct probe *stuck_probe_state;
 static bool probe_stuck;
 
 static void record(const char *text)
@@ -107,10 +108,11 @@ static bool mutex_free(obs_source_t *source)
 		os_event_destroy(p->done);
 		bfree(p);
 	} else {
-		/* Joined once the call under test has returned; the probe's
-		 * state is left to it. */
+		/* Joined, and its state freed, once the call under test has
+		 * returned. */
 		assert_false(probe_stuck);
 		stuck_probe = thread;
+		stuck_probe_state = p;
 		probe_stuck = true;
 	}
 	return free;
@@ -120,6 +122,9 @@ static void join_stuck_probe(void)
 {
 	if (probe_stuck) {
 		pthread_join(stuck_probe, NULL);
+		os_event_destroy(stuck_probe_state->done);
+		bfree(stuck_probe_state);
+		stuck_probe_state = NULL;
 		probe_stuck = false;
 	}
 }
