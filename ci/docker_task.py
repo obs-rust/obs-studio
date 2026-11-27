@@ -8,7 +8,7 @@ arguments are:
 
     uv run --script ci/docker_task.py run --name NAME [options] -- CMD...
     uv run --script ci/docker_task.py gc  --name NAME [--image IMAGE] [--apply] [--apply-legacy]
-    uv run --script ci/docker_task.py gc  --older-than HOURS [--name NAME ...] [--apply]
+    uv run --script ci/docker_task.py gc  --older-than HOURS [--all-tasks] [--name NAME ...] [--apply]
 
 run:
   --name NAME             task name. Container: NAME-<checkout id>, where the
@@ -69,6 +69,11 @@ with --apply removed, unless a container (running or stopped) uses it or any
 volume with the same 12-hex checkout key is younger than HOURS or used by a
 container: a live partner means the checkout is still building. Run it from a
 cron, e.g. `gc --older-than 24 --apply`.
+
+Add --all-tasks to include other task names (#4898). This mode requires the
+docker-task.task ownership label on every candidate and still selects only
+build/zccache volumes with an old, unused checkout key. It is opt-in because
+removing a reusable task's build state makes its next run start cold.
 
 Exit status: 2 for a usage or argument error, 75 when a container of the same
 name is already running and --wait was not given, otherwise the status of the
@@ -659,14 +664,15 @@ class GcOptions:
     apply: bool = False
     apply_legacy: bool = False
     older_than: float | None = None
+    all_tasks: bool = False
 
 
 GC_OPTIONS = {"--name": "task", "--image": "image", "--repo": "repo"}
-GC_FLAGS = {"--apply": "apply", "--apply-legacy": "apply_legacy"}
+GC_FLAGS = {"--apply": "apply", "--apply-legacy": "apply_legacy", "--all-tasks": "all_tasks"}
 
 
 def parse_gc(argv: Sequence[str]) -> GcOptions:
-    """`gc`'s arguments: --name, --image, --apply, --apply-legacy, --older-than."""
+    """`gc`'s arguments: --name, --image, --apply, --apply-legacy, --older-than, --all-tasks."""
     options = GcOptions()
     rest = list(argv)
     while rest:
@@ -679,6 +685,8 @@ def parse_gc(argv: Sequence[str]) -> GcOptions:
             options.older_than = hours(take(option, rest))
         else:
             die(f"unknown option {option}")
+    if options.all_tasks and options.older_than is None:
+        die("--all-tasks requires --older-than")
     if not options.task and options.older_than is None:
         die("--name or --older-than is required")
     return options
@@ -697,6 +705,7 @@ def hours(spec: str) -> float:
 
 # A per-run volume: NAME-...validate...-build|zccache-<12 hex checkout key>.
 PER_RUN_VOLUME = re.compile(r"-validate-(?:.+-)?(?:build|zccache)-([0-9a-f]{12})$")
+BUILD_CACHE_VOLUME = re.compile(r"-(?:build|zccache)-([0-9a-f]{12})$")
 CHECKOUT_KEY = re.compile(r"-([0-9a-f]{12})$")
 
 
@@ -724,9 +733,13 @@ def gc_old_volumes(options: GcOptions) -> None:
     if not keyed:
         return
     created: dict[str, datetime] = {}
-    listing = quiet(["docker", "volume", "inspect", "-f", "{{.Name}}\t{{.CreatedAt}}", *keyed])
+    owned: dict[str, bool] = {}
+    listing = quiet(["docker", "volume", "inspect", "-f",
+                     '{{.Name}}\t{{.CreatedAt}}\t{{with index .Labels "' + LABEL + '.task"}}1{{end}}', *keyed])
     for line in listing.splitlines():
-        name, _, stamp = line.partition("\t")
+        name, _, record = line.partition("\t")
+        stamp, _, task = record.partition("\t")
+        owned[name] = bool(task)
         try:
             created[name] = parse_created(stamp)
         except ValueError:
@@ -739,8 +752,8 @@ def gc_old_volumes(options: GcOptions) -> None:
         if name in mounted or name not in created or created[name] > cutoff:
             live_keys.add(CHECKOUT_KEY.search(name).group(1))
     for name in keyed:
-        match = PER_RUN_VOLUME.search(name)
-        if not match or match.group(1) in live_keys:
+        match = (BUILD_CACHE_VOLUME if options.all_tasks else PER_RUN_VOLUME).search(name)
+        if not match or match.group(1) in live_keys or (options.all_tasks and not owned.get(name)):
             continue
         age = int((now() - created[name]).total_seconds() // 3600)
         if not options.apply:
