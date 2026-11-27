@@ -77,6 +77,7 @@
 #include "libobs/obs-source-duplicate-entry-fields.c.h"
 #include "libobs/obs-source-enabled-setter-fields.c.h"
 #include "libobs/obs-source-enum-filters-fields.c.h"
+#include "libobs/obs-source-enum-full-tree.c.h"
 #include "libobs/obs-source-filter-add-fields.c.h"
 #include "libobs/obs-source-filter-backup-fields.c.h"
 #include "libobs/obs-source-filter-count-fields.c.h"
