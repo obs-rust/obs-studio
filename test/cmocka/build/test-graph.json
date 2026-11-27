@@ -22555,6 +22555,47 @@
         "libobs/data"
       ]
     },
+    "test_volume_control_uuid": {
+      "sources": [
+        "test/cmocka/test_volume_control_uuid.cpp",
+        "frontend/components/VolumeControl.cpp.hpp",
+        "frontend/components/VolumeName.cpp.hpp"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/components/VolumeControl.hpp",
+          "frontend/components/VolumeName.hpp",
+          "test/cmocka/volume-control-stubs/volume-control-main.hpp"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/components",
+        "frontend"
+      ],
+      "includes_before": [
+        "test/cmocka/volume-control-stubs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_uuid"
+      ],
+      "watch_inputs": [
+        "test/cmocka/volume-control-stubs/Idian/Utils.hpp",
+        "test/cmocka/volume-control-stubs/components/VolumeSlider.hpp",
+        "test/cmocka/volume-control-stubs/frontend/build/frontend-components.pch.hpp"
+      ]
+    },
     "test_volume_meter_snapshot": {
       "sources": [
         "test/cmocka/test_volume_meter_snapshot.cpp"
@@ -31725,6 +31766,26 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120,
       "skip_return_code": 77
+    },
+    "test_volume_control_uuid": {
+      "target": "test_volume_control_uuid",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Widgets",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_volume_meter_snapshot": {
       "target": "test_volume_meter_snapshot"
