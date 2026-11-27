@@ -38,6 +38,7 @@ pub mod source_draw;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_duplicate;
+pub mod source_duplicate_entry;
 pub mod source_enabled_setter;
 pub mod source_enum_filters;
 pub mod source_filter_add;

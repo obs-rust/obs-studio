@@ -166,6 +166,8 @@ mod size_route_parity;
 mod source_draw;
 mod source_draw_parity;
 mod source_duplicate;
+mod source_duplicate_entry;
+mod source_duplicate_entry_parity;
 mod source_duplicate_parity;
 mod source_filter_chain;
 mod source_filter_chain_parity;
