@@ -301,6 +301,7 @@ pub mod source_identity_getters;
 pub mod source_name;
 pub mod source_remove;
 pub mod state_getters;
+pub mod strong_refs;
 pub mod theme_icon;
 pub mod transition_access;
 pub mod transition_audio;
