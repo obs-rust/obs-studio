@@ -73,6 +73,7 @@ pub mod source_output_capture_device;
 pub mod source_output_cea708;
 pub mod source_output_flags;
 pub mod source_private_settings;
+pub mod source_process_filter_end;
 pub mod source_properties;
 pub mod source_ptm_gate;
 pub mod source_push_delay;
