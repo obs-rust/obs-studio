@@ -118,6 +118,7 @@
 #include "libobs/obs-source-restore-filters-fields.c.h"
 #include "libobs/obs-source-save-load-fields.c.h"
 #include "libobs/obs-source-set-name-fields.c.h"
+#include "libobs/obs-source-set-video-frame-internal.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"
 #include "libobs/obs-source-show-preloaded-video-fields.c.h"
 #include "libobs/obs-source-showing-active-fields.c.h"
