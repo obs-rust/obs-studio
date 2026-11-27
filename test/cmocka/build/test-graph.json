@@ -3117,6 +3117,7 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/util/cf-lexer.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/source-update-properties-link-support.c",
@@ -3128,10 +3129,10 @@
         "libobs"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static",
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
@@ -20330,6 +20331,53 @@
         "libobs/graphics/graphics-texture-file-data.c.h"
       ]
     },
+    "test_texture_file_data_steps_rust": {
+      "sources": [
+        "test/cmocka/test_texture_file_data_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "inherit_header_definitions": true
+    },
     "test_texture_render": {
       "sources": [
         "test/cmocka/test_texture_render.c"
@@ -31032,6 +31080,13 @@
     },
     "test_texture_file_data_legacy": {
       "target": "test_texture_file_data_legacy",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_texture_file_data_steps_rust": {
+      "target": "test_texture_file_data_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

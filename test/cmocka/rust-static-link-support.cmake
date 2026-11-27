@@ -58,6 +58,10 @@ function(_obs_demand_rust_static_support)
     if(NOT type STREQUAL "EXECUTABLE")
       continue()
     endif()
+    get_target_property(isolated "${target}" OBS_RUST_STATIC_ISOLATED)
+    if(NOT MSVC AND NOT isolated)
+      continue()
+    endif()
     _obs_uses_rust_static("${target}" "" uses_rust)
     if(uses_rust STREQUAL "0")
       continue()
@@ -204,10 +208,9 @@ function(obs_rust_static_consumers support native_owner)
       endif()
     endif()
   endforeach()
-  if(MSVC)
-    # Run after every legacy deferred fragment has supplied its real adapters.
-    cmake_language(DEFER CALL _obs_demand_rust_static_support)
-  endif()
+  # Run after every legacy deferred fragment has supplied its real adapters.
+  # Non-MSVC fixtures opt in when they must exclude a shared implementation.
+  cmake_language(DEFER CALL _obs_demand_rust_static_support)
 endfunction()
 
 # Shared by the complete cmocka project and independent graph fixture projects.

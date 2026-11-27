@@ -8,19 +8,21 @@ static CASES: std::sync::LazyLock<Vec<String>> =
 #[test]
 fn canonical_rust_static_graphics_are_registered() {
     let graph = rust_static_entries::assert_family(FAMILY);
-    assert_eq!(CASES.len(), 6);
+    assert_eq!(CASES.len(), 7);
     for windows in [false, true] {
         for msvc in [false, true] {
             for available in [false, true] {
                 let facts = [
                     ("HAVE_LIBOBS_RUST_STATIC".into(), available),
                     ("OS_WINDOWS".into(), windows),
+                    ("OS_LINUX".into(), !windows),
+                    ("OS_FREEBSD".into(), false),
                     ("MSVC".into(), msvc),
                 ]
                 .into();
                 let selected = graph.select(&facts).unwrap();
-                assert_eq!(selected.targets.len(), if available { 6 } else { 0 });
-                assert_eq!(selected.tests.len(), if available { 6 } else { 0 });
+                assert_eq!(selected.targets.len(), if available { 7 } else { 0 });
+                assert_eq!(selected.tests.len(), if available { 7 } else { 0 });
             }
         }
     }
