@@ -82,6 +82,7 @@ pub mod source_remove;
 pub mod source_removed;
 pub mod source_render_route;
 pub mod source_replace_missing_file;
+pub mod source_restore_filters;
 pub mod source_save_load;
 pub mod source_set_name;
 pub mod source_settings_getter;

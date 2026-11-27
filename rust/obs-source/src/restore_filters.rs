@@ -20,6 +20,7 @@
     clippy::unreachable
 )]
 
+use crate::source_filter_chain::{Restore, restore_matches, restore_step};
 use core::ffi::CStr;
 
 /// The public function named in the NULL diagnostics.
@@ -100,6 +101,76 @@ pub fn restore<L: RestoreList>(
     array: bool,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (source, array, log);
-    todo!("#5801")
+    let Some(source) = source else {
+        log(RESTORE_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    if !array {
+        log(RESTORE_FUNCTION, ARRAY_PARAMETER);
+        return;
+    }
+
+    source.lock();
+    let reserve = source.count();
+    let mut current = Vec::with_capacity(reserve);
+    let mut restored = Vec::with_capacity(reserve);
+    let mut index = 0;
+    while index < source.count() {
+        let filter = source.filter(index);
+        current.push(filter);
+        source.unlink(filter);
+        index = index.wrapping_add(1);
+    }
+    source.free_list();
+    source.unlock();
+
+    let mut prev = None;
+    for index in 0..source.item_count() {
+        let item = source.item(index);
+        let found = reuse(source, &current, source.item_name(item));
+        let filter = match (restore_step(found.is_some()), found) {
+            (Restore::Reuse, Some(filter)) => filter,
+            (Restore::Load, _) => source.load(item),
+            (Restore::LoadPrivate | Restore::Reuse, _) => source.load_private(item),
+        };
+        if let Some(prev) = prev {
+            source.set_target(prev, filter);
+        }
+        prev = Some(filter);
+        restored.push(filter);
+        source.release_item(item);
+    }
+
+    if let Some(prev) = prev {
+        source.set_target(prev, source.this());
+    }
+    for &filter in &restored {
+        source.set_parent(filter);
+    }
+
+    source.lock();
+    source.store(restored);
+    source.unlock();
+
+    for filter in current {
+        source.release(filter);
+    }
+}
+
+/// The first current filter whose name matches `name` (a NULL current
+/// name never does, nor a NULL item name), referenced: `None` when there
+/// is none or it can't be referenced. The search stops at the first match
+/// either way.
+fn reuse<L: RestoreList>(
+    source: &L,
+    current: &[L::Source],
+    name: Option<&[u8]>,
+) -> Option<L::Source> {
+    for &filter in current {
+        let cur_name = source.name(filter);
+        if name.is_some_and(|name| restore_matches(cur_name, name)) {
+            return source.get_ref(filter);
+        }
+    }
+    None
 }

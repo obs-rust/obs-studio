@@ -110,6 +110,9 @@
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
 //! routing (which draw a source or a filter takes, the filter bypass, the
 //! default effect and the linear sRGB flags);
+//! `libobs/obs-source-restore-filters.c.h`, `obs_source_restore_filters()`
+//! (the lock, list, array reads, references, loads and releases stay in a C
+//! fields adapter);
 //! `libobs/obs-source-set-name.c.h`, the source rename
 //! `obs_source_set_name()` (the unchanged-name check, the canvas or table
 //! rename, and its signals);

@@ -152,6 +152,7 @@ mod render_route_parity;
 mod replace_missing_file;
 mod replace_missing_file_parity;
 mod restore_filters;
+mod restore_filters_parity;
 mod save_load;
 mod save_load_parity;
 mod set_name;
