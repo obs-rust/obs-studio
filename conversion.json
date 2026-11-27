@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83618,
-      "libobs": 100718,
+      "libobs": 100981,
       "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.7,
-    "ported_lines": 62492,
-    "total_lines": 353125
+    "percent": 17.77,
+    "ported_lines": 62802,
+    "total_lines": 353388
   },
-  "commit": "cef8f1da",
+  "commit": "b60190ad",
   "date": "2026-11-26",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 53.42,
-          "ported_lines": 36522,
-          "total_lines": 68365
+          "percent": 53.67,
+          "ported_lines": 36832,
+          "total_lines": 68628
         },
         "graphics": {
           "percent": 72.22,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 1025,
-      "hybrid_lines": 38226,
-      "percent": 62.05,
-      "ported_lines": 62492,
-      "total_lines": 100718
+      "files": 1033,
+      "hybrid_lines": 38179,
+      "percent": 62.19,
+      "ported_lines": 62802,
+      "total_lines": 100981
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 55.49,
-            "ported_lines": 35169,
-            "total_lines": 63376
+            "percent": 55.75,
+            "ported_lines": 35479,
+            "total_lines": 63639
           },
           "graphics": {
             "percent": 72.74,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 990,
-        "hybrid_lines": 33907,
-        "percent": 63.23,
+        "files": 998,
+        "hybrid_lines": 33860,
+        "percent": 63.39,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -494,6 +494,8 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-order-support.c.h",
+          "obs-scene-item-set-order.c.h",
           "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
@@ -558,6 +560,7 @@
           "obs-source-color-space.c.h",
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-copy-filters.c.h",
           "obs-source-default-flags.c.h",
           "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
@@ -576,12 +579,14 @@
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-frame-init.c.h",
           "obs-source-frame-wrappers.c.h",
           "obs-source-get-name.c.h",
+          "obs-source-get-release-frame.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
           "obs-source-hidden-setter.c.h",
@@ -710,15 +715,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 58306,
-        "total_lines": 92213
+        "ported_lines": 58616,
+        "total_lines": 92476
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 55.0,
-            "ported_lines": 31569,
-            "total_lines": 57402
+            "percent": 55.28,
+            "ported_lines": 31879,
+            "total_lines": 57665
           },
           "graphics": {
             "percent": 72.74,
@@ -736,9 +741,9 @@
             "total_lines": 9978
           }
         },
-        "files": 968,
-        "hybrid_lines": 31533,
-        "percent": 63.4,
+        "files": 976,
+        "hybrid_lines": 31486,
+        "percent": 63.57,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -1136,6 +1141,8 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-order-support.c.h",
+          "obs-scene-item-set-order.c.h",
           "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
@@ -1200,6 +1207,7 @@
           "obs-source-color-space.c.h",
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-copy-filters.c.h",
           "obs-source-default-flags.c.h",
           "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
@@ -1218,12 +1226,14 @@
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-frame-init.c.h",
           "obs-source-frame-wrappers.c.h",
           "obs-source-get-name.c.h",
+          "obs-source-get-release-frame.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
           "obs-source-hidden-setter.c.h",
@@ -1350,15 +1360,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 54627,
-        "total_lines": 86160
+        "ported_lines": 54937,
+        "total_lines": 86423
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 55.07,
-            "ported_lines": 32510,
-            "total_lines": 59033
+            "percent": 55.35,
+            "ported_lines": 32820,
+            "total_lines": 59296
           },
           "graphics": {
             "percent": 72.29,
@@ -1376,9 +1386,9 @@
             "total_lines": 10704
           }
         },
-        "files": 979,
-        "hybrid_lines": 32891,
-        "percent": 62.92,
+        "files": 987,
+        "hybrid_lines": 32844,
+        "percent": 63.08,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1778,6 +1788,8 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-order-support.c.h",
+          "obs-scene-item-set-order.c.h",
           "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
@@ -1842,6 +1854,7 @@
           "obs-source-color-space.c.h",
           "obs-source-configurable.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-copy-filters.c.h",
           "obs-source-default-flags.c.h",
           "obs-source-defaults.c.h",
           "obs-source-deinterlace-draw.c.h",
@@ -1860,12 +1873,14 @@
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
           "obs-source-frame-copy.c.h",
           "obs-source-frame-init.c.h",
           "obs-source-frame-wrappers.c.h",
           "obs-source-get-name.c.h",
+          "obs-source-get-release-frame.c.h",
           "obs-source-get-weak.c.h",
           "obs-source-handler-getters.c.h",
           "obs-source-hidden-setter.c.h",
@@ -1997,12 +2012,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 55805,
-        "total_lines": 88696
+        "ported_lines": 56115,
+        "total_lines": 88959
       }
     }
   },
   "rust": {
-    "lines": 245556
+    "lines": 246637
   }
 }
