@@ -102,6 +102,11 @@
 //! `obs_source_audio_output_capture_device_changed()` and its `activate`
 //! handler (the monitoring fields, host and platform device calls, signals,
 //! log lines and settings reads stay in a C fields adapter);
+//! `libobs/obs-source-process-filter-end.c.h`,
+//! `obs_source_process_filter_end()` and
+//! `obs_source_process_filter_tech_end()` (the bypass flag, the target and
+//! parent lookups, the flags read, the texture lookup and the draws stay in
+//! a C fields adapter);
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-push-to-enable.c.h`, the push-to-mute and push-to-talk
@@ -287,6 +292,7 @@ pub mod output_cea708;
 pub mod output_flags;
 pub mod own_clock_drift;
 pub mod private_settings;
+pub mod process_filter_end;
 pub mod properties;
 pub mod ptm_gate;
 pub mod push_delay;
