@@ -19,6 +19,10 @@
     clippy::unreachable
 )]
 
+use crate::render_route::{
+    FilterCheck, TechEnd, TechName, filter_check, tech_end, tech_end_linear_srgb, tech_name,
+};
+
 /// What the end reads, writes and draws, each method one C step.
 pub trait FilterEnd {
     /// A source as the C passes it (never NULL here: the shim checks it).
@@ -80,10 +84,43 @@ pub fn process_filter_tech_end<F: FilterEnd>(
     effect: F::Effect,
     width: u32,
     height: u32,
-    tech_name: Option<F::Tech>,
+    tech_name_given: Option<F::Tech>,
 ) {
-    let _ = (end, filter, effect, width, height, tech_name);
-    todo!("obs_source_process_filter_tech_end")
+    let Some(filter) = filter else {
+        return;
+    };
+
+    let bypass_active = end.bypass_active(filter);
+    end.clear_bypass(filter);
+
+    let target = end.target(filter);
+    let parent = end.parent(filter);
+    if filter_check(target.is_some(), parent.is_some()) != FilterCheck::Ready {
+        return;
+    }
+    // Ready means the target is set (the parent is only checked).
+    let Some(target) = target else {
+        return;
+    };
+
+    let filter_flags = end.output_flags(filter);
+    let previous = end.set_linear_srgb(tech_end_linear_srgb(filter_flags));
+
+    let tech = match (tech_name(tech_name_given.is_some()), tech_name_given) {
+        (TechName::Given, Some(given)) => given,
+        (TechName::Given, None) | (TechName::Draw, _) => end.draw_tech(),
+    };
+
+    match tech_end(bypass_active) {
+        TechEnd::Bypass => end.render_bypass(target, effect, tech),
+        TechEnd::Texture => {
+            if let Some(texture) = end.texture(filter) {
+                end.render_tex(texture, effect, width, height, tech);
+            }
+        }
+    }
+
+    end.set_linear_srgb(previous);
 }
 
 /// `obs_source_process_filter_end(filter, effect, width, height)`: a NULL
@@ -95,6 +132,10 @@ pub fn process_filter_end<F: FilterEnd>(
     width: u32,
     height: u32,
 ) {
-    let _ = (end, filter, effect, width, height);
-    todo!("obs_source_process_filter_end")
+    if filter.is_none() {
+        end.log_null_filter();
+        return;
+    }
+    let draw = end.draw_tech();
+    process_filter_tech_end(end, filter, effect, width, height, Some(draw));
 }
