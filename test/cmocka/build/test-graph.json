@@ -17906,6 +17906,21 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
+    "test_source_duplicate": {
+      "sources": [
+        "test/cmocka/test_source_duplicate.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_duplicate_steps": {
       "sources": [
         "test/cmocka/test_source_duplicate_steps.c",
@@ -30059,6 +30074,18 @@
     "test_source_draw_plan_steps_rust": {
       "target": "test_source_draw_plan_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_source_duplicate": {
+      "target": "test_source_duplicate",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_source_duplicate_steps": {
       "target": "test_source_duplicate_steps",
