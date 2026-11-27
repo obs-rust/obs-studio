@@ -18906,6 +18906,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_remove": {
+      "sources": [
+        "test/cmocka/test_source_remove.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_removed": {
       "sources": [
         "test/cmocka/test_source_removed.c"
@@ -30404,6 +30413,18 @@
           "-a",
           "-s",
           "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_source_remove": {
+      "target": "test_source_remove",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
         ]
       ]
     },
