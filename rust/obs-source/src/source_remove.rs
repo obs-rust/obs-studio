@@ -57,6 +57,20 @@ pub trait Source {
 /// and is not private (the private flag read only when there is a canvas),
 /// and the reference released.
 pub fn remove<S: Source>(source: Option<&S>, log: impl FnOnce(&'static CStr, &'static CStr)) {
-    let _ = (source, log);
-    todo!("#5803")
+    let Some(source) = source else {
+        log(REMOVE_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    if source.removed() {
+        return;
+    }
+    let Some(s) = source.get_ref() else {
+        return;
+    };
+    source.set_removed(s);
+    source.signal(s);
+    if source.has_canvas() && !source.is_private() {
+        source.remove_from_canvas(s);
+    }
+    source.release(s);
 }

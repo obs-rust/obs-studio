@@ -176,6 +176,7 @@ mod source_identity_getters_parity;
 mod source_name;
 mod source_name_parity;
 mod source_remove;
+mod source_remove_parity;
 mod state_getters;
 mod state_getters_parity;
 mod theme_icon;

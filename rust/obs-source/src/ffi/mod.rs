@@ -76,6 +76,7 @@ pub mod source_push_delay;
 pub mod source_push_hotkeys;
 pub mod source_push_queries;
 pub mod source_push_to_enable;
+pub mod source_remove;
 pub mod source_removed;
 pub mod source_render_route;
 pub mod source_replace_missing_file;
