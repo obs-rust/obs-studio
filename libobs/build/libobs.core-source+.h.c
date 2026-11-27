@@ -107,6 +107,7 @@
 #include "libobs/obs-source-push-hotkey-registration.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
 #include "libobs/obs-source-push-to-enable-fields.c.h"
+#include "libobs/obs-source-refs.c.h"
 #include "libobs/obs-source-remove-fields.c.h"
 #include "libobs/obs-source-removed-fields.c.h"
 #include "libobs/obs-source-restore-filters-fields.c.h"
