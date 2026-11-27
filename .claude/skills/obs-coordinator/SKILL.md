@@ -33,6 +33,16 @@ org sweep in the `obs-org-coordinator` skill, which lives in
 (`gh api repos/obs-rust/.github/contents/.claude/skills/obs-org-coordinator/SKILL.md -H 'Accept: application/vnd.github.raw'`),
 and report each repo in §5.
 
+During triage, identify compatible work using the
+[shared November 2026 batching defaults](../../../docs/rust-port/coordination.md#4-pull-requests):
+five low-risk tasks, such as related classification changes, or three related
+feature changes. Keep separate features in separate PRs. Suggest batches of
+bug fixes for the same platform; use relationship, risk and reviewability
+for other bugs. Help workers coordinate around existing claims; workers
+claim, assemble and validate each batch. Preserve per-issue traceability,
+focused validation, review and revert boundaries, and split when needed.
+Review and queue the resulting PRs through the steps below.
+
 ## 1. Queue every ready PR
 
 Ready means open, not a draft, every check green, and `mergeStateStatus`

@@ -92,20 +92,15 @@ Rank what is left:
 3. Bugs with a clear failing-test sketch.
 4. The next unit in the port order (testing-policy.md, the trackers on #4).
 
-**Take one to three at a time.** A big issue goes alone: a large port or
-subsystem (the CEF / obs-browser work, for example), anything sized
-`size:L` or larger, or anything you expect to need more than one session.
-Otherwise, after picking the top issue, add up to two of the most similar
-candidates that also qualify: the same platform (one macOS-only or
-Windows-only lane) or the same area (the same crate, plugin, workflow or
-test binary). Claim each, with its own `Claiming:` comment naming the
-others, and land them in **one PR**: a RED then GREEN commit pair per issue,
-`Refs #a, #b, #c` in the body. Every PR costs a PR run, a merge-queue run
-and a master push, so three issues in one PR cost a third of the CI. Never
-add a dissimilar issue to fill the batch. A rank-1 breakage goes alone, so
-its fix is not held up. If one item of a batch turns out blocked or bigger
-than expected, ship the others and release that claim with the reason
-(coordination.md §4).
+**Batch compatible candidates using the
+[shared defaults](../../../docs/rust-port/coordination.md#4-pull-requests).**
+Pick the highest-ranked issue first, then compatible candidates that also
+qualify. Claim each with its own `Claiming:` comment naming the others;
+keep its focused validation, RED then GREEN commits where required, and PR
+reference distinct. Preserve independent review and revert boundaries.
+Large issues and rank-1 breakage go alone. If an item becomes blocked or
+larger than expected, ship the ready work and release that claim with the
+reason. Never add unrelated work to fill a batch.
 
 Close a tracker whose children are all closed while you are there.
 

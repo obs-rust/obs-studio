@@ -3,9 +3,9 @@ name: obs-worker
 description: Worker-role playbook for obs-rust/obs-studio. Use whenever you act as a worker in this repo, meaning you pick up, claim, port, fix or test an issue, or build, lint, push or open a PR. It walks you through the repo's CI and contribution docs, from rebase to merge queue.
 ---
 
-# obs-worker: picking up and landing one issue
+# obs-worker: picking up and landing work
 
-You are a **worker** when you take one issue (port, bug fix, feature, test
+You are a **worker** when you take an issue (port, bug fix, feature, test
 or infra task) from claim to merged PR. This skill is the checklist. The documents it
 links are the source of truth; when this file and a document disagree, the
 document wins, and you fix this file in the same PR.
@@ -147,7 +147,16 @@ pile up on top of it:
 - If your checkout exceeds ~25 GB, say so in your final message; the
   coordinator decides whether a slot retires. Do not purge to hide it.
 
-## 2. Choose and claim one issue
+## 2. Choose and claim work
+
+Assemble and validate batches using the
+[shared November 2026 defaults](../../../docs/rust-port/coordination.md#4-pull-requests):
+five compatible low-risk tasks, such as classification changes, or three
+related feature changes. Keep separate features in separate PRs. Batch
+platform-specific bugs for the same platform; use judgment for other bugs
+based on relationship, risk and reviewability. These are targets: preserve
+each issue's focused validation, review and revert boundaries, and split
+when needed.
 
 1. List Ready, unclaimed candidates:
    `gh issue list --repo obs-rust/obs-studio --state open --label ready --search no:assignee`
@@ -164,8 +173,9 @@ pile up on top of it:
    without asking anyone, and comment that you are continuing it.
 2. Prefer, in order: issues that unblock other contributors, bugs with a
    clear failing-test sketch, then the next unit in the port order.
-3. Claim it: comment `Claiming: <item>` with a short numbered plan (one PR
-   per unit) and when you expect the first PR. The claim bot assigns you
+3. Claim each selected issue: comment `Claiming: <item>` with a short
+   numbered plan, the other issues in its batch, and when you expect the
+   first PR. The claim bot assigns you
    and reacts 🚀 (it replies only to refuse, and says why). Claim only what
    you are working on now. The claim lapses 24 hours after your last
    progress (a comment, or a commit or review on your PR).
