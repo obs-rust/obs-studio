@@ -348,19 +348,19 @@ class ClientLanesTest(unittest.TestCase):
                         self.assertIn("obs-c-oracle", command)
             self.assertFalse(any(c[:3] == ["soldr", "cargo", "test"] for c in calls))
 
-    def test_host_features_and_dedicated_dylint_are_preserved(self):
+    def test_host_features_and_shared_dylint_are_preserved(self):
         with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
                 mock.patch.object(local_gate, "lane_lint") as lint, \
-                mock.patch.object(local_gate, "lane_dylint") as dylint, \
+                mock.patch.object(local_gate, "soldr_dylint") as dylint, \
                 mock.patch.object(local_gate, "cross_lint") as cross:
             local_gate.LANES["client-lint"](False)
         lint.assert_called_once_with(False, self_tests=False)
-        dylint.assert_called_once_with(False)
+        dylint.assert_called_once_with(["--all", "--", "--workspace", "--lib", "--bins"])
         cross.assert_called_once_with(self.TARGETS[1:], link=False)
 
     def test_failed_target_fails_client_lane(self):
         with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
-                mock.patch.object(local_gate, "lane_lint"), mock.patch.object(local_gate, "lane_dylint"), \
+                mock.patch.object(local_gate, "lane_lint"), mock.patch.object(local_gate, "soldr_dylint"), \
                 mock.patch.object(local_gate, "add_target"), \
                 mock.patch.object(local_gate, "soldr_cargo", side_effect=subprocess.CalledProcessError(1, "clippy")):
             with self.assertRaises(subprocess.CalledProcessError):
