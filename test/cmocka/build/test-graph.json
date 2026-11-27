@@ -19194,6 +19194,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_set_video_frame_internal": {
+      "sources": [
+        "test/cmocka/test_source_set_video_frame_internal.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_show_active_counters": {
       "sources": [
         "test/cmocka/test_source_show_active_counters.c"
@@ -30838,6 +30853,13 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_source_set_video_frame_internal": {
+      "target": "test_source_set_video_frame_internal",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_show_active_counters": {
       "target": "test_source_show_active_counters",
