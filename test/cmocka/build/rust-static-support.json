@@ -5,6 +5,7 @@
     "test/cmocka/base-blogva-link-support.c",
     "test/cmocka/base-crash-link-support.c",
     "test/cmocka/base-variadic-link-support.c",
+    "test/cmocka/canvas-remove-link-support.c",
     "test/cmocka/canvas-valid-video-info-link-support.c",
     "test/cmocka/cf-preprocessor-link-support.c",
     "test/cmocka/context-runtime-link-support.c",
