@@ -79,6 +79,7 @@ mod enabled_setter_parity;
 mod enum_filters;
 mod enum_filters_parity;
 mod enum_full_tree;
+mod enum_full_tree_parity;
 mod filter_add;
 mod filter_add_parity;
 mod filter_backup;
