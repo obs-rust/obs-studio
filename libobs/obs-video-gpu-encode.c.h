@@ -109,7 +109,7 @@ static void *gpu_encode_thread(void *data)
 					continue;
 			}
 
-			if (!encoder->first_received && num_paired) {
+			if (!os_atomic_load_bool(&encoder->first_received) && num_paired) {
 				bool wait_for_audio = false;
 
 				for (size_t idx = 0; !wait_for_audio && idx < num_paired; idx++) {
@@ -117,7 +117,7 @@ static void *gpu_encode_thread(void *data)
 					if (!enc)
 						continue;
 
-					if (!enc->first_received ||
+					if (!os_atomic_load_bool(&enc->first_received) ||
 					    obs_encoder_audio_start_paired_late(enc->first_raw_ts, timestamp)) {
 						wait_for_audio = true;
 					}
