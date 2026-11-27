@@ -18737,6 +18737,28 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_output_capture_device": {
+      "sources": [
+        "test/cmocka/test_source_output_capture_device.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "PulseAudio::PulseAudio"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic"
+      ],
+      "compile_options_if_supported": [
+        "-fvisibility=default"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "ENABLE_PULSEAUDIO"
+        ]
+      }
+    },
     "test_source_output_cea708": {
       "sources": [
         "test/cmocka/test_source_output_cea708.c"
@@ -30498,6 +30520,29 @@
       "target": "test_source_mute_monitor_hotkeys",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_output_capture_device": {
+      "target": "test_source_output_capture_device",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_source_output_cea708": {
