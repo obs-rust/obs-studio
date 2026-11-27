@@ -1,7 +1,8 @@
 //! `obs_source_inc_showing()`, `obs_source_inc_active()`,
 //! `obs_source_dec_showing()` and `obs_source_dec_active()`: each checks its
 //! source, then hands it to `obs_source_activate()` or
-//! `obs_source_deactivate()` (both stay C) with an auxiliary or main view.
+//! `obs_source_deactivate()` ([`crate::activate`], reached through the C
+//! ABI) with an auxiliary or main view.
 use core::ffi::CStr;
 
 /// `MAIN_VIEW` of the private `enum view_type` (`obs-internal.h`).

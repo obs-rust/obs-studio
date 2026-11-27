@@ -41,6 +41,10 @@ unsafe extern "C" {
     );
 
     pub fn oracle_view_set_trace(hook: OracleViewTrace);
+    /// Traces the activation event still open on this thread, if any
+    /// (`obs_source_activate()` / `obs_source_deactivate()` on a view test
+    /// source; see oracle/view.c).
+    pub fn oracle_view_flush();
     /// Clears the mixes; `fail_mutex` makes `obs_view_mutex_init` fail;
     /// `main_mix_info` is what `obs_view_main_mix_info` returns.
     pub fn oracle_view_reset(fail_mutex: bool, main_mix_info: *mut c_void);

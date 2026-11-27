@@ -5,8 +5,9 @@
 //! once for each of the parent's show references, `MAIN_VIEW` for the first
 //! `activate_refs` of them and `AUX_VIEW` for the rest. Remove mirrors the
 //! activations with deactivations, without the self or cycle checks. The
-//! full-tree walk, the two counter loads and `obs_source_activate()` /
-//! `obs_source_deactivate()` stay C; the core reaches them through
+//! full-tree walk and the two counter loads stay C, and
+//! `obs_source_activate()` / `obs_source_deactivate()` are called through
+//! the C ABI ([`crate::activate`], #5811); the core reaches them through
 //! [`Libobs`].
 
 #![deny(

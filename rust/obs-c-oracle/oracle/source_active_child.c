@@ -7,10 +7,12 @@
  * Both sides reach the same stand-ins: the full-tree walk
  * (obs_source_active_child_enum_full_tree(), the hidden wrapper in
  * obs-source.c.h, defined here as a scripted walk that reports a case's
- * edges in order) and the tracing obs_source_activate() /
- * obs_source_deactivate() doubles of oracle/view.c, which read a source's
- * name at offset 0, where struct obs_source keeps context.name. The real
- * walk and activation are covered by test_source_active_child. */
+ * edges in order) and obs_source_activate() / obs_source_deactivate(),
+ * obs-source's Rust exports (#5811), whose counter adapters report to
+ * oracle/view.c's activation trace for these nodes (they leave the
+ * counters alone), which reads a source's name at offset 0, where struct
+ * obs_source keeps context.name. The real walk and activation are covered
+ * by test_source_active_child and test_source_activate. */
 #define _NO_CRT_STDIO_INLINE
 #include <stdlib.h>
 #include <stdio.h>
@@ -118,6 +120,7 @@ void obs_source_active_child_enum_full_tree(obs_source_t *source, obs_source_enu
 
 typedef void (*oracle_view_trace_fn)(const char *event, const char *name, long long value);
 void oracle_view_set_trace(oracle_view_trace_fn hook);
+void oracle_view_flush(void);
 
 static void active_child_trace(const char *event, const char *name, long long value)
 {
@@ -215,6 +218,7 @@ bool oracle_source_active_child_run(active_child_add_fn add, active_child_remove
 		out->returned = add(parent, child);
 	else
 		remove(parent, child);
+	oracle_view_flush();
 	set(old_handler, old_param);
 	oracle_view_set_trace(NULL);
 	active_child_current = NULL;

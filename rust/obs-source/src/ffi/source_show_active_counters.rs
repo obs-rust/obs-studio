@@ -1,7 +1,8 @@
 //! C ABI of `obs_source_inc_showing()`, `obs_source_inc_active()`,
 //! `obs_source_dec_showing()` and `obs_source_dec_active()`. The counters
-//! themselves, and the walk of the source's active tree, stay in the C
-//! `obs_source_activate()` / `obs_source_deactivate()` (`obs-internal.h`).
+//! themselves, and the walk of the source's active tree, are
+//! `obs_source_activate()` / `obs_source_deactivate()` (`obs-internal.h`;
+//! [`crate::ffi::source_activate`]), called through the C ABI.
 use crate::show_active_counters::{Change, Direction, apply};
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::ptr::NonNull;

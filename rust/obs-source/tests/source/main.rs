@@ -1,5 +1,7 @@
 //! obs-source integration tests, one module per extracted C file.
 
+mod activate;
+mod activate_parity;
 mod active_child;
 mod active_child_parity;
 mod async_compensation;

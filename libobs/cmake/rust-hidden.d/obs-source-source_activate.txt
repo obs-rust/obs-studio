@@ -1,0 +1,5 @@
+# obs-source-activate.c.h (#5811): views, canvases, active children and the
+# four public show and active counters call them inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shims stay hidden.
+obs_source_activate
+obs_source_deactivate

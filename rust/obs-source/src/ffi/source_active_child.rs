@@ -1,9 +1,10 @@
 //! C ABI of `obs_source_add_active_child()` and
 //! `obs_source_remove_active_child()`. The full-tree walk (with its stop
-//! source), the counter loads and `obs_source_activate()` /
-//! `obs_source_deactivate()` stay C: the walk through obs-source.c.h's hidden
-//! `obs_source_active_child_enum_full_tree()`, the loads through
+//! source) and the counter loads stay C: the walk through obs-source.c.h's
+//! hidden `obs_source_active_child_enum_full_tree()`, the loads through
 //! `obs-source-active-child-fields.c.h` (both without `EXPORT`).
+//! `obs_source_activate()` / `obs_source_deactivate()` are reached through
+//! the C ABI (Rust since #5811, [`crate::ffi::source_activate`]).
 use crate::active_child;
 use core::ffi::{CStr, c_char, c_int, c_long, c_void};
 use core::ptr::NonNull;
