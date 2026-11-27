@@ -263,7 +263,6 @@ static gpointer fake_thread(gpointer data)
 		g_dbus_connection_unregister_object(fake.conn, fake.portal_registration);
 		g_dbus_connection_unregister_object(fake.conn, fake.screensaver_registration);
 		g_dbus_connection_close_sync(fake.conn, NULL, NULL);
-		g_clear_object(&fake.conn);
 	}
 
 	g_main_context_pop_thread_default(fake.context);
@@ -375,6 +374,7 @@ static int group_teardown(void **state)
 
 	g_main_loop_quit(fake.loop);
 	g_thread_join(fake.thread);
+	g_clear_object(&fake.conn);
 	g_main_loop_unref(fake.loop);
 	g_main_context_unref(fake.context);
 	g_dbus_node_info_unref(fake.info);
