@@ -114,7 +114,11 @@ SANITIZER_OPTIONS = {
     "ubsan": "print_stacktrace=1:halt_on_error=0",
     # triage.py decides from the reports (#3701). exitcode=0: a report with no
     # OBS frame does not fail a test, or a parent that asserts on its child.
-    "tsan": f"halt_on_error=0:second_deadlock_stack=1:exitcode=0:suppressions={TSAN_SUPPRESSIONS}",
+    # atexit_sleep_ms=0: TSan otherwise sleeps 1 s at exit while another
+    # thread runs. GLib's GDBus worker thread runs until exit in each process
+    # whose audio thread asked D-Bus for real-time priority (#5814); the OBS
+    # threads stop in obs_shutdown() before that.
+    "tsan": f"halt_on_error=0:second_deadlock_stack=1:exitcode=0:atexit_sleep_ms=0:suppressions={TSAN_SUPPRESSIONS}",
 }
 OBS_ARGS = ("--disable-shutdown-check", "--disable-updater", "--verbose")
 

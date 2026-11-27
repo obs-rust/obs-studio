@@ -282,6 +282,14 @@ class SanitizeHarnessTest(unittest.TestCase):
         on the child's exit code (#3701)."""
         self.assertIn("exitcode=0", self.module.sanitizer_options(self.out)["TSAN_OPTIONS"])
 
+    def test_tsan_does_not_sleep_at_exit(self):
+        """TSan sleeps atexit_sleep_ms (default 1000) at exit while another
+        thread runs. GLib's GDBus worker thread runs until exit in every
+        process whose audio thread asked D-Bus for real-time priority, so
+        each such test waited 1 s (#5814)."""
+        options = self.module.sanitizer_options(self.out)["TSAN_OPTIONS"].split(":")
+        self.assertIn("atexit_sleep_ms=0", options)
+
     def test_tsan_suppressions_are_glib_and_the_wait_functor_only(self):
         """called_from_lib removes the reports from uninstrumented glib. For
         Mesa it makes more reports, because TSan does not see Mesa's mutexes
