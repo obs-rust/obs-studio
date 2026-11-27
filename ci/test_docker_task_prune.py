@@ -176,20 +176,16 @@ class PruneKeepsCurrentImage(unittest.TestCase):
 
 # Per-run volumes for `gc --older-than` (#4638). The fake prints
 # `docker volume ls -q`, answers `docker volume inspect -f ... NAME...` with
-# "<name>\t<CreatedAt>" lines from $VOLUMES, lists the volumes containers
+# "<name>\t<CreatedAt>\t<task label>" lines from $VOLUMES, lists the volumes containers
 # mount from $MOUNTS for `docker ps -a ... --format {{.Mounts}}`, and logs
 # `docker volume rm NAME`.
 FAKE_DOCKER_VOLUMES = """#!/bin/sh
 if [ "$1 $2" = "volume ls" ]; then
   cut -f1 "$VOLUMES"
 elif [ "$1 $2" = "volume inspect" ]; then
-  format="$4"
   shift 4
   for name in "$@"; do
-    case "$format" in
-      *docker-task.task*) grep "^$name	" "$VOLUMES" ;;
-      *) grep "^$name	" "$VOLUMES" | cut -f1,2 ;;
-    esac
+    grep "^$name	" "$VOLUMES"
   done
 elif [ "$1" = "ps" ]; then
   cat "$MOUNTS"

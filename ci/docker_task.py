@@ -70,10 +70,11 @@ volume with the same 12-hex checkout key is younger than HOURS or used by a
 container: a live partner means the checkout is still building. Run it from a
 cron, e.g. `gc --older-than 24 --apply`.
 
-Add --all-tasks to include other task names (#4898). This mode requires the
-docker-task.task ownership label on every candidate and still selects only
-build/zccache volumes with an old, unused checkout key. It is opt-in because
-removing a reusable task's build state makes its next run start cold.
+With --all-tasks, select only build/zccache volumes carrying the
+docker-task.task ownership label, regardless of task name (#4898). The same
+old, unused checkout-key checks apply. Older unlabelled -validate- volumes
+still need the default sweep. This mode is opt-in because removing a reusable
+task's build state makes its next run start cold.
 
 Exit status: 2 for a usage or argument error, 75 when a container of the same
 name is already running and --wait was not given, otherwise the status of the
