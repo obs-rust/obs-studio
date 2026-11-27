@@ -19055,6 +19055,19 @@
         }
       ]
     },
+    "test_source_restore_filters": {
+      "sources": [
+        "test/cmocka/test_source_restore_filters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_select_list": {
       "sources": [
         "test/cmocka/test_source_select_list.cpp",
@@ -30546,6 +30559,18 @@
         "${target}"
       ],
       "timeout_seconds": 30
+    },
+    "test_source_restore_filters": {
+      "target": "test_source_restore_filters",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_source_select_list": {
       "target": "test_source_select_list",
