@@ -18,6 +18,9 @@
     clippy::unreachable
 )]
 
+use crate::source_filter_chain::{
+    RefStep, Target, add_allowed, add_target, checks_compatible, compatible, ref_step,
+};
 use core::ffi::CStr;
 
 /// The public function named in the NULL diagnostics.
@@ -76,12 +79,84 @@ pub trait FilterList {
     fn call_add_callback(&self, filter: Self::Source);
 }
 
-/// `obs_source_filter_add()`.
+/// `obs_source_filter_add()`: `None` is a NULL source, logged as
+/// ([`ADD_FUNCTION`], [`SOURCE_PARAMETER`]); then a `None` filter is logged
+/// as ([`ADD_FUNCTION`], [`FILTER_PARAMETER`]). Under the lock: a filter on
+/// the list or with a parent warns and stops; one whose output flags don't
+/// fit the source's stops without a line (unless the source owns its info
+/// id); one that can't be referenced is logged like a NULL filter and stops
+/// after the unlock (the C kept the lock, #2981). Otherwise the referenced
+/// filter gets the source as parent and the old first filter (the source on
+/// an empty list) as target and goes to the front of the list. After the
+/// unlock: the signals, the log line, then the callback when the type has
+/// one.
 pub fn add<L: FilterList>(
     source: Option<&L>,
     filter: Option<L::Source>,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    let _ = (source, filter, log);
-    todo!("#5799")
+    let Some(source) = source else {
+        log(ADD_FUNCTION, SOURCE_PARAMETER);
+        return;
+    };
+    let Some(filter) = filter else {
+        log(ADD_FUNCTION, FILTER_PARAMETER);
+        return;
+    };
+    source.lock();
+
+    let listed = find(source, filter);
+    if !add_allowed(listed, source.has_parent(filter)) {
+        source.warn_present();
+        source.unlock();
+        return;
+    }
+
+    if checks_compatible(source.owns_info_id())
+        && !compatible(source.output_flags(), source.filter_output_flags(filter))
+    {
+        source.unlock();
+        return;
+    }
+
+    let referenced = source.get_ref(filter);
+    if referenced.is_none() {
+        log(ADD_FUNCTION, FILTER_PARAMETER);
+    }
+    let filter = match (ref_step(referenced.is_some()), referenced) {
+        (RefStep::Add, Some(filter)) => filter,
+        (RefStep::Return, _) => return,
+        (RefStep::UnlockReturn | RefStep::Add, _) => {
+            source.unlock();
+            return;
+        }
+    };
+
+    source.set_parent(filter);
+    let target = match add_target(source.count()) {
+        Target::Source => source.this(),
+        Target::Filter => source.filter(0),
+    };
+    source.set_target(filter, target);
+    source.insert_front(filter);
+    source.unlock();
+
+    source.signal(filter);
+    source.log_added(filter);
+    if source.has_add_callback(filter) {
+        source.call_add_callback(filter);
+    }
+}
+
+/// `da_find() != DARRAY_INVALID`: whether `filter` is on the list, the
+/// count read before each entry.
+fn find<L: FilterList>(source: &L, filter: L::Source) -> bool {
+    let mut index = 0;
+    while index < source.count() {
+        if source.filter(index) == filter {
+            return true;
+        }
+        index = index.wrapping_add(1);
+    }
+    false
 }

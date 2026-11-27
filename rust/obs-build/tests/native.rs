@@ -55,6 +55,8 @@ mod canonical_source_defaults_swap_is_registered;
 mod canonical_source_draw_swap_is_registered;
 #[path = "native/registration/canonical_source_enum_filters_swap_is_registered.rs"]
 mod canonical_source_enum_filters_swap_is_registered;
+#[path = "native/registration/canonical_source_filter_add_swap_is_registered.rs"]
+mod canonical_source_filter_add_swap_is_registered;
 #[path = "native/registration/canonical_source_filter_remove_swap_is_registered.rs"]
 mod canonical_source_filter_remove_swap_is_registered;
 #[path = "native/registration/canonical_source_filter_set_order_swap_is_registered.rs"]
