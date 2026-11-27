@@ -1,17 +1,17 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 83618,
-      "libobs": 100981,
+      "frontend": 83626,
+      "libobs": 101615,
       "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.77,
-    "ported_lines": 62802,
-    "total_lines": 353388
+    "percent": 17.85,
+    "ported_lines": 63211,
+    "total_lines": 354030
   },
-  "commit": "b60190ad",
-  "date": "2026-11-26",
+  "commit": "723283cf",
+  "date": "2026-11-27",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,13 +29,13 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 53.67,
-          "ported_lines": 36832,
-          "total_lines": 68628
+          "percent": 53.74,
+          "ported_lines": 37220,
+          "total_lines": 69262
         },
         "graphics": {
-          "percent": 72.22,
-          "ported_lines": 11197,
+          "percent": 72.35,
+          "ported_lines": 11218,
           "total_lines": 15505
         },
         "media-io": {
@@ -49,23 +49,23 @@
           "total_lines": 13379
         }
       },
-      "files": 1033,
-      "hybrid_lines": 38179,
-      "percent": 62.19,
-      "ported_lines": 62802,
-      "total_lines": 100981
+      "files": 1047,
+      "hybrid_lines": 38404,
+      "percent": 62.21,
+      "ported_lines": 63211,
+      "total_lines": 101615
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 55.75,
-            "ported_lines": 35479,
-            "total_lines": 63639
+            "percent": 55.8,
+            "ported_lines": 35867,
+            "total_lines": 64273
           },
           "graphics": {
-            "percent": 72.74,
-            "ported_lines": 11137,
+            "percent": 72.88,
+            "ported_lines": 11158,
             "total_lines": 15311
           },
           "media-io": {
@@ -79,8 +79,8 @@
             "total_lines": 10057
           }
         },
-        "files": 998,
-        "hybrid_lines": 33860,
+        "files": 1012,
+        "hybrid_lines": 34085,
         "percent": 63.39,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
@@ -135,6 +135,7 @@
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-target-size.c.h",
           "graphics/graphics-texture-copy.c.h",
+          "graphics/graphics-texture-file-data.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -529,6 +530,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-activate.c.h",
           "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -571,14 +573,17 @@
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-draw.c.h",
+          "obs-source-duplicate-entry.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-remove.c.h",
           "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
@@ -613,9 +618,12 @@
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
+          "obs-source-refs.c.h",
+          "obs-source-remove.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
           "obs-source-replace-missing-file.c.h",
+          "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -715,19 +723,19 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 58616,
-        "total_lines": 92476
+        "ported_lines": 59025,
+        "total_lines": 93110
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 55.28,
-            "ported_lines": 31879,
-            "total_lines": 57665
+            "percent": 55.35,
+            "ported_lines": 32267,
+            "total_lines": 58299
           },
           "graphics": {
-            "percent": 72.74,
-            "ported_lines": 11137,
+            "percent": 72.88,
+            "ported_lines": 11158,
             "total_lines": 15311
           },
           "media-io": {
@@ -741,8 +749,8 @@
             "total_lines": 9978
           }
         },
-        "files": 976,
-        "hybrid_lines": 31486,
+        "files": 990,
+        "hybrid_lines": 31711,
         "percent": 63.57,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
@@ -795,6 +803,7 @@
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-target-size.c.h",
           "graphics/graphics-texture-copy.c.h",
+          "graphics/graphics-texture-file-data.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -1176,6 +1185,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-activate.c.h",
           "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -1218,14 +1228,17 @@
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-draw.c.h",
+          "obs-source-duplicate-entry.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-remove.c.h",
           "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
@@ -1260,9 +1273,12 @@
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
+          "obs-source-refs.c.h",
+          "obs-source-remove.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
           "obs-source-replace-missing-file.c.h",
+          "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -1360,19 +1376,19 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 54937,
-        "total_lines": 86423
+        "ported_lines": 55346,
+        "total_lines": 87057
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 55.35,
-            "ported_lines": 32820,
-            "total_lines": 59296
+            "percent": 55.41,
+            "ported_lines": 33208,
+            "total_lines": 59930
           },
           "graphics": {
-            "percent": 72.29,
-            "ported_lines": 11197,
+            "percent": 72.42,
+            "ported_lines": 11218,
             "total_lines": 15490
           },
           "media-io": {
@@ -1386,9 +1402,9 @@
             "total_lines": 10704
           }
         },
-        "files": 987,
-        "hybrid_lines": 32844,
-        "percent": 63.08,
+        "files": 1001,
+        "hybrid_lines": 33069,
+        "percent": 63.09,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1443,6 +1459,7 @@
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-target-size.c.h",
           "graphics/graphics-texture-copy.c.h",
+          "graphics/graphics-texture-file-data.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -1823,6 +1840,7 @@
           "obs-set-output-source.c.h",
           "obs-set-video-levels.c.h",
           "obs-shutdown-detach-reference.c.h",
+          "obs-source-activate.c.h",
           "obs-source-active-child.c.h",
           "obs-source-async-compensation-getter.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -1865,14 +1883,17 @@
           "obs-source-deinterlace.c.h",
           "obs-source-draw-plan.c.h",
           "obs-source-draw.c.h",
+          "obs-source-duplicate-entry.c.h",
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
           "obs-source-filter-count.c.h",
           "obs-source-filter-index.c.h",
           "obs-source-filter-relationship-getters.c.h",
+          "obs-source-filter-remove.c.h",
           "obs-source-filter-set-order.c.h",
           "obs-source-flags-mixers.c.h",
           "obs-source-frame-copy-data.c.h",
@@ -1907,9 +1928,12 @@
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
+          "obs-source-refs.c.h",
+          "obs-source-remove.c.h",
           "obs-source-removed.c.h",
           "obs-source-render-route.c.h",
           "obs-source-replace-missing-file.c.h",
+          "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
@@ -2012,12 +2036,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 56115,
-        "total_lines": 88959
+        "ported_lines": 56524,
+        "total_lines": 89593
       }
     }
   },
   "rust": {
-    "lines": 246637
+    "lines": 248728
   }
 }
