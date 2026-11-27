@@ -18067,6 +18067,19 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_filter_remove": {
+      "sources": [
+        "test/cmocka/test_source_filter_remove.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_set_order": {
       "sources": [
         "test/cmocka/test_source_filter_set_order.c"
@@ -30071,6 +30084,18 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_source_filter_remove": {
+      "target": "test_source_filter_remove",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_source_filter_set_order": {
       "target": "test_source_filter_set_order",

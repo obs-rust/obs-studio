@@ -64,6 +64,9 @@
 //! `obs_source_filter_remove_refless()`, `move_filter_dir()` and
 //! `obs_source_restore_filters()` (compatibility, the add gates and
 //! targets, the moves and the restore match);
+//! `libobs/obs-source-filter-remove.c.h`, `obs_source_filter_remove()` and
+//! its hidden step `obs_source_filter_remove_refless()` (the lock, signals,
+//! callback and release stay in a C fields adapter);
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
@@ -232,6 +235,7 @@ pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;
 pub mod filter_relationship_getters;
+pub mod filter_remove;
 pub mod filter_set_order;
 pub mod flags_mixers;
 pub mod frame_copy;

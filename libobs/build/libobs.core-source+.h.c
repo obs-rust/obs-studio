@@ -79,6 +79,7 @@
 #include "libobs/obs-source-filter-count-fields.c.h"
 #include "libobs/obs-source-filter-index-fields.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
+#include "libobs/obs-source-filter-remove-fields.c.h"
 #include "libobs/obs-source-filter-set-order-fields.c.h"
 #include "libobs/obs-source-flags-mixers-fields.c.h"
 #include "libobs/obs-source-frame-wrappers-fields.c.h"
