@@ -10,6 +10,8 @@
 #include <QPushButton>
 #include <QWidget>
 
+#include <string>
+
 class MuteCheckBox;
 class QBoxLayout;
 class QLabel;
@@ -67,7 +69,9 @@ public:
 
 private:
 	OBSWeakSource weakSource_;
-	const char *uuid;
+	/* Owned: the source, and the string obs_source_get_uuid() returns, can be
+	 * freed while queued calls for this control are still pending (#5809). */
+	std::string uuid;
 	std::vector<OBSSignal> obsSignals;
 	bool obsMonitoring;
 	bool obsMuted;
