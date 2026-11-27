@@ -105,6 +105,8 @@ mod canonical_source_removed_swap_is_registered;
 mod canonical_source_replace_missing_file_swap_is_registered;
 #[path = "native/registration/canonical_source_restore_filters_swap_is_registered.rs"]
 mod canonical_source_restore_filters_swap_is_registered;
+#[path = "native/registration/canonical_source_set_video_frame_internal_swap_is_registered.rs"]
+mod canonical_source_set_video_frame_internal_swap_is_registered;
 #[path = "native/registration/canonical_source_show_active_counters_swap_is_registered.rs"]
 mod canonical_source_show_active_counters_swap_is_registered;
 #[path = "native/registration/canonical_source_show_preloaded_video_swap_is_registered.rs"]

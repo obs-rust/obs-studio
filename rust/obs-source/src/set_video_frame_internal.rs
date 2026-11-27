@@ -30,7 +30,7 @@
 
 use core::ffi::CStr;
 
-use crate::frame_copy::Shape;
+use crate::frame_copy::{Shape, preload_changed};
 
 /// The source, frame and graphics operations it performs, in the C's terms.
 pub trait Host {
@@ -77,6 +77,30 @@ pub fn set_video_frame_internal<H: Host>(
     source: Option<H::Source>,
     frame: Option<H::Frame>,
 ) {
-    let _ = (host, source, frame);
-    todo!("obs_source_set_video_frame_internal")
+    let Some(source) = source else {
+        host.null_source(c"obs_source_set_video_frame");
+        return;
+    };
+    let Some(frame) = frame else {
+        return;
+    };
+
+    host.enter_graphics();
+
+    let preload = host.preload_shape(source);
+    if preload_changed(preload, host.frame_shape(frame)) {
+        host.destroy_preload(source);
+        host.create_preload(source, frame);
+    }
+
+    host.copy_to_preload(source, frame);
+    host.set_texture_size(source);
+    host.update_textures(source);
+    host.mark_textures_fresh(source);
+
+    host.lock_async(source);
+    host.set_last_frame_ts(source, frame);
+    host.unlock_async(source);
+
+    host.leave_graphics();
 }

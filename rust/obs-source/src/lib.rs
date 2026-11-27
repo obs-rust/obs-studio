@@ -143,6 +143,12 @@
 //! `libobs/obs-source-set-name.c.h`, the source rename
 //! `obs_source_set_name()` (the unchanged-name check, the canvas or table
 //! rename, and its signals);
+//! `libobs/obs-source-set-video-frame-internal.c.h`, the hidden
+//! `obs_source_set_video_frame_internal()` every
+//! `obs_source_set_video_frame*()` entry ends in (the graphics context, the
+//! preload frame's shapes, create, destroy and copy, the async texture size
+//! and update, the stale flag, the mutex and the `last_frame_ts` write stay
+//! in C fields adapters);
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-skip-video-filter.c.h`,

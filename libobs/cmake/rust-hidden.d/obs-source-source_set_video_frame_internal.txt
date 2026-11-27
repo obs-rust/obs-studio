@@ -1,0 +1,4 @@
+# obs-source-set-video-frame-internal.c.h (obs-source): the graphics-thread
+# worker every obs_source_set_video_frame*() entry ends in. Declared in
+# obs-internal.h without EXPORT, so the shim stays hidden.
+obs_source_set_video_frame_internal
