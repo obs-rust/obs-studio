@@ -301,6 +301,7 @@ pub mod output_capture_device;
 pub mod output_cea708;
 pub mod output_flags;
 pub mod own_clock_drift;
+pub mod preload_video_internal;
 pub mod private_settings;
 pub mod process_filter_begin;
 pub mod process_filter_end;

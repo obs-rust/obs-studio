@@ -135,6 +135,7 @@ mod output_cea708_parity;
 mod output_flags;
 mod output_flags_parity;
 mod own_clock_drift;
+mod preload_video_internal;
 mod private_settings;
 mod private_settings_parity;
 mod process_filter_begin;
