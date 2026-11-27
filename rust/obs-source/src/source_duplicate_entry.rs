@@ -18,6 +18,9 @@
     clippy::unreachable
 )]
 
+use crate::source_duplicate::{
+    Step, copies_filters, created_step, flags_step, group_step, scene_step, scene_type, type_step,
+};
 use core::ffi::CStr;
 
 /// The public function named in the NULL diagnostic.
@@ -112,6 +115,53 @@ pub fn duplicate<S: Source>(
     create_private: bool,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) -> Option<S::Ref> {
-    let _ = (source, create_private, log);
-    todo!("#5805")
+    let Some(source) = source else {
+        log(DUPLICATE_FUNCTION, SOURCE_PARAMETER);
+        return None;
+    };
+    if type_step(source.source_type()) == Step::AskScene {
+        let mut scene = source.scene();
+        let mut step = scene_step(scene.is_some(), create_private);
+        if step == Step::Ref {
+            return source.get_ref();
+        }
+        if step == Step::AskGroup {
+            scene = source.group();
+            step = group_step(scene.is_some());
+        }
+        let (Step::SceneCopy, Some(scene)) = (step, scene) else {
+            return None;
+        };
+        let new_scene = source.scene_duplicate(scene, scene_type(create_private));
+        return source.scene_source(new_scene);
+    }
+
+    if flags_step(source.output_flags()) == Step::Ref {
+        return source.get_ref();
+    }
+
+    let settings = source.settings_create();
+    source.settings_apply(settings);
+    let new_source = source.create(settings, create_private);
+    let (Step::CopyState, Some(s)) = (created_step(new_source.is_some()), new_source) else {
+        source.settings_release(settings);
+        return None;
+    };
+
+    source.set_audio_mixers(s, source.audio_mixers());
+    source.set_sync_offset(s, source.sync_offset());
+    source.set_user_volume(s, source.user_volume());
+    source.set_user_muted(s, source.user_muted());
+    source.set_volume(s, source.volume());
+    source.set_muted(s, source.muted());
+    source.set_flags(s, source.flags());
+
+    source.private_settings_apply(s);
+    // The type is read again here, as the C reads it.
+    if copies_filters(source.source_type()) {
+        source.duplicate_filters(s, create_private);
+    }
+
+    source.settings_release(settings);
+    Some(s)
 }

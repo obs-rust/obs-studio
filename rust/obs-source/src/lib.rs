@@ -56,6 +56,9 @@
 //! `dup_group()` in `libobs/obs-scene.c` (the route of a duplicate, the
 //! filter numbers, the flags and item routes of a scene copy and the reuse
 //! of a repeated source);
+//! `libobs/obs-source-duplicate-entry.c.h`, `obs_source_duplicate()` (the
+//! field reads and writes, lookups, scene copy, creates, settings calls and
+//! filter copies stay in a C fields adapter);
 //! `libobs/obs-source-filter-add.c.h`, `obs_source_filter_add()` (the lock,
 //! list, reference, signals and callback stay in a C fields adapter);
 //! `libobs/obs-source-filter-backup.c.h`, the filter backup of
