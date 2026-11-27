@@ -8546,6 +8546,26 @@
         "libobs/obs-main-render-callbacks.c.h"
       ]
     },
+    "test_main_render_callbacks_api": {
+      "sources": [
+        "test/cmocka/test_main_render_callbacks_api.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_main_rendered_callbacks": {
       "sources": [
         "test/cmocka/test_main_rendered_callbacks.c"
@@ -26895,6 +26915,23 @@
       ],
       "suite": "core",
       "timeout_seconds": 30
+    },
+    "test_main_render_callbacks_api": {
+      "target": "test_main_render_callbacks_api",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30,
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_main_rendered_callbacks": {
       "target": "test_main_rendered_callbacks",
