@@ -94,7 +94,7 @@ class DampeningTests(unittest.TestCase):
         for name, state, dirty in (("measure", error, []), ("dirty_prs", open_queue, error)):
             with self.subTest(failing=name), \
                     patch.object(bot.sys, "argv", ["ai_rebase.py", "--dirty"]), \
-                    patch.object(bot, "queue_state", side_effect=[state], create=True), \
+                    patch.object(bot, "queue_state", side_effect=[state]), \
                     patch.object(bot, "dirty_prs", side_effect=[dirty]), \
                     patch.object(bot, "gh_json", side_effect=AssertionError("unexpected GitHub call")), \
                     patch.object(bot, "rebase_pr") as rebase, \
