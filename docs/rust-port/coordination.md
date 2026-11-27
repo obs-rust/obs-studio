@@ -32,6 +32,7 @@ The org-wide rules, commands and the definition of Ready are in
 - Comment on the issue: `Claiming: <item>` followed by a short numbered plan
   (one unit per issue; use the compatible-work batching rules in section 4)
   and when you expect to open the first PR. Name the other issues in a batch.
+  A call-site-wide warning class is one unit across directories; see section 4.
 - The claim bot then **assigns you** and reacts 🚀 to your comment; you don't
   need any rights. It replies only to refuse: an issue that is not Ready, is
   blocked by an open issue, waits on a decision or is claimed by someone
@@ -111,7 +112,10 @@ The org-wide rules, commands and the definition of Ready are in
   `port/<unit>`, `fix/<issue>-<topic>`, `test/<unit>`, `infra/<topic>`.
 - **Batch compatible work (November 2026 baseline).** Workers assemble and
   validate batches; coordinators identify compatible work during triage and
-  help workers coordinate it. Use these shared defaults:
+  help workers coordinate it. Compatible work shares a platform lane or an
+  area (crate, plugin, workflow or test binary), with validation that a shared
+  run covers. Batching shares the PR, merge-queue and master-push runs that
+  each separate PR would require. Use these shared defaults:
 
   - Target **five compatible low-risk tasks** per PR. For example, batch five
     related platform-path classification corrections, list each issue's paths
@@ -124,9 +128,10 @@ The org-wide rules, commands and the definition of Ready are in
 
   Five and three are targets, not quotas. Split a batch when changes need
   independent review, validation or revert; never add unrelated work to fill
-  it. Claim each issue and keep its commits, focused RED then GREEN evidence
-  (where required), and PR reference distinct. Explain shared validation and
-  how each issue can be reviewed and reverted on its own.
+  it. Claim each issue and keep its commits and focused RED then GREEN
+  evidence (where required) distinct. Name every issue in the PR body: use
+  `Fixes #N` for each issue it completes and `Refs #N` for the others. Explain
+  shared validation and how each issue can be reviewed and reverted on its own.
 
   A big issue (a large port or subsystem, `size:L` or larger, or work expected
   to take more than one session) and breakage that blocks others go alone.
