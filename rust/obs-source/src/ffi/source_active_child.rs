@@ -1,24 +1,16 @@
 //! C ABI of `obs_source_add_active_child()` and
 //! `obs_source_remove_active_child()`. The full-tree walk (with its stop
-//! source) and the counter loads stay C: the walk through obs-source.c.h's
-//! hidden `obs_source_active_child_enum_full_tree()`, the loads through
-//! `obs-source-active-child-fields.c.h` (both without `EXPORT`).
+//! source) is the hidden `obs_source_active_child_enum_full_tree()`, Rust
+//! since #5833 ([`crate::ffi::source_enum_full_tree`]), called directly; the
+//! counter loads stay C, through `obs-source-active-child-fields.c.h`
+//! (without `EXPORT`).
 //! `obs_source_activate()` / `obs_source_deactivate()` are reached through
 //! the C ABI (Rust since #5811, [`crate::ffi::source_activate`]).
 use crate::active_child;
 use core::ffi::{CStr, c_char, c_int, c_long, c_void};
 use core::ptr::NonNull;
 
-/// `obs_source_enum_proc_t`.
-type EnumProc = unsafe extern "C" fn(parent: *mut c_void, child: *mut c_void, param: *mut c_void);
-
 unsafe extern "C" {
-    fn obs_source_active_child_enum_full_tree(
-        source: *mut c_void,
-        enum_callback: EnumProc,
-        param: *mut c_void,
-        stop_source: *mut c_void,
-    );
     fn obs_source_active_child_show_refs(source: *const c_void) -> c_long;
     fn obs_source_active_child_activate_refs(source: *const c_void) -> c_long;
     fn obs_source_activate(source: *mut c_void, view_type: u32);
@@ -61,7 +53,7 @@ impl active_child::Libobs for Libobs {
         // SAFETY: live sources; the walk calls `visit_edge` with `param`
         // only while it runs, and `visit` outlives it.
         unsafe {
-            obs_source_active_child_enum_full_tree(
+            super::source_enum_full_tree::obs_source_active_child_enum_full_tree(
                 root.as_ptr(),
                 visit_edge,
                 param.cast(),

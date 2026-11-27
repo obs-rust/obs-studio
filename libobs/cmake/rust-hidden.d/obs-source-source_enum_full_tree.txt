@@ -1,0 +1,4 @@
+# obs-source-enum-full-tree.c.h (obs-source): obs_source_add_active_child()
+# walks a child's full tree with a stop source through this wrapper. Declared
+# without EXPORT, so the shim stays hidden.
+obs_source_active_child_enum_full_tree

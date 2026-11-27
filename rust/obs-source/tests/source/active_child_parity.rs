@@ -1,18 +1,19 @@
 //! Tier 3: the original C `obs_source_add_active_child()` and
-//! `obs_source_remove_active_child()` and the Rust exports, on noise-filled
+//! `obs_source_remove_active_child()` and the Rust shims, on noise-filled
 //! real-header sources, each reaching the same stand-ins (oracle/
 //! source_active_child.c): a scripted full-tree walk reporting a case's
 //! edges, the production counter adapters, and the tracing
 //! `obs_source_activate()` / `obs_source_deactivate()` of oracle/view.c.
+//! The walk is Rust since #5833 (its parity is enum_full_tree_parity), so
+//! the Rust side runs [`add_with`] / [`remove_with`] over [`Scripted`]: the
+//! production [`Libobs`] with the scripted walk in place of the real one.
 //! Compares every walk (root, stop source), activation and deactivation
 //! (source, view type) in order, the result, the log lines and every other
 //! byte of the sources. No intentional differences or excluded inputs.
 use core::ffi::{CStr, c_char, c_long, c_void};
 use core::ptr::NonNull;
 use obs_source::active_child::{self, AUX_VIEW, Libobs as _, MAIN_VIEW, names, view_type};
-use obs_source::ffi::source_active_child::{
-    Libobs, add_with, obs_source_add_active_child, obs_source_remove_active_child, remove_with,
-};
+use obs_source::ffi::source_active_child::{Libobs, add_with, remove_with};
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
 use proptest::prelude::*;
 
@@ -132,12 +133,8 @@ fn check_with(add: Add, remove: Remove, case: &Case) -> Option<Outcome> {
 }
 
 fn check(case: &Case) -> Outcome {
-    check_with(
-        obs_source_add_active_child,
-        obs_source_remove_active_child,
-        case,
-    )
-    .unwrap_or_else(|| panic!("the Rust exports disagree with the original C: {case:?}"))
+    check_with(rust_add, rust_remove, case)
+        .unwrap_or_else(|| panic!("the Rust exports disagree with the original C: {case:?}"))
 }
 
 fn case(which: u8, parent: i8, child: i8, refs: [c_long; 2], edges: &[(i8, i8)]) -> Case {
@@ -156,6 +153,76 @@ fn case(which: u8, parent: i8, child: i8, refs: [c_long; 2], edges: &[(i8, i8)])
         case.edge_child[i] = *c;
     }
     case
+}
+
+// --- the Rust side ----------------------------------------------------------
+
+unsafe extern "C" {
+    fn oracle_active_child_enum_full_tree(
+        source: *mut c_void,
+        enum_callback: unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void),
+        param: *mut c_void,
+        stop_source: *mut c_void,
+    );
+}
+
+/// The visitor the scripted walk reports to, as its `param`.
+type ScriptVisit<'a> = &'a mut dyn FnMut(Option<NonNull<c_void>>, Option<NonNull<c_void>>);
+
+unsafe extern "C" fn scripted_edge(parent: *mut c_void, child: *mut c_void, param: *mut c_void) {
+    // SAFETY: `param` is the `ScriptVisit` `Scripted::enum_full_tree` keeps
+    // alive until the walk returns.
+    let visit = unsafe { &mut *param.cast::<ScriptVisit<'_>>() };
+    visit(NonNull::new(parent), NonNull::new(child));
+}
+
+/// The production calls with the oracle's scripted walk.
+struct Scripted;
+
+impl active_child::Libobs for Scripted {
+    type Source = NonNull<c_void>;
+
+    fn enum_full_tree(&mut self, root: Self::Source, stop: Self::Source, mut visit: Visit<'_>) {
+        let param: *mut ScriptVisit<'_> = &mut visit;
+        // SAFETY: the scripted walk calls `scripted_edge` with `param` only
+        // while it runs.
+        unsafe {
+            oracle_active_child_enum_full_tree(
+                root.as_ptr(),
+                scripted_edge,
+                param.cast(),
+                stop.as_ptr(),
+            );
+        }
+    }
+    fn show_refs(&mut self, source: Self::Source) -> c_long {
+        Libobs.show_refs(source)
+    }
+    fn activate_refs(&mut self, source: Self::Source) -> c_long {
+        Libobs.activate_refs(source)
+    }
+    fn activate(&mut self, source: Self::Source, view: u32) {
+        Libobs.activate(source, view);
+    }
+    fn deactivate(&mut self, source: Self::Source, view: u32) {
+        Libobs.deactivate(source, view);
+    }
+    fn log_null(&mut self, function: &'static CStr, parameter: &'static CStr) {
+        Libobs.log_null(function, parameter);
+    }
+    fn warn_self(&mut self) {
+        Libobs.warn_self();
+    }
+}
+
+/// `obs_source_add_active_child()`'s shim over [`Scripted`].
+unsafe extern "C" fn rust_add(parent: *mut c_void, child: *mut c_void) -> bool {
+    add_with(&mut Scripted, parent, child)
+}
+
+/// `obs_source_remove_active_child()`'s shim over [`Scripted`].
+unsafe extern "C" fn rust_remove(parent: *mut c_void, child: *mut c_void) {
+    remove_with(&mut Scripted, parent, child);
 }
 
 // --- mutants of the shims -------------------------------------------------
@@ -188,36 +255,40 @@ impl active_child::Libobs for Mutant {
 
     fn enum_full_tree(&mut self, root: Self::Source, stop: Self::Source, visit: Visit<'_>) {
         match self.0 {
-            Change::DropEdgeParent => Libobs.enum_full_tree(root, stop, &mut |_, c| visit(None, c)),
-            Change::DropEdgeChild => Libobs.enum_full_tree(root, stop, &mut |p, _| visit(p, None)),
-            Change::StopAtRoot => Libobs.enum_full_tree(root, root, visit),
-            _ => Libobs.enum_full_tree(root, stop, visit),
+            Change::DropEdgeParent => {
+                Scripted.enum_full_tree(root, stop, &mut |_, c| visit(None, c))
+            }
+            Change::DropEdgeChild => {
+                Scripted.enum_full_tree(root, stop, &mut |p, _| visit(p, None))
+            }
+            Change::StopAtRoot => Scripted.enum_full_tree(root, root, visit),
+            _ => Scripted.enum_full_tree(root, stop, visit),
         }
     }
     fn show_refs(&mut self, source: Self::Source) -> c_long {
-        Libobs.show_refs(source)
+        Scripted.show_refs(source)
     }
     fn activate_refs(&mut self, source: Self::Source) -> c_long {
-        Libobs.activate_refs(source)
+        Scripted.activate_refs(source)
     }
     fn activate(&mut self, source: Self::Source, view: u32) {
         match self.0 {
-            Change::SwapViews => Libobs.activate(source, swap(view)),
-            Change::SwapDirection => Libobs.deactivate(source, view),
-            _ => Libobs.activate(source, view),
+            Change::SwapViews => Scripted.activate(source, swap(view)),
+            Change::SwapDirection => Scripted.deactivate(source, view),
+            _ => Scripted.activate(source, view),
         }
     }
     fn deactivate(&mut self, source: Self::Source, view: u32) {
         match self.0 {
-            Change::SwapViews => Libobs.deactivate(source, swap(view)),
-            Change::SwapDirection => Libobs.activate(source, view),
-            _ => Libobs.deactivate(source, view),
+            Change::SwapViews => Scripted.deactivate(source, swap(view)),
+            Change::SwapDirection => Scripted.activate(source, view),
+            _ => Scripted.deactivate(source, view),
         }
     }
     fn log_null(&mut self, function: &'static CStr, parameter: &'static CStr) {
         match self.0 {
             Change::SilentNull => {}
-            Change::SwapNullNames => Libobs.log_null(
+            Change::SwapNullNames => Scripted.log_null(
                 function,
                 if parameter == active_child::PARENT {
                     active_child::CHILD
@@ -225,11 +296,11 @@ impl active_child::Libobs for Mutant {
                     active_child::PARENT
                 },
             ),
-            _ => Libobs.log_null(function, parameter),
+            _ => Scripted.log_null(function, parameter),
         }
     }
     fn warn_self(&mut self) {
-        Libobs.warn_self();
+        Scripted.warn_self();
     }
 }
 
@@ -268,21 +339,21 @@ mutant!(add_swap_null, remove_swap_null, Change::SwapNullNames);
 unsafe extern "C" fn add_reloading(parent: *mut c_void, child: *mut c_void) -> bool {
     let (Some(p), Some(c)) = (NonNull::new(parent), NonNull::new(child)) else {
         // SAFETY: as the real export.
-        return unsafe { obs_source_add_active_child(parent, child) };
+        return unsafe { rust_add(parent, child) };
     };
     if p == c {
         // SAFETY: as the real export.
-        return unsafe { obs_source_add_active_child(parent, child) };
+        return unsafe { rust_add(parent, child) };
     }
     let mut exists = false;
-    Libobs.enum_full_tree(c, p, &mut |a, b| exists |= names(a, b, p));
+    Scripted.enum_full_tree(c, p, &mut |a, b| exists |= names(a, b, p));
     if exists {
         return false;
     }
-    let activate_refs = Libobs.activate_refs(p);
+    let activate_refs = Scripted.activate_refs(p);
     let mut index: c_long = 0;
-    while index < Libobs.show_refs(p) {
-        Libobs.activate(c, view_type(index, activate_refs));
+    while index < Scripted.show_refs(p) {
+        Scripted.activate(c, view_type(index, activate_refs));
         index += 1;
     }
     true
@@ -292,25 +363,25 @@ unsafe extern "C" fn add_reloading(parent: *mut c_void, child: *mut c_void) -> b
 unsafe extern "C" fn add_no_self_check(parent: *mut c_void, child: *mut c_void) -> bool {
     match (NonNull::new(parent), NonNull::new(child)) {
         (Some(p), Some(c)) if p == c => {
-            let show = Libobs.show_refs(p);
-            let active = Libobs.activate_refs(p);
+            let show = Scripted.show_refs(p);
+            let active = Scripted.activate_refs(p);
             for index in 0..show {
-                Libobs.activate(c, view_type(index, active));
+                Scripted.activate(c, view_type(index, active));
             }
             true
         }
         // SAFETY: as the real export.
-        _ => unsafe { obs_source_add_active_child(parent, child) },
+        _ => unsafe { rust_add(parent, child) },
     }
 }
 
 /// Remove walks the child's tree first, as add does.
 unsafe extern "C" fn remove_walking(parent: *mut c_void, child: *mut c_void) {
     if let (Some(p), Some(c)) = (NonNull::new(parent), NonNull::new(child)) {
-        Libobs.enum_full_tree(c, p, &mut |_, _| {});
+        Scripted.enum_full_tree(c, p, &mut |_, _| {});
     }
     // SAFETY: as the real export.
-    unsafe { obs_source_remove_active_child(parent, child) }
+    unsafe { rust_remove(parent, child) }
 }
 
 // --- the grid --------------------------------------------------------------
@@ -426,17 +497,9 @@ fn grid_and_mutants() {
         ),
         ("silent NULL", add_silent_null, remove_silent_null),
         ("NULL names swapped", add_swap_null, remove_swap_null),
-        (
-            "show count reloaded",
-            add_reloading,
-            obs_source_remove_active_child,
-        ),
-        (
-            "no self check",
-            add_no_self_check,
-            obs_source_remove_active_child,
-        ),
-        ("remove walks", obs_source_add_active_child, remove_walking),
+        ("show count reloaded", add_reloading, rust_remove),
+        ("no self check", add_no_self_check, rust_remove),
+        ("remove walks", rust_add, remove_walking),
     ];
     for (name, add, remove) in mutants {
         assert!(

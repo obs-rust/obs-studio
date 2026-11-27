@@ -4,10 +4,12 @@
  * (obs-source-active-child-fields.c.h, defined once, here), over the real
  * private layout.
  *
- * Both sides reach the same stand-ins: the full-tree walk
- * (obs_source_active_child_enum_full_tree(), the hidden wrapper in
- * obs-source.c.h, defined here as a scripted walk that reports a case's
- * edges in order) and obs_source_activate() / obs_source_deactivate(),
+ * Both sides reach the same stand-ins: the full-tree walk (the hidden
+ * obs_source_active_child_enum_full_tree(), Rust since #5833, replaced here
+ * by oracle_active_child_enum_full_tree(), a scripted walk that reports a
+ * case's edges in order; the original C reaches it through a macro, the
+ * Rust shims through the parity test's Libobs) and obs_source_activate() /
+ * obs_source_deactivate(),
  * obs-source's Rust exports (#5811), whose counter adapters report to
  * oracle/view.c's activation trace for these nodes (they leave the
  * counters alone), which reads a source's name at offset 0, where struct
@@ -19,8 +21,10 @@
 #include <string.h>
 #define obs_source_add_active_child oracle_obs_source_add_active_child
 #define obs_source_remove_active_child oracle_obs_source_remove_active_child
+#define obs_source_active_child_enum_full_tree oracle_active_child_enum_full_tree
 #include "libobs/build/libobs.pch.h"
 #include "source-active-child.inc"
+#undef obs_source_active_child_enum_full_tree
 #undef obs_source_remove_active_child
 #undef obs_source_add_active_child
 #include "source_active_child_fields.inc"
@@ -107,8 +111,8 @@ static void active_child_record(uint64_t kind, uint64_t a, uint64_t b)
 
 /* The scripted walk both sides call: one event, then the case's edges in
  * order. */
-void obs_source_active_child_enum_full_tree(obs_source_t *source, obs_source_enum_proc_t enum_callback, void *param,
-					    obs_source_t *stop_source)
+void oracle_active_child_enum_full_tree(obs_source_t *source, obs_source_enum_proc_t enum_callback, void *param,
+					obs_source_t *stop_source)
 {
 	struct active_child_fixture *f = active_child_current;
 	if (!f)

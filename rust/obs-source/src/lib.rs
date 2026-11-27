@@ -63,6 +63,10 @@
 //! `libobs/obs-source-duplicate-entry.c.h`, `obs_source_duplicate()` (the
 //! field reads and writes, lookups, scene copy, creates, settings calls and
 //! filter copies stay in a C fields adapter);
+//! `libobs/obs-source-enum-full-tree.c.h`, `obs_source_enum_full_tree()` and
+//! the hidden stop-source walk `obs_source_active_child_enum_full_tree()`
+//! (the type, callback and data reads and the plugin calls stay in a C
+//! fields adapter);
 //! `libobs/obs-source-filter-add.c.h`, `obs_source_filter_add()` (the lock,
 //! list, reference, signals and callback stay in a C fields adapter);
 //! `libobs/obs-source-filter-backup.c.h`, the filter backup of
@@ -268,6 +272,7 @@ pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
 pub mod enum_filters;
+pub mod enum_full_tree;
 pub mod filter_add;
 pub mod filter_backup;
 pub mod filter_count;
