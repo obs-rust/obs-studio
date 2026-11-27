@@ -56,6 +56,8 @@
 //! `dup_group()` in `libobs/obs-scene.c` (the route of a duplicate, the
 //! filter numbers, the flags and item routes of a scene copy and the reuse
 //! of a repeated source);
+//! `libobs/obs-source-filter-add.c.h`, `obs_source_filter_add()` (the lock,
+//! list, reference, signals and callback stay in a C fields adapter);
 //! `libobs/obs-source-filter-backup.c.h`, the filter backup of
 //! `obs_source_backup_filters()` (each filter saved in list order under
 //! the filter lock; the lock and list reads stay in a C fields adapter);
@@ -231,6 +233,7 @@ pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
 pub mod enum_filters;
+pub mod filter_add;
 pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;

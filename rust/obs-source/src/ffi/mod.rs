@@ -40,6 +40,7 @@ pub mod source_draw_technique;
 pub mod source_duplicate;
 pub mod source_enabled_setter;
 pub mod source_enum_filters;
+pub mod source_filter_add;
 pub mod source_filter_backup;
 pub mod source_filter_chain;
 pub mod source_filter_count;
