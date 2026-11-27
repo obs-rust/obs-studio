@@ -43,7 +43,7 @@ struct tone {
 static void *tone_thread(void *data)
 {
 	struct tone *t = data;
-	static float buf[480];
+	float buf[480];
 	for (size_t i = 0; i < 480; i++)
 		buf[i] = LEVEL;
 
