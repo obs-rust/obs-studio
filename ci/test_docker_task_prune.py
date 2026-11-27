@@ -183,9 +183,13 @@ FAKE_DOCKER_VOLUMES = """#!/bin/sh
 if [ "$1 $2" = "volume ls" ]; then
   cut -f1 "$VOLUMES"
 elif [ "$1 $2" = "volume inspect" ]; then
+  format="$4"
   shift 4
   for name in "$@"; do
-    grep "^$name	" "$VOLUMES"
+    case "$format" in
+      *docker-task.task*) grep "^$name	" "$VOLUMES" ;;
+      *) grep "^$name	" "$VOLUMES" | cut -f1,2 ;;
+    esac
   done
 elif [ "$1" = "ps" ]; then
   cat "$MOUNTS"
@@ -220,9 +224,11 @@ class GcOlderThan(unittest.TestCase):
         self.removed = root / "removed"
         self.removed.touch()
 
-    def gc(self, volumes: dict[str, str], mounts: str = "", args=("--older-than", "24", "--apply")) -> str:
+    def gc(self, volumes: dict[str, str], mounts: str = "", args=("--older-than", "24", "--apply"),
+           tasks: dict[str, str] | None = None) -> str:
         """`gc ARGS` against the fake docker at NOW; returns what it printed."""
-        self.volumes.write_text("".join(f"{n}\t{c}\n" for n, c in volumes.items()), encoding="utf-8")
+        self.volumes.write_text("".join(f"{n}\t{c}\t{(tasks or {}).get(n, '')}\n" for n, c in volumes.items()),
+                                encoding="utf-8")
         self.mounts.write_text(mounts, encoding="utf-8")
         env = {
             "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
@@ -311,6 +317,42 @@ class GcOlderThan(unittest.TestCase):
     def test_gc_without_name_or_age_is_a_usage_error(self):
         with self.assertRaises(SystemExit):
             self.module.parse_gc([])
+
+    def test_all_tasks_requires_opt_in_and_an_ownership_label(self):
+        build = "obs-studio2-extract-gstex-build-ee6074b20403"
+        cache = "obs-studio2-swap-4678-zccache-ee6074b20403"
+        unowned = "unrelated-build-ee6074b20403"
+        registry = "obs-studio2-cargo-registry-ee6074b20403"
+        legacy = "obs-rust-linux-validate-build-5dd0892dd40b"
+        volumes = dict.fromkeys((build, cache, unowned, registry, legacy), OLD)
+        tasks = {build: "obs-studio2-extract-gstex", cache: "obs-studio2-swap-4678", registry: "obs-studio2"}
+        self.gc({build: OLD, cache: OLD}, tasks=tasks)
+        self.assertEqual(self.gone(), [])
+        self.gc(volumes, tasks=tasks, args=("--older-than", "24", "--all-tasks", "--apply"))
+        self.assertEqual(self.gone(), sorted((build, cache)))
+
+    def test_all_tasks_keeps_a_key_with_a_fresh_unknown_or_mounted_partner(self):
+        build = "obs-studio2-extract-gstex-build-ee6074b20403"
+        partner = "another-task-cargo-ee6074b20403"
+        for stamp, mounts in ((FRESH, ""), ("unknown", ""), (OLD, partner + "\n"), (OLD, build + "\n")):
+            with self.subTest(stamp=stamp, mounts=mounts):
+                self.gc({build: OLD, partner: stamp}, mounts=mounts, tasks={build: "obs-studio2-extract-gstex"},
+                        args=("--older-than", "24", "--all-tasks", "--apply"))
+                self.assertEqual(self.gone(), [])
+
+    def test_all_tasks_dry_run_only_lists_owned_candidates(self):
+        build = "obs-studio2-extract-gstex-build-ee6074b20403"
+        unowned = "unrelated-zccache-ee6074b20403"
+        printed = self.gc({build: OLD, unowned: OLD}, tasks={build: "obs-studio2-extract-gstex"},
+                          args=("--older-than", "24", "--all-tasks"))
+        self.assertEqual(self.gone(), [])
+        self.assertIn(build, printed)
+        self.assertNotIn(unowned, printed)
+
+    def test_all_tasks_needs_an_age_even_with_a_task_name(self):
+        with self.assertRaises(SystemExit) as error:
+            self.module.parse_gc(["--name", "obs-task", "--all-tasks"])
+        self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == "__main__":
