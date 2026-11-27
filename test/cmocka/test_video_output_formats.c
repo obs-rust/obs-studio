@@ -47,8 +47,8 @@
 #define FRAME_TIMEOUT_MS 10000
 
 static bool obs_up;
-static uint32_t box_cx = WIDTH;
-static uint32_t box_cy = HEIGHT;
+static _Atomic uint32_t box_cx = WIDTH;
+static _Atomic uint32_t box_cy = HEIGHT;
 
 /* ------------------------------------------------------------------------- */
 /* an opaque box over the whole canvas */
