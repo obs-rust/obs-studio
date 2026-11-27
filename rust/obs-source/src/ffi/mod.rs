@@ -91,6 +91,7 @@ pub mod source_replace_missing_file;
 pub mod source_restore_filters;
 pub mod source_save_load;
 pub mod source_set_name;
+pub mod source_set_video_frame_internal;
 pub mod source_settings_getter;
 pub mod source_show_active_counters;
 pub mod source_show_preloaded_video;
