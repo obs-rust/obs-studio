@@ -98,6 +98,10 @@
 //! `obs_source_set_balance_value()`, `obs_source_set_audio_mixers()`,
 //! `obs_source_set_flags()`, the push-to enables and
 //! `obs_source_set_audio_active()`;
+//! `libobs/obs-source-output-capture-device.c.h`,
+//! `obs_source_audio_output_capture_device_changed()` and its `activate`
+//! handler (the monitoring fields, host and platform device calls, signals,
+//! log lines and settings reads stay in a C fields adapter);
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-push-to-enable.c.h`, the push-to-mute and push-to-talk
@@ -275,6 +279,7 @@ pub mod media_controls;
 pub mod missing_files_getter;
 pub mod monitoring;
 pub mod mute_monitor_hotkeys;
+pub mod output_capture_device;
 pub mod output_cea708;
 pub mod output_flags;
 pub mod own_clock_drift;
