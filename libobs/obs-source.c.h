@@ -1865,27 +1865,6 @@ static inline bool preload_frame_changed(obs_source_t *source, const struct obs_
 		has_preload, has_preload ? frame_copy_shape(source->async_preload_frame) : none, frame_copy_shape(in));
 }
 
-void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
-{
-	if (!obs_source_valid(source, "obs_source_preload_video"))
-		return;
-	if (destroying(source))
-		return;
-	if (!frame)
-		return;
-
-	if (preload_frame_changed(source, frame)) {
-		obs_source_frame_destroy(source->async_preload_frame);
-		source->async_preload_frame = obs_source_frame_create(frame->format, frame->width, frame->height);
-	}
-
-	obs_source_frame_copy(source->async_preload_frame, frame);
-
-	pthread_mutex_lock(&source->async_mutex);
-	source->last_frame_ts = frame->timestamp;
-	pthread_mutex_unlock(&source->async_mutex);
-}
-
 void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame)
 {
 	if (!obs_source_valid(source, "obs_source_set_video_frame"))
