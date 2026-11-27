@@ -322,6 +322,7 @@ pub mod replace_missing_file;
 pub mod restore_filters;
 pub mod save_load;
 pub mod set_name;
+pub mod set_video_frame_internal;
 pub mod settings_getter;
 pub mod show_active_counters;
 pub mod show_preloaded_video;
