@@ -19265,6 +19265,27 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_skip_video_filter": {
+      "sources": [
+        "test/cmocka/test_source_skip_video_filter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_state_getters": {
       "sources": [
         "test/cmocka/test_source_state_getters.c"
@@ -30745,6 +30766,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_skip_video_filter": {
+      "target": "test_source_skip_video_filter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_source_state_getters": {
       "target": "test_source_state_getters",
