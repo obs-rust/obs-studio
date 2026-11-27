@@ -4,6 +4,7 @@
 //! control) is biased by one: 0 is the last owner, the release that takes it
 //! to -1 destroys the source, and a control at -1 is never promoted again.
 use obs_util::platform::CLongAtomic;
+use std::sync::atomic::Ordering::SeqCst;
 
 /// The C steps around the count, one method each.
 pub trait Host {
@@ -29,31 +30,57 @@ pub trait Host {
 }
 
 /// Add one strong reference; `None` (a NULL source) is a no-op.
-pub fn addref(_refs: Option<&CLongAtomic>) {
-    todo!()
+pub fn addref(refs: Option<&CLongAtomic>) {
+    if let Some(refs) = refs {
+        refs.fetch_add(1, SeqCst);
+    }
 }
 
 /// `obs_weak_ref_get_ref()`: add one owner only while the count is above -1,
 /// retrying when another thread moved it in between. `true` on success.
-pub fn try_get_ref(_refs: &CLongAtomic) -> bool {
-    todo!()
+pub fn try_get_ref(refs: &CLongAtomic) -> bool {
+    refs.fetch_update(SeqCst, SeqCst, |owners| {
+        (owners > -1).then(|| owners.wrapping_add(1))
+    })
+    .is_ok()
 }
 
 /// `obs_source_release()`. With the core shut down a source is left alone
 /// after one warning. Otherwise one owner is dropped; the step from 0 to -1
 /// destroys the source and then drops its own weak reference, the control
 /// read before the destroy.
-pub fn release<H: Host>(_host: &mut H, _source: Option<H::Source>) {
-    todo!()
+pub fn release<H: Host>(host: &mut H, source: Option<H::Source>) {
+    let Some(source) = source else {
+        return;
+    };
+    if !host.core_alive() {
+        host.warn_shutdown();
+        return;
+    }
+    // A source without a control is impossible; the original would crash.
+    let Some(control) = host.control(source) else {
+        return;
+    };
+    if host.refs(control).fetch_sub(1, SeqCst) == 0 {
+        host.destroy(source);
+        host.release_weak(control);
+    }
 }
 
 /// `obs_weak_source_get_source()`: the control's source with one more owner,
 /// or `None` for a NULL control or a source being destroyed.
-pub fn weak_get_source<H: Host>(_host: &mut H, _weak: Option<H::Control>) -> Option<H::Source> {
-    todo!()
+pub fn weak_get_source<H: Host>(host: &mut H, weak: Option<H::Control>) -> Option<H::Source> {
+    let weak = weak?;
+    if try_get_ref(host.refs(weak)) {
+        Some(host.source(weak))
+    } else {
+        None
+    }
 }
 
 /// `obs_source_get_ref()`: the promotion of the source's own control.
-pub fn get_ref<H: Host>(_host: &mut H, _source: Option<H::Source>) -> Option<H::Source> {
-    todo!()
+pub fn get_ref<H: Host>(host: &mut H, source: Option<H::Source>) -> Option<H::Source> {
+    let source = source?;
+    let control = host.control(source);
+    weak_get_source(host, control)
 }
