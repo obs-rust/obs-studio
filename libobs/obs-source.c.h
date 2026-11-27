@@ -482,16 +482,6 @@ static void obs_source_destroy_defer(struct obs_source *source)
 	bfree(source);
 }
 
-static void obs_source_deferred_update(obs_source_t *source)
-{
-	if (source->context.data && source->info.update) {
-		long count = os_atomic_load_long(&source->defer_update_count);
-		source->info.update(source->context.data, source->context.settings);
-		os_atomic_compare_swap_long(&source->defer_update_count, count, 0);
-		obs_source_dosignal(source, "source_update", "update");
-	}
-}
-
 void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
 {
 	if (!obs_source_valid(source, "obs_source_reset_settings"))
@@ -499,34 +489,6 @@ void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
 
 	obs_data_clear(source->context.settings);
 	obs_source_update(source, settings);
-}
-
-static void activate_source(obs_source_t *source)
-{
-	if (source->context.data && source->info.activate)
-		source->info.activate(source->context.data);
-	obs_source_dosignal(source, "source_activate", "activate");
-}
-
-static void deactivate_source(obs_source_t *source)
-{
-	if (source->context.data && source->info.deactivate)
-		source->info.deactivate(source->context.data);
-	obs_source_dosignal(source, "source_deactivate", "deactivate");
-}
-
-static void show_source(obs_source_t *source)
-{
-	if (source->context.data && source->info.show)
-		source->info.show(source->context.data);
-	obs_source_dosignal(source, "source_show", "show");
-}
-
-static void hide_source(obs_source_t *source)
-{
-	if (source->context.data && source->info.hide)
-		source->info.hide(source->context.data);
-	obs_source_dosignal(source, "source_hide", "hide");
 }
 
 static inline struct obs_source_frame *get_closest_frame(obs_source_t *source, uint64_t sys_time);
