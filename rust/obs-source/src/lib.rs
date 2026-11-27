@@ -97,6 +97,9 @@
 //! enable setters (`obs_source_enable_push_to_mute()` and
 //! `obs_source_enable_push_to_talk()`, generic over the source, under its
 //! `audio_mutex`);
+//! `libobs/obs-source-remove.c.h`, `obs_source_remove()` (the removed
+//! flag, reference, signals, canvas removal and release stay in a C fields
+//! adapter);
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
 //! routing (which draw a source or a filter takes, the filter bypass, the
 //! default effect and the linear sRGB flags);
@@ -283,6 +286,7 @@ pub mod source_filter_chain;
 pub mod source_icon_type;
 pub mod source_identity_getters;
 pub mod source_name;
+pub mod source_remove;
 pub mod state_getters;
 pub mod theme_icon;
 pub mod transition_access;
