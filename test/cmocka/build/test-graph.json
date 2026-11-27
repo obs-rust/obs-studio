@@ -17981,6 +17981,19 @@
         }
       ]
     },
+    "test_source_filter_add": {
+      "sources": [
+        "test/cmocka/test_source_filter_add.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_backup": {
       "sources": [
         "test/cmocka/test_source_filter_backup.c"
@@ -30055,6 +30068,18 @@
       "target": "test_source_enum_filters",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_filter_add": {
+      "target": "test_source_filter_add",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_filter_backup": {
