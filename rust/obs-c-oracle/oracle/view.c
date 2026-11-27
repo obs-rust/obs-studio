@@ -6,7 +6,18 @@
  * traces. Views are real struct obs_view (the doubles read and write its
  * fields as obs-view.c does; the lock only traces). Sources are
  * struct oracle_view_source, passed as obs_source_t pointers: a name for
- * the trace, a removed flag, and whether obs_source_get_ref() refuses it. */
+ * the trace, a removed flag, and whether obs_source_get_ref() refuses it.
+ *
+ * obs_source_activate() and obs_source_deactivate() are obs-source's Rust
+ * exports (#5811), which both sides reach. For a source no
+ * oracle/source_activate.c fixture holds, their counter adapters are the
+ * stand-ins there, which report each step here instead of touching the
+ * source: the first step of a call (show_refs raised, or loaded) starts an
+ * "activate" or "deactivate" event for AUX_VIEW, and a step on
+ * activate_refs makes it MAIN_VIEW. The event is traced (call, source
+ * name, view type) before the next traced step, when the hook changes, or
+ * at oracle_view_flush(), so a trace reads as it did when these were
+ * tracing doubles. */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif
@@ -65,10 +76,52 @@ static struct {
 } mixes[ORACLE_VIEW_MIXES];
 static size_t mix_num;
 
-static void trace(const char *event, const char *name, long long value)
+/* The activation event still open on this thread (see the top). */
+static _Thread_local struct {
+	bool open;
+	bool deactivate;
+	const obs_source_t *source;
+	long long type;
+} pending;
+
+static void emit(const char *event, const char *name, long long value)
 {
 	if (trace_hook)
 		trace_hook(event, name, value);
+}
+
+static const char *src_name(const obs_source_t *source);
+
+void oracle_view_flush(void);
+void oracle_view_flush(void)
+{
+	if (!pending.open)
+		return;
+	pending.open = false;
+	emit(pending.deactivate ? "deactivate" : "activate", src_name(pending.source), pending.type);
+}
+
+static void trace(const char *event, const char *name, long long value)
+{
+	oracle_view_flush();
+	emit(event, name, value);
+}
+
+/* One counter step of obs_source_activate() (deactivate false) or
+ * obs_source_deactivate() (true) on a source: on activate_refs (active
+ * true) or on show_refs. */
+void oracle_view_activation_step(const obs_source_t *source, bool deactivate, bool active);
+void oracle_view_activation_step(const obs_source_t *source, bool deactivate, bool active)
+{
+	if (active && pending.open && pending.deactivate == deactivate && pending.source == source) {
+		pending.type = MAIN_VIEW;
+		return;
+	}
+	oracle_view_flush();
+	pending.open = true;
+	pending.deactivate = deactivate;
+	pending.source = source;
+	pending.type = active ? MAIN_VIEW : AUX_VIEW;
 }
 
 static const char *src_name(const obs_source_t *source)
@@ -87,6 +140,7 @@ int oracle_view_type_of(struct obs_view *view);
 
 void oracle_view_set_trace(oracle_view_trace_fn hook)
 {
+	oracle_view_flush();
 	trace_hook = hook;
 }
 
@@ -243,16 +297,6 @@ obs_source_t *obs_source_get_ref(obs_source_t *source)
 void obs_source_release(obs_source_t *source)
 {
 	trace("release", src_name(source), 0);
-}
-
-void obs_source_activate(obs_source_t *source, enum view_type type)
-{
-	trace("activate", src_name(source), (long long)type);
-}
-
-void obs_source_deactivate(obs_source_t *source, enum view_type type)
-{
-	trace("deactivate", src_name(source), (long long)type);
 }
 
 void obs_source_video_render(obs_source_t *source)

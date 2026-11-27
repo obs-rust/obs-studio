@@ -1,8 +1,9 @@
 /* Original obs_source_inc_showing(), obs_source_inc_active(),
  * obs_source_dec_showing() and obs_source_dec_active(), renamed oracle_*.
  * The obs_source_activate() / obs_source_deactivate() both sides call are
- * the tracing test doubles of oracle/view.c, so a C call and a Rust call
- * give comparable traces (call, source name, view type). */
+ * obs-source's Rust exports (#5811), whose counter adapters report to
+ * oracle/view.c for these test sources, so a C call and a Rust call give
+ * comparable traces (call, source name, view type). */
 #define _NO_CRT_STDIO_INLINE
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,6 +21,7 @@
 
 typedef void (*oracle_view_trace_fn)(const char *event, const char *name, long long value);
 void oracle_view_set_trace(oracle_view_trace_fn hook);
+void oracle_view_flush(void);
 
 struct source_show_active_counters_record {
 	unsigned log_count;
@@ -91,6 +93,7 @@ bool oracle_source_show_active_counters_check(source_show_active_counters_call c
 		recording = &records[side];
 		set_log(source_show_active_counters_capture, &records[side]);
 		calls[side](source);
+		oracle_view_flush();
 		set_log(previous, param);
 		recording = NULL;
 	}

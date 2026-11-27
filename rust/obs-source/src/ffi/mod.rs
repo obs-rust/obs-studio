@@ -2,6 +2,7 @@
 
 mod callback_list;
 
+pub mod source_activate;
 pub mod source_active_child;
 pub mod source_async_compensation;
 pub mod source_async_flag_getters;

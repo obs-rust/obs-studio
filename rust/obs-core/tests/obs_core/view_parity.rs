@@ -25,8 +25,9 @@ use obs_c_oracle::view::{
     OracleViewSource, oracle_obs_view_add, oracle_obs_view_add2, oracle_obs_view_create,
     oracle_obs_view_destroy, oracle_obs_view_enum_video_info, oracle_obs_view_free,
     oracle_obs_view_get_source, oracle_obs_view_init, oracle_obs_view_remove,
-    oracle_obs_view_render, oracle_obs_view_set_source, oracle_view_channel_at, oracle_view_mix_at,
-    oracle_view_mix_num, oracle_view_reset, oracle_view_set_trace, oracle_view_type_of,
+    oracle_obs_view_render, oracle_obs_view_set_source, oracle_view_channel_at, oracle_view_flush,
+    oracle_view_mix_at, oracle_view_mix_num, oracle_view_reset, oracle_view_set_trace,
+    oracle_view_type_of,
 };
 use obs_core::ffi::view as shim;
 use obs_core::view::MAX_CHANNELS;
@@ -54,6 +55,8 @@ unsafe extern "C" fn record(event: *const c_char, name: *const c_char, value: c_
 }
 
 fn take_trace() -> Vec<String> {
+    // SAFETY: no arguments; it traces through the hook the test installed.
+    unsafe { oracle_view_flush() };
     std::mem::take(&mut *TRACE.lock().unwrap_or_else(|e| e.into_inner()))
 }
 

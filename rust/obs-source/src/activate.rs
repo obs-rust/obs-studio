@@ -93,8 +93,16 @@ pub trait Counters {
 /// `activate_refs` +1 and a [`Tree::Activate`] walk. Any other view type
 /// touches only the show counters.
 pub fn activate<C: Counters>(counters: &mut C, source: Option<C::Source>, view_type: u32) {
-    let _ = (counters, source, view_type);
-    todo!("#5811")
+    let Some(source) = source else {
+        counters.log_null(ACTIVATE_FUNCTION);
+        return;
+    };
+    counters.inc(source, Counter::Show);
+    counters.walk(source, Tree::Show);
+    if view_type == MAIN_VIEW {
+        counters.inc(source, Counter::Activate);
+        counters.walk(source, Tree::Activate);
+    }
 }
 
 /// `obs_source_deactivate(source, type)`: `None` is a NULL source, logged
@@ -104,13 +112,26 @@ pub fn activate<C: Counters>(counters: &mut C, source: Option<C::Source>, view_t
 /// above zero, `activate_refs` -1 and a [`Tree::Deactivate`] walk. Each
 /// counter is loaded once, just before its own step.
 pub fn deactivate<C: Counters>(counters: &mut C, source: Option<C::Source>, view_type: u32) {
-    let _ = (counters, source, view_type);
-    todo!("#5811")
+    let Some(source) = source else {
+        counters.log_null(DEACTIVATE_FUNCTION);
+        return;
+    };
+    if counters.load(source, Counter::Show) > 0 {
+        counters.dec(source, Counter::Show);
+        counters.walk(source, Tree::Hide);
+    }
+    if view_type == MAIN_VIEW && counters.load(source, Counter::Activate) > 0 {
+        counters.dec(source, Counter::Activate);
+        counters.walk(source, Tree::Deactivate);
+    }
 }
 
 /// One tree callback on one child: its counter +1 or -1, with no check of
 /// the value (a child can go below zero).
 pub fn visit<C: Counters>(counters: &mut C, child: C::Source, tree: Tree) {
-    let _ = (counters, child, tree);
-    todo!("#5811")
+    if tree.raises() {
+        counters.inc(child, tree.counter());
+    } else {
+        counters.dec(child, tree.counter());
+    }
 }

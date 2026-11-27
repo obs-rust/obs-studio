@@ -2,6 +2,10 @@
 //! `libobs/obs-source-deinterlace.c` and `libobs/obs-source-transition.c`
 //! (one of them with decisions of `libobs/obs-scene.c`),
 //! one module per file: so far
+//! `libobs/obs-source-activate.c.h`, `obs_source_activate()` and
+//! `obs_source_deactivate()` with their tree callbacks (the counters' atomic
+//! steps stay in a C fields adapter, the walk in
+//! `obs_source_enum_active_tree()`);
 //! `libobs/obs-source-async-decoupled.c.h`, the async decoupled setter
 //! `obs_source_set_async_decoupled()` (generic over the source; its C shim
 //! is in `obs-source-seam`);
