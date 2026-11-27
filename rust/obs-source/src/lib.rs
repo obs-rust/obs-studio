@@ -126,6 +126,9 @@
 //! rename, and its signals);
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
+//! `libobs/obs-source-skip-video-filter.c.h`,
+//! `obs_source_skip_video_filter()` (the target and parent lookups, the
+//! field reads and the draws stay in a C fields adapter);
 //! `libobs/obs-source-transition-access.c.h`, the getters and manual
 //! controls of the transitions (`obs_transition_get_source()`,
 //! `obs_transition_get_active_source()`, `obs_transition_set_manual_torque()`
@@ -301,6 +304,7 @@ pub mod show_active_counters;
 pub mod show_preloaded_video;
 pub mod showing_active;
 pub mod size_route;
+pub mod skip_video_filter;
 pub mod source_draw;
 pub mod source_duplicate;
 pub mod source_duplicate_entry;

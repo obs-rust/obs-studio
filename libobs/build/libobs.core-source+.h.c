@@ -117,6 +117,7 @@
 #include "libobs/obs-source-settings-getter-fields.c.h"
 #include "libobs/obs-source-show-preloaded-video-fields.c.h"
 #include "libobs/obs-source-showing-active-fields.c.h"
+#include "libobs/obs-source-skip-video-filter-fields.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-type-data-fields.c.h"

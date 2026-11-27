@@ -103,6 +103,8 @@ mod canonical_source_show_active_counters_swap_is_registered;
 mod canonical_source_show_preloaded_video_swap_is_registered;
 #[path = "native/registration/canonical_source_showing_active_swap_is_registered.rs"]
 mod canonical_source_showing_active_swap_is_registered;
+#[path = "native/registration/canonical_source_skip_video_filter_swap_is_registered.rs"]
+mod canonical_source_skip_video_filter_swap_is_registered;
 #[path = "native/registration/canonical_source_texcoords_centered_setter_swap_is_registered.rs"]
 mod canonical_source_texcoords_centered_setter_swap_is_registered;
 #[path = "native/registration/canonical_texture_file_data_swap_is_registered.rs"]
