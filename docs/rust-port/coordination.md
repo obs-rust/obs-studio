@@ -30,8 +30,8 @@ The org-wide rules, commands and the definition of Ready are in
   Ready. Maintainers (and the coordinator) triage new issues with `/ready` or
   `/investigate`.
 - Comment on the issue: `Claiming: <item>` followed by a short numbered plan
-  (one unit per issue, one to three similar issues per PR, a big one alone; a call-site-wide warning class is one unit in any number of
-  directories, see section 4) and when you expect to open the first PR.
+  (one unit per issue; use the compatible-work batching rules in section 4)
+  and when you expect to open the first PR. Name the other issues in a batch.
 - The claim bot then **assigns you** and reacts 🚀 to your comment; you don't
   need any rights. It replies only to refuse: an issue that is not Ready, is
   blocked by an open issue, waits on a decision or is claimed by someone
@@ -107,16 +107,33 @@ The org-wide rules, commands and the definition of Ready are in
 - **Base is `master`.** A stacked PR starts its description with
   `> **Stacked:** builds on #N; the new commits are …` and is retargeted to
   master before merge. Check the base before asking for a merge.
-- **One unit per PR.** Branch names: `port/<unit>`, `fix/<issue>-<topic>`,
-  `test/<unit>`, `infra/<topic>`.
-- **Batch one to three similar issues into one PR.** A worker takes up to
-  three issues that share a platform or an area (crate, plugin, workflow,
-  test binary) and lands them as one PR, a RED then GREEN commit pair per
-  issue, `Refs` naming each. Each issue stays one unit for review and
-  revert; the batch only shares the PR, queue and master-push runs, so it
-  costs a third of the CI. A big issue (a large port or subsystem such as
-  the CEF work, `size:L` or larger) and breakage that blocks others go
-  alone. See the `obs-worker-loop` skill §2.
+- **Keep each issue a unit for review and revert.** Branch names:
+  `port/<unit>`, `fix/<issue>-<topic>`, `test/<unit>`, `infra/<topic>`.
+- **Batch compatible work (November 2026 baseline).** Workers assemble and
+  validate batches; coordinators identify compatible work during triage and
+  help workers coordinate it. Use these shared defaults:
+
+  - Target **five compatible low-risk tasks** per PR. For example, batch five
+    related platform-path classification corrections, list each issue's paths
+    and expected lanes, and run the affected classification checks together.
+  - Aim to land **three related feature changes** together. Keep genuinely
+    separate features in separate PRs.
+  - Batch **platform-specific bug fixes** for the same platform when they
+    share a clear scope and validation. For other bugs, use judgment based
+    on the fixes' relationship, risk and reviewability.
+
+  Five and three are targets, not quotas. Split a batch when changes need
+  independent review, validation or revert; never add unrelated work to fill
+  it. Claim each issue and keep its commits, focused RED then GREEN evidence
+  (where required), and PR reference distinct. Explain shared validation and
+  how each issue can be reviewed and reverted on its own.
+
+  A big issue (a large port or subsystem, `size:L` or larger, or work expected
+  to take more than one session) and breakage that blocks others go alone.
+  If an item becomes blocked or larger than expected, ship the ready work
+  and release that claim with the reason. Revisit these sizes as agents
+  improve at combining work: compare CI throughput, review effort and rework
+  outcomes with the November 2026 baseline before increasing them.
 - **Mechanical warning work is one PR per warning class, in any number of
   directories.** A call-site-wide compiler warning (#516) is a single class:
   fix it in one PR, with the flag that surfaces it removed in the same change,
