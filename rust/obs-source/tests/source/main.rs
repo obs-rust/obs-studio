@@ -136,6 +136,7 @@ mod own_clock_drift;
 mod private_settings;
 mod private_settings_parity;
 mod process_filter_begin;
+mod process_filter_begin_parity;
 mod process_filter_end;
 mod process_filter_end_parity;
 mod properties;

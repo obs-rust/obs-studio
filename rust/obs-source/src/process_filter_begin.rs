@@ -21,6 +21,11 @@
     clippy::unreachable
 )]
 
+use crate::render_route::{
+    Draw, FilterCheck, GS_CS_SRGB, bypass, bypass_reads_space, filter_check, filter_render,
+    size_skip, texrender_stale,
+};
+
 /// What the begin reads, writes and draws, each method one C step.
 pub trait FilterBegin {
     /// A source as the C passes it (never NULL here: the shim checks it).
@@ -97,18 +102,92 @@ pub fn process_filter_begin_with_color_space<F: FilterBegin>(
     space: i32,
     allow_direct: i32,
 ) -> bool {
-    let _ = (begin, filter, format, space, allow_direct);
-    todo!("obs_source_process_filter_begin_with_color_space")
+    let Some(filter) = filter else {
+        begin.log_null_filter();
+        return false;
+    };
+
+    begin.clear_bypass(filter);
+
+    let target = begin.target(filter);
+    let parent = begin.parent(filter);
+    let (target, parent) = match (
+        filter_check(target.is_some(), parent.is_some()),
+        target,
+        parent,
+    ) {
+        (FilterCheck::Ready, Some(target), Some(parent)) => (target, parent),
+        (FilterCheck::NoParent, _, _) => {
+            begin.log_no_parent(filter);
+            return false;
+        }
+        // NoTarget, and Ready never comes without both.
+        _ => {
+            begin.log_no_target(filter);
+            return false;
+        }
+    };
+
+    let filter_flags = begin.output_flags(filter);
+    let parent_flags = begin.output_flags(parent);
+    let cx = begin.base_width(target).cast_signed();
+    let cy = begin.base_height(target).cast_signed();
+
+    begin.set_allow_direct(filter, allow_direct);
+
+    // The parent draws straight through the filter's effect when it uses no
+    // custom effect and this is the last filter of its chain: one pass
+    // fewer than through the texture.
+    let target_is_parent = target == parent;
+    let current_space =
+        if bypass_reads_space(target_is_parent, allow_direct, filter_flags, parent_flags) {
+            begin.color_space()
+        } else {
+            GS_CS_SRGB
+        };
+    if bypass(
+        target_is_parent,
+        allow_direct,
+        filter_flags,
+        parent_flags,
+        space,
+        current_space,
+    ) {
+        begin.set_bypass(filter);
+        return true;
+    }
+
+    if size_skip(cx, cy) {
+        begin.skip_video_filter(filter);
+        return false;
+    }
+
+    if begin.has_texrender(filter) && texrender_stale(begin.texrender_format(filter), format) {
+        begin.destroy_texrender(filter);
+    }
+
+    if !begin.has_texrender(filter) {
+        begin.create_texrender(filter, format);
+    }
+
+    if begin.texrender_begin(filter, cx.cast_unsigned(), cy.cast_unsigned(), space) {
+        begin.draw_setup(cx, cy);
+        match filter_render(target_is_parent, parent_flags) {
+            Draw::Default => begin.default_render(target),
+            _ => begin.video_render(target),
+        }
+        begin.draw_finish(filter);
+    }
+    true
 }
 
 /// `obs_source_process_filter_begin(filter, format, allow_direct)`: the
-/// begin in [`crate::render_route::GS_CS_SRGB`].
+/// begin in [`GS_CS_SRGB`].
 pub fn process_filter_begin<F: FilterBegin>(
     begin: &mut F,
     filter: Option<F::Source>,
     format: i32,
     allow_direct: i32,
 ) -> bool {
-    let _ = (begin, filter, format, allow_direct);
-    todo!("obs_source_process_filter_begin")
+    process_filter_begin_with_color_space(begin, filter, format, GS_CS_SRGB, allow_direct)
 }
