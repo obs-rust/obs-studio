@@ -18012,6 +18012,21 @@
         }
       ]
     },
+    "test_source_enum_full_tree": {
+      "sources": [
+        "test/cmocka/test_source_enum_full_tree.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_add": {
       "sources": [
         "test/cmocka/test_source_filter_add.c"
@@ -30334,6 +30349,19 @@
       "target": "test_source_enum_filters",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_enum_full_tree": {
+      "target": "test_source_enum_full_tree",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_filter_add": {
