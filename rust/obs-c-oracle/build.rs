@@ -661,7 +661,7 @@ fn main() {
         extract_dir.join("scene-ref-source.inc"),
         [
             extract_c(
-                &libobs.join("obs-source.c.h"),
+                &libobs.join("obs-source-refs.c.h"),
                 "void obs_source_release(",
                 "}",
             ),
@@ -671,12 +671,12 @@ fn main() {
                 "}",
             ),
             extract_c(
-                &libobs.join("obs-source.c.h"),
+                &libobs.join("obs-source-refs.c.h"),
                 "obs_source_t *obs_source_get_ref(",
                 "}",
             ),
             extract_c(
-                &libobs.join("obs-source.c.h"),
+                &libobs.join("obs-source-refs.c.h"),
                 "obs_source_t *obs_weak_source_get_source(",
                 "}",
             ),

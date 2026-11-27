@@ -10,7 +10,8 @@
  * obs_source_removed() is its export too (#5587), whose flag adapter
  * oracle/source_removed.c compiles.
  * obs_source_enum_active_tree() is oracle/source_activate.c's (#5811).
- * obs_source_get_ref() and obs_source_release() (oracle/view.c),
+ * obs_source_get_ref() and obs_source_release() are its exports too
+ * (#5818), whose adapters oracle/source_refs.c compiles.
  * obs_source_get_name() (the obs-missing-files tests),
  * audio_output_get_sample_rate() and audio_output_get_channels()
  * (obs-media-io) and the core-audio seam's accessors

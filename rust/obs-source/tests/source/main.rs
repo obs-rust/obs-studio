@@ -185,6 +185,8 @@ mod source_remove;
 mod source_remove_parity;
 mod state_getters;
 mod state_getters_parity;
+mod strong_refs;
+mod strong_refs_parity;
 mod theme_icon;
 mod theme_icon_parity;
 mod transition_access;

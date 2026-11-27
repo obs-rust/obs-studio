@@ -17,7 +17,16 @@
  * activate_refs makes it MAIN_VIEW. The event is traced (call, source
  * name, view type) before the next traced step, when the hook changes, or
  * at oracle_view_flush(), so a trace reads as it did when these were
- * tracing doubles. */
+ * tracing doubles.
+ *
+ * obs_source_get_ref() and obs_source_release() are obs-source's Rust
+ * exports too (#5818). For a source no oracle/source_refs.c fixture holds,
+ * their control adapter is the stand-in there, which calls
+ * oracle_view_ref_step() below: it traces "get_ref" or "release" with the
+ * source's name, and the stand-in hands back a scratch control that refuses
+ * a dying source and never reaches a destroy, so both behave as the doubles
+ * that stood here did. A NULL source returns before any adapter, so neither
+ * traces it any more, on either side. */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif
@@ -286,17 +295,14 @@ struct obs_video_info *obs_view_mix_info(size_t i)
 
 /* obs-source.c calls */
 
-obs_source_t *obs_source_get_ref(obs_source_t *source)
+/* One obs_source_get_ref() or obs_source_release() of a non-NULL source,
+ * reached from oracle/source_refs.c's control stand-in (see the top): traces
+ * it and answers whether the source is being destroyed. */
+bool oracle_view_ref_step(const obs_source_t *source, bool release);
+bool oracle_view_ref_step(const obs_source_t *source, bool release)
 {
-	trace("get_ref", src_name(source), 0);
-	if (!source || ((struct oracle_view_source *)(void *)source)->dying)
-		return NULL;
-	return source;
-}
-
-void obs_source_release(obs_source_t *source)
-{
-	trace("release", src_name(source), 0);
+	trace(release ? "release" : "get_ref", src_name(source), 0);
+	return ((const struct oracle_view_source *)(const void *)source)->dying;
 }
 
 void obs_source_video_render(obs_source_t *source)

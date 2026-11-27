@@ -85,6 +85,8 @@ mod canonical_source_missing_files_getter_swap_is_registered;
 mod canonical_source_output_cea708_swap_is_registered;
 #[path = "native/registration/canonical_source_output_flags_swap_is_registered.rs"]
 mod canonical_source_output_flags_swap_is_registered;
+#[path = "native/registration/canonical_source_refs_swap_is_registered.rs"]
+mod canonical_source_refs_swap_is_registered;
 #[path = "native/registration/canonical_source_remove_swap_is_registered.rs"]
 mod canonical_source_remove_swap_is_registered;
 #[path = "native/registration/canonical_source_removed_swap_is_registered.rs"]

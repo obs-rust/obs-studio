@@ -1,0 +1,4 @@
+# obs-source-refs.c.h (#5818): obs_source_addref is declared in
+# obs-internal.h without EXPORT (scene groups call it inside libobs), so the
+# shim stays hidden. Its three siblings are EXPORT (rust-exports.d).
+obs_source_addref

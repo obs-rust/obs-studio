@@ -104,6 +104,10 @@
 //! enable setters (`obs_source_enable_push_to_mute()` and
 //! `obs_source_enable_push_to_talk()`, generic over the source, under its
 //! `audio_mutex`);
+//! `libobs/obs-source-refs.c.h`, the strong-reference entries
+//! `obs_source_addref()`, `obs_source_release()`, `obs_source_get_ref()` and
+//! `obs_weak_source_get_source()` (the control, the core check and the
+//! destroy stay in a C fields adapter);
 //! `libobs/obs-source-remove.c.h`, `obs_source_remove()` (the removed
 //! flag, reference, signals, canvas removal and release stay in a C fields
 //! adapter);
@@ -301,6 +305,7 @@ pub mod source_identity_getters;
 pub mod source_name;
 pub mod source_remove;
 pub mod state_getters;
+pub mod strong_refs;
 pub mod theme_icon;
 pub mod transition_access;
 pub mod transition_audio;

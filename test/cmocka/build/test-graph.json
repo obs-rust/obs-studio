@@ -18928,6 +18928,21 @@
         }
       ]
     },
+    "test_source_refs": {
+      "sources": [
+        "test/cmocka/test_source_refs.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_registration": {
       "sources": [
         "test/cmocka/test_source_registration.c"
@@ -30557,6 +30572,19 @@
       "target": "test_source_push_queries",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_refs": {
+      "target": "test_source_refs",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_registration": {
