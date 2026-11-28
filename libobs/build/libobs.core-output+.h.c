@@ -10,6 +10,7 @@
 #include "libobs/obs-encoder-clear-roi-fields.c.h"
 #include "libobs/obs-encoder-configuration-fields.c.h"
 #include "libobs/obs-encoder-counter-fields.c.h"
+#include "libobs/obs-encoder-create.c.h"
 #include "libobs/obs-encoder-defaults-fields.c.h"
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-error-ownership-fields.c.h"
