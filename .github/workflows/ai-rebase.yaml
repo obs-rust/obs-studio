@@ -124,7 +124,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
-          save-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Rerun runner-loss failures
         env:
           GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
