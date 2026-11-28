@@ -138,7 +138,7 @@ def windows_toolchain(work: Path, target: str) -> Path:
                 "CMAKE_TRY_COMPILE_CONFIGURATION": "Release", "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
                 "CMAKE_C_COMPILER": str(compiler), "CMAKE_CXX_COMPILER": str(compiler),
                 "CMAKE_AR": ar, "CMAKE_LINKER": str(linker), "CMAKE_RC_COMPILER": rc,
-                "CMAKE_MT": str(compiler.with_name("llvm-mt")), "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+                "CMAKE_MT": str(Path(ar).resolve().parent / "llvm-mt"), "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
                 "CMAKE_FIND_ROOT_PATH": sdk, "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM": "NEVER"}
     path = work / "windows-msvc.cmake"
     path.write_text("".join(f'set({key} [==[{value}]==] CACHE STRING "soldr Tier 2 toolchain" FORCE)\n'
