@@ -1346,6 +1346,16 @@
         }
       ]
     },
+    "test_canvas_scene_lookup": {
+      "sources": [
+        "test/cmocka/test_canvas_scene_lookup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_canvas_valid_video_info": {
       "sources": [
         "test/cmocka/test_canvas_valid_video_info.c",
@@ -24628,6 +24638,20 @@
       ],
       "timeout_seconds": 30,
       "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_canvas_scene_lookup": {
+      "target": "test_canvas_scene_lookup",
+      "command": [
+        "${target}"
+      ],
       "optional_prefixes": [
         [
           "xvfb-run",
