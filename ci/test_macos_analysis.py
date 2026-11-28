@@ -74,10 +74,12 @@ class MacosAnalysis(unittest.TestCase):
         required = {
             "Build 🧱 / Fast Gate ⚡",
             "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
-            "Build 🧱 / Rust Tests 🦀 (macos-26)",
-            "Build 🧱 / Rust Tier 2 (macos-26)",
+            "Build 🧱 / macOS Rust Artifacts 🐧",
         }
         self.assertLessEqual(required, expected)
+        # Native macOS execution is schedule/dispatch/release only (#5843).
+        self.assertNotIn("Build 🧱 / Rust Tests 🦀 (macos-26)", expected)
+        self.assertNotIn("Build 🧱 / Rust Tier 2 (macos-26)", expected)
         healthy = [{"name": name, "status": "completed", "conclusion": "success"} for name in expected]
         self.assertEqual(gate_jobs.blocking(healthy, expected=expected), [])
         for name in required:
