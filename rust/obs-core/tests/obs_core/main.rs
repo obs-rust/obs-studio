@@ -39,6 +39,8 @@ mod canvas_release;
 mod canvas_release_parity;
 mod canvas_render;
 mod canvas_render_parity;
+mod canvas_reset_video;
+mod canvas_reset_video_parity;
 mod canvas_rules;
 mod canvas_rules_parity;
 mod canvas_scene;
