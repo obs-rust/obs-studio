@@ -11718,6 +11718,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_video_encoder_setters": {
+      "sources": [
+        "test/cmocka/test_output_video_encoder_setters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_video_getter": {
       "sources": [
         "test/cmocka/test_output_video_getter.c"
@@ -28093,6 +28109,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_video_encoder_setters": {
+      "target": "test_output_video_encoder_setters",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_output_video_getter": {
       "target": "test_output_video_getter",
