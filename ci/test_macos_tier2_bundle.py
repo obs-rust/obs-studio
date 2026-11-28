@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import struct
 import tempfile
 import unittest
@@ -130,6 +131,31 @@ class RunTest(unittest.TestCase):
                 with self.assertRaises(SystemExit) as stop:
                     bundle.run_suites(root, work.name, jobs=1)
             self.assertEqual(stop.exception.code, 8)
+
+
+class WorkflowTest(unittest.TestCase):
+    @staticmethod
+    def job(name: str) -> str:
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build-project.yaml").read_text()
+        return re.search(rf"^  {name}:\n(.*?)(?=^  [a-z0-9-]+:)", workflow, re.S | re.M).group(1)
+
+    def test_consumer_only_downloads_verifies_and_runs(self):
+        job = self.job("rust-tier2-macos-ctest")
+        self.assertIn("rust-tier2-macos-build", job)
+        self.assertIn("runs-on: macos-26", job)
+        self.assertIn("actions/download-artifact@", job)
+        self.assertIn("ci/macos_tier2_bundle.py run", job)
+        for compiler in ("soldr", "setup-soldr", "brew install", "xcodebuild", "cmake --build", "cmake --preset"):
+            self.assertNotIn(compiler, job)
+        self.assertNotIn("merge_group'", job.split("if:")[1].split("\n")[0].replace("!= 'merge_group'", ""))
+
+    def test_producer_builds_on_linux_from_the_common_root_and_uploads_the_bundle(self):
+        job = self.job("rust-tier2-macos-build")
+        self.assertNotIn("macos-", job.split("runs-on:")[1].split("\n")[0])
+        for needle in ("macos_test_workspace.py place", "ci/cmocka_link_check.py --alias mac-arm64",
+                       "ci/macos_tier2_bundle.py stage", "macos_test_workspace.py pack",
+                       "actions/upload-artifact@", "macos_test_workspace.py restore"):
+            self.assertIn(needle, job)
 
 
 if __name__ == "__main__":
