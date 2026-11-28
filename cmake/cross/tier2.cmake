@@ -184,6 +184,16 @@ if(OS_MACOS)
     get_filename_component(_host_xvfb_dir "${_host_xvfb_run}" DIRECTORY)
     list(APPEND CMAKE_IGNORE_PATH "${_host_xvfb_dir}")
   endif()
+  # Merged-usr hosts expose one xvfb-run as /bin and /usr/bin; hide every spelling.
+  foreach(
+    _host_dir
+    IN
+    ITEMS /bin /usr/bin /usr/local/bin /sbin /usr/sbin
+  )
+    if(EXISTS "${_host_dir}/xvfb-run")
+      list(APPEND CMAKE_IGNORE_PATH "${_host_dir}")
+    endif()
+  endforeach()
   unset(_host_xvfb_run CACHE)
 endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
