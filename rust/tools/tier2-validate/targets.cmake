@@ -15,7 +15,16 @@ endif()
 # graphics/capture reference modules the Cargo-native contract compares against.
 # The cmocka executables come prebuilt from the Linux cross-build bundle.
 add_custom_target(tier2-residue)
-add_dependencies(tier2-residue libobs libobs-c-reference libobs-opengl)
+# The ASan variants, cmocka-asan-tests, cannot be cross-built: soldr's LLVM 21 ASan
+# runtime deadlocks at init on macOS 26. test_bitstream is the loader probe.
+add_dependencies(
+  tier2-residue
+  libobs
+  libobs-c-reference
+  libobs-opengl
+  cmocka-asan-tests
+  test_bitstream
+)
 if(OS_MACOS)
   add_dependencies(tier2-residue libobs-metal mac-capture mac-avcapture mac-avcapture-legacy)
 endif()

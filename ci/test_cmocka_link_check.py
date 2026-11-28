@@ -170,7 +170,7 @@ class MacClosureTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             runtime = Path(temporary) / "lib/darwin"
             runtime.mkdir(parents=True)
-            names = ("libclang_rt.osx.a", "libclang_rt.asan_osx_dynamic.dylib", "libclang_rt.ubsan_osx_dynamic.dylib")
+            names = ("libclang_rt.osx.a", "libclang_rt.ubsan_osx_dynamic.dylib")
             for name in names:
                 (runtime / name).touch()
             receipt = json.dumps({"compiler_rt": str(runtime), "clang_resource_dir": str(Path(temporary))})
@@ -188,8 +188,10 @@ class MacClosureTest(unittest.TestCase):
                 (runtime / name).touch()
 
     def test_sanitizers_stay_off_only_for_windows(self):
-        self.assertEqual(cmocka_link_check.sanitizer_option("win-x64"), "-DOBS_TEST_SANITIZE_PER_TARGET=OFF")
-        self.assertEqual(cmocka_link_check.sanitizer_option("mac-arm64"), "-DOBS_TEST_SANITIZE_PER_TARGET=ON")
+        self.assertEqual(cmocka_link_check.sanitizer_option("win-x64"), ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"])
+        # soldr's LLVM 21 ASan runtime deadlocks at init on macOS 26: UBSan only.
+        self.assertEqual(cmocka_link_check.sanitizer_option("mac-arm64"),
+                         ["-DOBS_TEST_SANITIZE_PER_TARGET=ON", "-DOBS_TEST_SANITIZE_ADDRESS=OFF"])
 
     def test_registry_must_contain_every_native_macos_test(self):
         listing = "Test project x\n" + "".join(f"  Test #{i}: {name}\n" for i, name in enumerate(["a", "b", "c"], 1))

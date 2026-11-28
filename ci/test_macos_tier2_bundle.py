@@ -236,9 +236,17 @@ class ResidueTest(unittest.TestCase):
         self.assertIn("tier2-residue", script)
         self.assertIn("OBS_TIER2_RESIDUE", script)
         self.assertIn("ci/macos_tier2_bundle.py ctest-core", script)
-        residue = re.search(r"add_dependencies\(tier2-residue ([^)]*)\)", targets).group(1)
+        residue = re.search(r"add_dependencies\(\s*tier2-residue\s+([^)]*)\)", targets).group(1)
         self.assertIn("libobs-c-reference", residue)
         self.assertNotIn("cmocka-tests", residue)
+        self.assertIn("cmocka-asan-tests", residue)
+
+    def test_asan_targets_are_recorded_and_the_cross_build_drops_only_address(self):
+        cmake = (self.root / "test/cmocka/CMakeLists.txt").read_text()
+        self.assertIn("OBS_TEST_SANITIZE_ADDRESS", cmake)
+        self.assertIn("asan-tests.txt", cmake)
+        script = (self.root / "rust/tools/tier2-validate/validate.sh").read_text()
+        self.assertIn("asan-tests.txt", script)
 
     def test_native_job_consumes_the_bundle_instead_of_compiling_it(self):
         job = WorkflowTest.job("rust-tier2-macos")

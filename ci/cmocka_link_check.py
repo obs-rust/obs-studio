@@ -97,12 +97,16 @@ def verify_signed_images(work: Path) -> int:
     return count
 
 
-SANITIZER_RUNTIMES = ("libclang_rt.asan_osx_dynamic.dylib", "libclang_rt.ubsan_osx_dynamic.dylib")
+# soldr's LLVM 21 ASan runtime deadlocks in AsanInitFromRtl on macOS 26, so the
+# cross build keeps UBSan only; native macOS builds and runs the ASan targets.
+SANITIZER_RUNTIMES = ("libclang_rt.ubsan_osx_dynamic.dylib",)
 
 
-def sanitizer_option(alias: str) -> str:
-    """Per-target ASan/UBSan stays off only where the Windows link cannot run it."""
-    return f"-DOBS_TEST_SANITIZE_PER_TARGET={'OFF' if alias == 'win-x64' else 'ON'}"
+def sanitizer_option(alias: str) -> list[str]:
+    """Per-target sanitizers: off for Windows; UBSan only for macOS (no cross ASan)."""
+    if alias == "win-x64":
+        return ["-DOBS_TEST_SANITIZE_PER_TARGET=OFF"]
+    return ["-DOBS_TEST_SANITIZE_PER_TARGET=ON", "-DOBS_TEST_SANITIZE_ADDRESS=OFF"]
 
 
 def sanitizer_runtimes(directory: Path) -> list[Path]:
@@ -272,7 +276,7 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str], all_tests: boo
                     f"-DOBS_CROSS_TARGET={alias}", "-DOBS_CROSS_LINK=ON", "-DOBS_CROSS_TIER2=ON",
                     "-DCMAKE_BUILD_TYPE=RelWithDebInfo", f"-DRust_CARGO={wrappers / 'cargo'}",
                     f"-DRust_COMPILER={wrappers / 'rustc'}", f"-DRust_CARGO_TARGET={target}",
-                    sanitizer_option(alias),
+                    *sanitizer_option(alias),
                     f"-DCMAKE_C_COMPILER_LAUNCHER={env['CMAKE_C_COMPILER_LAUNCHER']}",
                     f"-DCMAKE_CXX_COMPILER_LAUNCHER={env['CMAKE_CXX_COMPILER_LAUNCHER']}", *toolchain_args], cwd=ROOT, env=env, check=True)
     print(f"Tier 2 {alias}: configured in {time.monotonic() - configured:.2f}s", flush=True)

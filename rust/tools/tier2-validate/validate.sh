@@ -148,11 +148,15 @@ if [ -z "$phase" ]; then
   exit 0
 fi
 
-if [ "$phase" = cmake-tests ] && [ "$residue" = 1 ]; then
-  echo "== cmake-tests: covered by the prebuilt rust-tier2-macos-ctest bundle run, except the"
-  echo "== fixture that configures and compiles while it runs (#5848)"
-  ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure -R '^test_core_module_manifest_source$' --no-tests=error
-  exit 0
+# Residue: only what the Linux bundle cannot cover is built and run natively here
+# (#5848): the ASan-instrumented tests (soldr's LLVM 21 ASan runtime deadlocks at
+# init on macOS 26, so the cross build keeps UBSan only) and the fixture that
+# configures and compiles while it runs.
+ctest_filter=()
+if [ "$residue" = 1 ] && [ "$phase" = cmake-tests ]; then
+  asan_names=$(paste -sd'|' "$build/test/cmocka/asan-tests.txt")
+  [ -n "$asan_names" ] || { echo "FAIL: no ASan test list in $build/test/cmocka" >&2; exit 1; }
+  ctest_filter=(-R "^(${asan_names}|test_core_module_manifest_source)\$" --no-tests=error)
 fi
 if [ "$phase" = cmake-tests ]; then
   for mode in OFF ON; do
@@ -167,7 +171,7 @@ if [ "$phase" = cmake-tests ]; then
     suite_logs="$PWD/$build/tail-logs/$phase/$mode"
     mkdir -p "$suite_logs"
     echo "== [$mode] ctest"
-    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" \
+    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" ${ctest_filter[@]+"${ctest_filter[@]}"} \
       --output-log "$suite_logs/ctest.log"; then
       DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
         show_crash_stacks "$build"
