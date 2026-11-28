@@ -134,7 +134,7 @@ class HostedRunnerRoutingTest(unittest.TestCase):
     def test_host_package_jobs_keep_2604(self):
         for name in ('rust-tests-linux', 'cross-compile', 'linux-qt-frontend',
                      'rust-cross-lint', 'rust-cross-lint-release', 'rust-windows-link',
-                     'cmocka-link', 'rust-tests-macos-build'):
+                     'cmocka-link', 'rust-tests-macos-build', 'rust-tier2-macos-build'):
             with self.subTest(job=name):
                 # Every heavy Linux job follows the selector in merge_group too.
                 self.assert_runner('build-project.yaml', name,
@@ -144,7 +144,7 @@ class HostedRunnerRoutingTest(unittest.TestCase):
         workflow = 'build-project.yaml'
         for name in ('rust-tests-linux', 'cross-compile', 'rust-cross-lint',
                      'rust-cross-lint-release', 'rust-windows-link', 'cmocka-link',
-                     'rust-tests-macos-build', 'rust-linux-tier2-build'):
+                     'rust-tests-macos-build', 'rust-linux-tier2-build', 'rust-tier2-macos-build'):
             with self.subTest(job=name):
                 job = self.job(workflow, name)
                 self.assertIn('uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436', job)

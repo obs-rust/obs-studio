@@ -3784,6 +3784,7 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
+          SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 

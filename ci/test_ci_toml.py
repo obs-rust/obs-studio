@@ -477,8 +477,8 @@ class CiTomlTest(unittest.TestCase):
         for path in WORKFLOWS.glob("*.y*ml"):
             pins.extend(re.findall(r"zackees/setup-soldr@([0-9a-f]{40})", path.read_text()))
         # Tier 2 build, the dual-platform link matrix, macOS artifact preparation,
-        # and the Windows tests under Wine.
-        self.assertEqual(pins.count(FORGE_CHECKPOINT_SETUP_SOLDR_PIN), 10)
+        # the Windows tests under Wine and the macOS Tier 2 bundle producer.
+        self.assertEqual(pins.count(FORGE_CHECKPOINT_SETUP_SOLDR_PIN), 11)
         # macOS and Windows app builds use the fleet cache action pin.
         self.assertEqual(pins.count(APP_FLEET_SETUP_SOLDR_PIN), 2)
         self.assertEqual(set(pins), {SETUP_SOLDR_PIN, FORGE_CHECKPOINT_SETUP_SOLDR_PIN, APP_FLEET_SETUP_SOLDR_PIN},
