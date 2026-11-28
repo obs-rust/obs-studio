@@ -54,6 +54,19 @@ class ScopeTest(unittest.TestCase):
                 self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
 
 
+class PluginOwnerTest(unittest.TestCase):
+    def test_windows_graph_configures_the_plugin_owners(self):
+        # The unchanged registry gates librtmp, happy-eyeballs, media-playback,
+        # file-updater, opts-parser and bpm tests on these owners (#5870).
+        lines = (ROOT / "cmake/cross/tier2.cmake").read_text().splitlines()
+        for owner in ("shared/happy-eyeballs", "shared/media-playback", "shared/opts-parser",
+                      "shared/file-updater", "shared/bpm", "plugins/${_plugin}"):
+            index = next(i for i, line in enumerate(lines) if f"${{OBS_SOURCE_ROOT}}/{owner}" in line)
+            guard = next(line for line in reversed(lines[:index]) if line.startswith("if("))
+            with self.subTest(owner=owner):
+                self.assertIn("OS_WINDOWS", guard)
+
+
 class WineInstallTest(unittest.TestCase):
     def test_install_downloads_first_and_unpacks_without_fsync(self):
         # dpkg unpack of the ~250 MB wine set timed out at 300 s with the download
