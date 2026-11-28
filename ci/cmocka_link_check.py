@@ -76,7 +76,8 @@ def discover_targets(reply: Path) -> list[str]:
 # Mach-O filetypes that CTest loads or executes: MH_EXECUTE, MH_DYLIB, MH_BUNDLE.
 LOADABLE_FILETYPES = (2, 6, 8)
 # Aggregate every test executable joins (test/cmocka/CMakeLists.txt).
-MAC_CLOSURE_TARGETS = ["cmocka-tests", "libobs-cross-reference"]
+MAC_CLOSURE_TARGETS = ["cmocka-tests", "libobs-cross-reference", "libobs-opengl", "libobs-metal", "mac-capture-bundle",
+                       "mac-avcapture-bundle", "mac-avcapture-legacy-bundle"]
 
 
 def verify_signed_images(work: Path) -> int:
@@ -127,7 +128,13 @@ def darwin_runtime_flags() -> dict[str, str]:
     for name in ("libclang_rt.osx.a", *SANITIZER_RUNTIMES):
         if not (directory / name).is_file():
             raise FileNotFoundError(f"soldr Darwin toolchain is missing {directory / name}")
-    return {"CMAKE_EXE_LINKER_FLAGS": f"{directory / 'libclang_rt.osx.a'} -resource-dir {receipt['clang_resource_dir']}"}
+    link = f"{directory / 'libclang_rt.osx.a'} -resource-dir {receipt['clang_resource_dir']}"
+    # Executables and plugin modules need the builtins (@available); the shared libobs
+    # already carries the Rust compiler_builtins and would collide.
+    return {"CMAKE_EXE_LINKER_FLAGS": link, "CMAKE_MODULE_LINKER_FLAGS": link,
+            # libobs-metal is Swift: soldr's swiftc (SDK 26.5) compiles and links it on Linux.
+            "OBS_CROSS_SWIFTC": receipt["swiftc"],
+            "OBS_CROSS_SWIFT_ARGS": ";".join([*receipt["swift_compile_args"], *receipt["swift_link_args"]])}
 
 
 REGISTRY_SNAPSHOT = ROOT / "ci" / "macos_tier2_registry.txt"

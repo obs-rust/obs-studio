@@ -134,13 +134,26 @@ if(OS_MACOS)
   )
   target_include_directories(libobs-cross-reference PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
   target_link_libraries(libobs-cross-reference INTERFACE SIMDe::SIMDe Threads::Threads)
-  set_target_properties(
-    libobs-cross-reference
-    PROPERTIES PREFIX "" OUTPUT_NAME obs LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
-  )
+  set(_obs_core_layouts "libobs-cross-shared=libobs" "libobs-cross-reference=libobs-c-reference")
+  foreach(_layout IN LISTS _obs_core_layouts)
+    string(REPLACE "=" ";" _layout_parts "${_layout}")
+    list(GET _layout_parts 0 _core_target)
+    list(GET _layout_parts 1 _core_directory)
+    set_target_properties(
+      ${_core_target}
+      PROPERTIES
+        FRAMEWORK TRUE
+        FRAMEWORK_VERSION A
+        PREFIX ""
+        OUTPUT_NAME libobs
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${_core_directory}"
+        INSTALL_NAME_DIR "@rpath"
+        BUILD_WITH_INSTALL_NAME_DIR TRUE
+    )
+  endforeach()
 endif()
-# macOS registry parity only: the Windows graph keeps its own, smaller registry (the
-# librtmp tests need case-correct SDK headers that the Linux xwin SDK lacks).
+# macOS registry parity only: the Windows graph keeps its own, smaller registry until
+# #5864's case-folding clang-cl driver lets the librtmp tests build there (#5870).
 if(OS_MACOS)
   # The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
   # OBS::media-playback); their own recipes, not stand-ins.
@@ -153,7 +166,15 @@ if(OS_MACOS)
   # Packages found inside a plugin recipe must stay visible to the test registry.
   set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
   function(set_target_properties_obs target)
-    set_target_properties(${target} PROPERTIES ${ARGN})
+    # ARGV keeps empty values (PREFIX ""), which an unquoted ${ARGN} expansion drops.
+    math(EXPR _last "${ARGC} - 1")
+    foreach(_name_index RANGE 2 ${_last} 2)
+      math(EXPR _value_index "${_name_index} + 1")
+      set_property(TARGET ${target} PROPERTY "${ARGV${_name_index}}" "${ARGV${_value_index}}")
+    endforeach()
+  endfunction()
+  # Xcode-only project settings (Info.plist keys); ARC and modules are compile flags here.
+  function(set_target_xcode_properties target)
   endfunction()
   add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
   add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
@@ -178,6 +199,12 @@ if(OS_MACOS)
   configure_file(
     "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
     "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+    @ONLY
+  )
+  # obs-build reads the reference core-module manifest from <build>/libobs (core_module_manifest.rs).
+  configure_file(
+    "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+    "${CMAKE_BINARY_DIR}/libobs/obs-core-modules.c"
     @ONLY
   )
 endif()
@@ -214,5 +241,57 @@ if(OS_MACOS)
     endif()
   endforeach()
   unset(_host_xvfb_run CACHE)
+endif()
+if(OS_MACOS)
+  # The graphics and capture modules the Cargo-native contract compares against
+  # (#5848): the real recipes, linked to the framework-named core above.
+  add_subdirectory("${OBS_SOURCE_ROOT}/libobs-opengl" "${CMAKE_BINARY_DIR}/libobs-opengl")
+  add_subdirectory("${OBS_SOURCE_ROOT}/plugins/mac-capture" "${CMAKE_BINARY_DIR}/plugins/mac-capture")
+  add_subdirectory("${OBS_SOURCE_ROOT}/plugins/mac-avcapture" "${CMAKE_BINARY_DIR}/plugins/mac-avcapture")
+  # XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES: the camera modules only; opengl and
+  # mac-capture use manual retain/release.
+  foreach(_arc_target IN ITEMS mac-avcapture mac-avcapture-legacy)
+    target_compile_options(${_arc_target} PRIVATE "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fobjc-arc>")
+  endforeach()
+  # XCODE_ATTRIBUTE_CLANG_ENABLE_MODULES YES (and AUTOLINK) for mac-avcapture.
+  target_compile_options(
+    mac-avcapture
+    PRIVATE
+      "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fmodules>"
+      "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fmodules-cache-path=${CMAKE_BINARY_DIR}/modules-cache>"
+  )
+  foreach(_capture IN ITEMS mac-capture mac-avcapture mac-avcapture-legacy)
+    # Native bundles keep the module in Contents/MacOS with its data in Contents/Resources.
+    get_target_property(_capture_source_dir ${_capture} SOURCE_DIR)
+    set(_bundle "${CMAKE_BINARY_DIR}/plugins/${_capture}/${_capture}.plugin/Contents")
+    add_custom_target(
+      ${_capture}-bundle
+      COMMAND "${CMAKE_COMMAND}" -E make_directory "${_bundle}/MacOS" "${_bundle}/Resources"
+      COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${_capture}>" "${_bundle}/MacOS/${_capture}"
+      COMMAND "${CMAKE_COMMAND}" -E copy_directory "${_capture_source_dir}/data" "${_bundle}/Resources"
+      VERBATIM
+    )
+    add_dependencies(${_capture}-bundle ${_capture})
+  endforeach()
+  # libobs-metal is Swift 6 with an Objective-C bridging header: compiled and linked
+  # by soldr's swiftc (the Darwin receipt) against the hybrid core.
+  include("${OBS_SOURCE_ROOT}/cmake/common/graphics-sources.cmake")
+  set(_metal_dir "${OBS_SOURCE_ROOT}/libobs-metal")
+  obs_graphics_sources(_metal_sources METAL_SWIFT "${_metal_dir}")
+  obs_graphics_sources(_metal_bridge METAL_BRIDGE "${_metal_dir}")
+  list(TRANSFORM _metal_sources PREPEND "${_metal_dir}/")
+  set(_metal_output "${CMAKE_BINARY_DIR}/libobs-metal/libobs-metal.dylib")
+  add_custom_command(
+    OUTPUT "${_metal_output}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/libobs-metal"
+    COMMAND
+      "${OBS_CROSS_SWIFTC}" ${OBS_CROSS_SWIFT_ARGS} -swift-version 6 -import-objc-header
+      "${_metal_dir}/${_metal_bridge}" -I "${OBS_SOURCE_ROOT}/libobs" -I "${CMAKE_BINARY_DIR}/config" -I
+      "${OBS_CROSS_DEPS}/include" -module-name libobs_metal -parse-as-library -emit-library -Xlinker -install_name
+      -Xlinker "@rpath/libobs-metal.dylib" -o "${_metal_output}" ${_metal_sources} "$<TARGET_FILE:libobs-cross-shared>"
+    DEPENDS libobs-cross-shared ${_metal_sources} "${_metal_dir}/${_metal_bridge}"
+    VERBATIM
+  )
+  add_custom_target(libobs-metal DEPENDS "${_metal_output}")
 endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")

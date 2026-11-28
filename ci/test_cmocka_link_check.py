@@ -173,11 +173,15 @@ class MacClosureTest(unittest.TestCase):
             names = ("libclang_rt.osx.a", "libclang_rt.ubsan_osx_dynamic.dylib")
             for name in names:
                 (runtime / name).touch()
-            receipt = json.dumps({"compiler_rt": str(runtime), "clang_resource_dir": str(Path(temporary))})
+            receipt = json.dumps({"compiler_rt": str(runtime), "clang_resource_dir": str(Path(temporary)), "swiftc": "/x/swiftc",
+                                  "swift_compile_args": ["-target", "arm64-apple-macosx11.0"], "swift_link_args": ["-use-ld=lld"]})
             with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)) as run:
                 flags = cmocka_link_check.darwin_runtime_flags()
             self.assertEqual(run.call_args.args[0][:3], ["soldr", "toolchain", "darwin"])
-            self.assertEqual(flags, {"CMAKE_EXE_LINKER_FLAGS": f"{runtime / 'libclang_rt.osx.a'} -resource-dir {temporary}"})
+            link = f"{runtime / 'libclang_rt.osx.a'} -resource-dir {temporary}"
+            self.assertEqual(flags, {"CMAKE_EXE_LINKER_FLAGS": link, "CMAKE_MODULE_LINKER_FLAGS": link,
+                                     "OBS_CROSS_SWIFTC": "/x/swiftc",
+                                     "OBS_CROSS_SWIFT_ARGS": "-target;arm64-apple-macosx11.0;-use-ld=lld"})
             self.assertEqual(sorted(p.name for p in cmocka_link_check.sanitizer_runtimes(Path(temporary) / "lib/darwin")),
                              sorted(names[1:]))
             for name in names:

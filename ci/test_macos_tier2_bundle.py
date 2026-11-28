@@ -28,6 +28,8 @@ def build_tree(root: Path) -> Path:
     (work / "ctest-registry.txt").write_text("  Test #1: test_a\n\nTotal Tests: 1\n")
     (work / "CMakeFiles").mkdir()
     (work / "CMakeFiles/junk.o").write_bytes(b"object")
+    (work / "modules-cache").mkdir()
+    (work / "modules-cache/Foundation.pcm").write_bytes(b"pcm")
     (work / "compiler-cache").mkdir()
     (work / "compiler-cache/ccache").write_bytes(b"\x7fELF")
     deps = root / ".deps/obs-deps-1-universal/lib"
@@ -56,7 +58,8 @@ class StageTest(unittest.TestCase):
             self.assertIn("build_cmocka_link_mac-arm64/libobs-c-reference/obs.dylib", names)
             self.assertIn(".deps/obs-deps-1-universal/lib/libavcodec.dylib", names)
             self.assertIn(".deps/obs-deps-qt6-1-universal/lib/QtCore.framework/Versions/A/QtCore", names)
-            self.assertFalse([n for n in names if "CMakeFiles" in n or "compiler-cache" in n or n.endswith(".o")])
+            self.assertFalse([n for n in names if "CMakeFiles" in n or "compiler-cache" in n or "modules-cache" in n
+                              or n.endswith((".o", ".pcm"))])
             self.assertEqual(json.loads((out / "manifest.json").read_text())["source_sha"], "abc")
             self.assertEqual(manifest["work"], "build_cmocka_link_mac-arm64")
             self.assertIn(".deps/obs-deps-qt6-1-universal/plugins/platforms/libqoffscreen.dylib", names)
@@ -127,12 +130,12 @@ class RunTest(unittest.TestCase):
                 self.assertEqual(args[args.index("-E") + 1], "^test_core_module_manifest_source$")
                 self.assertIn("--timeout", args)
             off, on = (e for _, e in ctest)
-            self.assertTrue(off["DYLD_LIBRARY_PATH"].startswith(str(work / "libobs-c-reference")))
-            self.assertTrue(on["DYLD_LIBRARY_PATH"].startswith(str(work)))
+            qt = str(root / ".deps/obs-deps-qt6-1-universal/lib")
+            self.assertEqual(off["DYLD_FRAMEWORK_PATH"], f"{work / 'libobs-c-reference'}:{qt}")
+            self.assertEqual(on["DYLD_FRAMEWORK_PATH"], f"{work / 'libobs'}:{qt}")
             for env in (off, on):
                 self.assertIn(str(root / ".deps/obs-deps-1-universal/lib"), env["DYLD_LIBRARY_PATH"])
                 self.assertIn(str(work / "sanitizer-runtimes"), env["DYLD_LIBRARY_PATH"])
-                self.assertEqual(env["DYLD_FRAMEWORK_PATH"], str(root / ".deps/obs-deps-qt6-1-universal/lib"))
                 self.assertEqual(env["QT_PLUGIN_PATH"], str(root / ".deps/obs-deps-qt6-1-universal/plugins"))
 
     def test_a_failing_suite_fails_the_run_and_no_compiler_is_ever_invoked(self):
@@ -167,11 +170,11 @@ class CoreSuiteTest(unittest.TestCase):
 
             with mock.patch.object(bundle.subprocess, "run", side_effect=fake):
                 bundle.run_core_suite(root, work.name, core, "obs", jobs=2)
-            link = work / "core-obs/obs.dylib"
+            link = work / "core-obs/libobs.framework/Versions/A/libobs"
             self.assertTrue(link.is_symlink() and link.resolve() == core.resolve())
             ctest = [e for a, e in calls if a[0] == "ctest"]
             self.assertEqual(len(ctest), 1)
-            self.assertTrue(ctest[0]["DYLD_LIBRARY_PATH"].startswith(str(work / "core-obs")))
+            self.assertTrue(ctest[0]["DYLD_FRAMEWORK_PATH"].startswith(str(work / "core-obs")))
 
     def test_dyld_reporting_the_resolved_core_path_counts_as_loaded(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -274,12 +277,25 @@ class ResidueTest(unittest.TestCase):
         script = (self.root / "rust/tools/tier2-validate/validate.sh").read_text()
         self.assertIn("asan-tests.txt", script)
 
-    def test_native_job_consumes_the_bundle_instead_of_compiling_it(self):
+    def test_native_job_executes_the_bundle_and_never_compiles(self):
         job = WorkflowTest.job("rust-tier2-macos")
         self.assertIn("rust-tier2-macos-build", job)
-        self.assertIn("OBS_TIER2_RESIDUE", job)
+        self.assertIn("OBS_TIER2_PREBUILT: 1", job)
         self.assertIn("actions/download-artifact@", job)
         self.assertIn("macos_test_workspace.py unpack", job)
+        for compiler in ("soldr", "setup-soldr", "brew install", "cmake --build", "cmake --preset", "xcodebuild"):
+            self.assertNotIn(compiler, job)
+
+    def test_asan_variants_stay_native_and_nightly_only(self):
+        job = WorkflowTest.job("rust-tier2-macos-asan")
+        self.assertIn("OBS_TIER2_RESIDUE: 1", job)
+        self.assertIn("github.event_name == 'schedule'", job)
+        self.assertIn("soldr#4291", job)
+
+    def test_producer_prepares_the_cargo_native_contract_before_sealing(self):
+        job = WorkflowTest.job("rust-tier2-macos-build")
+        self.assertLess(job.index("macos_tier2_prepare.py prepare"), job.index("macos_tier2_bundle.py stage"))
+
 
 
 if __name__ == "__main__":

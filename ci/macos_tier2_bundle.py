@@ -24,8 +24,9 @@ from pathlib import Path
 import cmocka_link_check
 import macos_test_artifact
 
-EXCLUDED_PARTS = {"CMakeFiles", "compiler-cache", "cargo", "corrosion", "_deps", "obs-preflight-cargo", "soldr-tools"}
-EXCLUDED_SUFFIXES = (".o", ".a", ".obj")
+EXCLUDED_PARTS = {"CMakeFiles", "compiler-cache", "cargo", "corrosion", "_deps", "obs-preflight-cargo", "soldr-tools",
+                  "modules-cache", "module-cache", "toolchain-wrappers"}
+EXCLUDED_SUFFIXES = (".o", ".a", ".obj", ".pcm", ".swiftmodule", ".pch", ".gch")
 
 
 def sha256(path: Path) -> str:
@@ -121,12 +122,13 @@ def ctest_command(work: Path, jobs: int) -> list[str]:
             "--timeout", TEST_TIMEOUT_SECONDS, "-E", RUNTIME_COMPILED_TESTS]
 
 
-def suite_environment(root: Path, work: Path, variant: str) -> dict[str, str]:
+def suite_environment(root: Path, work: Path, variant: str, *, core_directory: Path | None = None) -> dict[str, str]:
+    """dyld environment: the selected libobs.framework first, then Qt; dylibs and sanitizer runtime."""
     libs, qt = dependency_roots(root)
-    first = work / "libobs-c-reference" if variant == "OFF" else work
+    core = core_directory or (work / "libobs-c-reference" if variant == "OFF" else work / "libobs")
     env = dict(os.environ)
-    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(first), str(work / "sanitizer-runtimes"), str(libs)])
-    env["DYLD_FRAMEWORK_PATH"] = str(qt)
+    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(work / "sanitizer-runtimes"), str(libs)])
+    env["DYLD_FRAMEWORK_PATH"] = os.pathsep.join([str(core), str(qt)])
     env["QT_PLUGIN_PATH"] = str(qt.parent / "plugins")
     return env
 
@@ -150,13 +152,12 @@ def run_core_suite(root: Path, work_name: str, core: Path, variant: str, *, jobs
     """
     work = root / work_name
     directory = work / f"core-{variant}"
-    directory.mkdir(exist_ok=True)
-    link = directory / "obs.dylib"
+    framework = directory / "libobs.framework/Versions/A"
+    framework.mkdir(parents=True, exist_ok=True)
+    link = framework / "libobs"
     link.unlink(missing_ok=True)
     link.symlink_to(core.resolve())
-    libs, _ = dependency_roots(root)
-    env = suite_environment(root, work, "ON")
-    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(directory), str(work / "sanitizer-runtimes"), str(libs)])
+    env = suite_environment(root, work, "ON", core_directory=directory)
     print(f"== Cargo [{variant}] ctest", flush=True)
     result = subprocess.run(ctest_command(work, jobs), env=env)
     if result.returncode:
