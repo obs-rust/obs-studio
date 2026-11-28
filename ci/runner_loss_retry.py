@@ -71,28 +71,34 @@ def job_kind(job: dict, text: str) -> str:
     return "unknown"
 
 
-def decide(run: dict, jobs: list[dict], texts: dict[int, str]) -> tuple[bool, str]:
-    """(rerun?, reason). Pure: all evidence is passed in."""
+def run_refusal(run: dict, jobs: list[dict]) -> str | None:
+    """Why this run may not be retried at all, from the run record alone."""
     attempt = run.get("run_attempt")
     if type(attempt) is not int or attempt < 1:
-        return False, "unknown attempt"
+        return "unknown attempt"
     if attempt > MAX_AUTOMATIC_RERUNS:
-        return False, f"automatic reruns spent (attempt {attempt})"
+        return f"automatic reruns spent (attempt {attempt})"
     if run.get("status") != "completed" or run.get("conclusion") != "failure":
-        return False, "run is not a completed failure"
+        return "run is not a completed failure"
     if run.get("event") not in ("pull_request", "merge_group"):
-        return False, "unrelated event"
+        return "unrelated event"
     if not jobs or any(j.get("status") != "completed" for j in jobs):
-        return False, "missing or unfinished jobs"
+        return "missing or unfinished jobs"
+    return None
+
+
+def decide(run: dict, jobs: list[dict], texts: dict[int, str]) -> tuple[bool, str]:
+    """(rerun?, reason). Pure: all evidence is passed in."""
+    refusal = run_refusal(run, jobs)
+    if refusal:
+        return False, refusal
     infra = []
     for job in jobs:
         conclusion = job.get("conclusion")
-        if conclusion in ("success", "skipped", "neutral"):
+        # The gate only reports the others; a cancelled job is collateral of a
+        # failed sibling and counts only next to a proven infra job below.
+        if conclusion in ("success", "skipped", "neutral", "cancelled") or job["name"].split(" / ")[-1] == GATE:
             continue
-        if job["name"].split(" / ")[-1] == GATE:
-            continue  # the gate only reports the other jobs
-        if conclusion == "cancelled":
-            continue  # collateral of a failed sibling; proven only with an infra job below
         if conclusion not in FAILED:
             return False, f"unproven job: {job['name']} ({conclusion})"
         kind = job_kind(job, texts.get(job["id"], ""))
