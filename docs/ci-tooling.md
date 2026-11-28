@@ -1977,6 +1977,33 @@ runner-minutes. All four failed Fast Gates used Dell runners, so full matrix
 execution at that median would add about 36.83 runner-minutes across the
 sample (1.23 per run), before cancellation savings. Successful runs add no work.
 
+## Dell compression policy
+
+## Compression policy
+
+Compression policy comes from setup-soldr's `zstd-level` input (default
+`auto`), then `SETUP_SOLDR_ZSTD_LEVEL`, then a pre-set `ZSTD_CLEVEL`, then
+its runner-aware default. The upstream implementation is pending in
+[setup-soldr #677](https://github.com/forge-ci/setup-soldr/pull/677); the current
+pinned action does not yet export this policy. Adopt the reviewed merged pin
+before relying on automatic Dell selection.
+
+The Tier 2 pack runs after setup-soldr and uses `tar --zstd` with no explicit
+level or thread count. Its zstd child inherits `ZSTD_CLEVEL` and
+`ZSTD_NBTHREADS`; unset values retain the existing hosted defaults. The cache
+wrapper also leaves those variables untouched. setup-soldr exports
+`SOLDR_ZSTD_LEVEL` for soldr's in-process compression; no OBS workflow sets
+runner-specific levels. The Qt and touched-target ccache stores use zstd as a
+library, so their config explicitly reads `${ZSTD_CLEVEL:-1}` (the existing
+ccache default). The Qt job has no setup-soldr step and can still consume a
+caller-provided environment value.
+
+Kept trees remain unpacked, and `zccache snapshot` records JSON metadata.
+Tier 2 readers use `tar -xf` to accept both zstd and plain tar packs under the
+established artifact name. The manual setup-image producer stays hosted with
+its existing `zstd -T2 -3` policy. Artifact ZIP and non-zstd codecs retain
+existing settings; `ZSTD_CLEVEL` does not configure those codecs.
+
 ## Tier 2 execution and Fast Gate overlap
 
 The Windows and macOS validators opt into `OBS_BUILD_NATIVE_TIER2` and build

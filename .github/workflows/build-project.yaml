@@ -1912,6 +1912,7 @@ jobs:
           packages=("$APT_ARCHIVES"/*.deb)
           echo "apt archive retained packages: ${#packages[@]}"
           if [ "${#packages[@]}" -gt 0 ]; then du -ch "${packages[@]}" | tail -1; fi
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size=250M
           ccache --zero-stats
           cmake -S . -B "${RUNNER_TEMP}/targets" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -3457,7 +3458,7 @@ jobs:
         if: steps.shared-tier2.outputs.used != 'true'
         run: |
           mkdir -p "$OBS_TIER2_TEST_BUILD"
-          if ! tar --zstd -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$OBS_TIER2_TEST_BUILD"; then
+          if ! tar -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$OBS_TIER2_TEST_BUILD"; then
             df -h "$OBS_TIER2_TEST_BUILD"
             echo "::error::Tier 2 tree extraction failed. Check the tar error and available scratch capacity."
             exit 1
@@ -3681,6 +3682,7 @@ jobs:
         id: qt-cache-epoch
         run: |
           echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size="$CCACHE_MAXSIZE"
           ccache --zero-stats
           ccache --version | head -1

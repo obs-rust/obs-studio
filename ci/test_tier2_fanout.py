@@ -42,7 +42,8 @@ class ValidateStagesTest(unittest.TestCase):
 
     def test_build_stage_packs_the_tree_without_objects(self):
         self.assertIn("OBS_TIER2_PACK", self.text)
-        self.assertRegex(self.text, r"tar --zstd -cf[\s\S]{0,200}--exclude='\*\.o'")
+        self.assertIn('"$SRC/ci/tier2_pack.py" "$BUILD" "$OBS_TIER2_PACK"', self.text)
+        self.assertIn("'--exclude=*.o'", (ROOT / 'ci/tier2_pack.py').read_text())
 
     def test_test_stage_runs_a_shard(self):
         self.assertIn("OBS_CTEST_SHARD", self.text)

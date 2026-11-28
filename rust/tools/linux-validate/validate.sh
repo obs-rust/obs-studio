@@ -380,11 +380,7 @@ else
     # What ctest needs at the same path on a test runner: binaries, libs,
     # plugins, CTestTestfile.cmake. Objects, archives and cargo's target dir
     # are build inputs only.
-    mkdir -p "$OBS_TIER2_PACK"
-    tar --zstd -cf "$OBS_TIER2_PACK/tier2-tree.tar.zst" -C "$BUILD" \
-      --exclude='*.o' --exclude='*.a' --exclude='*.rlib' --exclude='*.rmeta' \
-      --exclude="tree/cargo" tree
-    echo "== packed $(du -h "$OBS_TIER2_PACK/tier2-tree.tar.zst" | cut -f1)"
+    uv run --no-project "$SRC/ci/tier2_pack.py" "$BUILD" "$OBS_TIER2_PACK"
   fi
 fi
 

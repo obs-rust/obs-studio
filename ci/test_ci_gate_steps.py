@@ -15,7 +15,7 @@ GEN-005 gives a workflow `run:` step a one-line shell budget. Four steps in
 - `flatpak-runtime-reuse`'s `Run Installed Flatpak with Saved Capture Profile`:
   the `tar -xf` of the downloaded OSTree repo, then `ci/flatpak_runtime.py`.
 - `tier2-setup-consumer`'s `Validate Prepared OFF and ON Suites`: the
-  `tar --zstd` extraction, the `bundle.json` `image_id` read, and the
+  `tar -xf` (plain tar or zstd) extraction, the `bundle.json` `image_id` read, and the
   `docker run` of `rust/tools/linux-validate/validate.sh`.
 
 RED first: committed while all four steps were still shell blocks and the
@@ -309,7 +309,6 @@ class ValidatePreparedSuitesTest(unittest.TestCase):
         self.assertEqual(
             run.calls[0],
             [
-                '--zstd',
                 '-xf',
                 str(run.root / 'tier2-input' / 'tier2-tree.tar.zst'),
                 '-C',

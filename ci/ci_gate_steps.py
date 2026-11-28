@@ -26,7 +26,7 @@ The first three are `flatpak-runtime-reuse`'s steps, in order:
   `ci/flatpak_runtime.py --repo … --output …` from the runner's uv.
 
 The fourth is `tier2-setup-consumer`'s `Validate Prepared OFF and ON Suites`:
-extract the prepared tree with `tar --zstd`, read the image id out of the
+extract the prepared tree with `tar -xf` (plain tar or zstd), read the image id out of the
 downloaded `bundle.json`, and run one container of
 `rust/tools/linux-validate/validate.sh` with `OBS_TIER2_MODES=OFF ON`. The uv
 bind mount is resolved on the host, exactly as `$(command -v uv)` was.
@@ -211,7 +211,6 @@ def validate_prepared_suites() -> int:
     status = run(
         [
             'tar',
-            '--zstd',
             '-xf',
             str(Path(runner_temp) / 'tier2-input' / 'tier2-tree.tar.zst'),
             '-C',
