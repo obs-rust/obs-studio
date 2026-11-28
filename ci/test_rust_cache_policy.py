@@ -22,7 +22,7 @@ class RustCachePolicyTest(unittest.TestCase):
                                      "Do not transfer an embedded store while its Rust consumer is bypassed")
                     self.assertNotRegex(step, r"(?m)^          cache: false$",
                                         "Preserve the other cache layers")
-                    if any(issue in step for issue in ("(#3027)", "(#3034)", "(#3767)", "(#5224)")):
+                    if any(issue in step for issue in ("(#3027)", "(#3034)", "(#3767)", "(#5224)", "(#5844)")):
                         # Tier 2 uses separate target trees; Cross Compile
                         # has no host Rust consumer. Neither reuses this cook.
                         cook_free += 1
@@ -31,7 +31,7 @@ class RustCachePolicyTest(unittest.TestCase):
                     self.assertIn("prebuild-deps-flags:", step)
                     self.assertNotIn("prebuild-deps: none", step)
         self.assertEqual(found, 15, "Audit new setup-soldr consumers explicitly")
-        self.assertEqual(cook_free, 5, "Audit each consumer that skips cook explicitly")
+        self.assertEqual(cook_free, 6, "Audit each consumer that skips cook explicitly")
 
     def test_all_consumers_inherit_the_rust_wrapper_bypass(self):
         for name in WORKFLOWS:

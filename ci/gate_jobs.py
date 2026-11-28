@@ -162,7 +162,8 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
         expected.add("Build 🧱 / macOS Rust Artifacts 🐧")
     if selected.windows:
         expected.add("Build 🧱 / Rust Tests 🦀 (windows, wine)")
-        expected.add("Build 🧱 / Rust Tier 2 (windows-2025-vs2026)")
+        # Windows Tier 2 also runs under Wine on Linux (#5844).
+        expected.add("Build 🧱 / Rust Tier 2 (windows, wine)")
     if any(path.endswith(".swift") for path in files):
         expected.add("Format 🔍 / swift-format")
     expected.update(("Validate Data 🕵️",) if data_selected(files) else ())

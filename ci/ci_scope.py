@@ -164,6 +164,13 @@ class Scope:
     cmocka_link: bool = False
 
 
+# The Windows Tier 2 Wine lane's own files start the Windows lane, so an edit to
+# the lane is proven by the lane itself (#5844).
+WINDOWS_TIER2_WINE_FILES = frozenset((
+    "ci/tier2_wine.py", "ci/cmocka_link_check.py", "ci/test_tier2_wine.py",
+))
+
+
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
 # `**` for any depth and `*` within one path segment. Rust crates linked into
 # libobs are added to tier2 at run time (linked_crates).
@@ -570,6 +577,7 @@ def scope(
     for path in files:
         qt |= is_qt(path, read)
         plat = path_platforms(path)
+        windows |= path in WINDOWS_TIER2_WINE_FILES
         tree_macos, tree_windows, tree_tier2 = tree_lanes(path)
         macos |= tree_macos
         windows |= tree_windows

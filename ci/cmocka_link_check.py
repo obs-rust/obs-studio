@@ -172,9 +172,12 @@ def cache_env(work: Path, tools: Path | None = None) -> dict[str, str]:
     return env
 
 
-def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
+def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str], all_tests: bool = False) -> None:
     reply = work / ".cmake/api/v1/reply"
     targets = discover_targets(reply)
+    if all_tests:
+        # Every cmocka executable, for the Wine run (ci/tier2_wine.py).
+        targets = ["libobs-cross-shared", "cmocka-tests"]
     if alias == "win-x64":
         # LLD and native LINK resolve late archive members differently. Enforce
         # the component boundary even when LLD happens to accept an import mix.
@@ -182,24 +185,26 @@ def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> Non
     if alias == "mac-arm64":
         targets = [*targets, *MAC_CLOSURE_TARGETS]
     (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
-    print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} Rust fixtures ({jobs} Ninja workers)", flush=True)
+    print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} targets ({jobs} Ninja workers)", flush=True)
+    # --all-tests tolerates executables the cross tree cannot build yet;
+    # ci/tier2_wine.py fails unless the unbuilt set equals its NOT_CROSS_BUILT.
     subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,
-                    "--", "-k", "0"], cwd=ROOT, env=env, check=True)
+                    "--", "-k", "0"], cwd=ROOT, env=env, check=not all_tests)
     if alias == "mac-arm64":
         verify_signed_images(work)
         record_registry(work, env)
 
 
-def link(alias: str, work: Path, jobs: int) -> None:
+def link(alias: str, work: Path, jobs: int, all_tests: bool = False) -> None:
     with tempfile.TemporaryDirectory(prefix="cmocka-link-cache-") as directory:
         env = cache_env(Path(directory), work / "compiler-cache")
         try:
-            _link(alias, work, jobs, env)
+            _link(alias, work, jobs, env, all_tests)
         finally:
             subprocess.run([env["CMAKE_C_COMPILER_LAUNCHER"], "--show-stats"], env=env, check=False)
 
 
-def _link(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
+def _link(alias: str, work: Path, jobs: int, env: dict[str, str], all_tests: bool = False) -> None:
     started = time.monotonic()
     target = TRIPLES[alias]
     local_gate.add_target(target)
@@ -233,7 +238,7 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
                     f"-DCMAKE_C_COMPILER_LAUNCHER={env['CMAKE_C_COMPILER_LAUNCHER']}",
                     f"-DCMAKE_CXX_COMPILER_LAUNCHER={env['CMAKE_CXX_COMPILER_LAUNCHER']}", *toolchain_args], cwd=ROOT, env=env, check=True)
     print(f"Tier 2 {alias}: configured in {time.monotonic() - configured:.2f}s", flush=True)
-    build_targets(alias, work, jobs, env)
+    build_targets(alias, work, jobs, env, all_tests)
     print(f"Tier 2 {alias}: linked in {time.monotonic() - started:.2f}s", flush=True)
 
 
@@ -241,11 +246,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--alias", choices=TRIPLES, default="win-x64")
     parser.add_argument("--build", type=Path)
+    parser.add_argument("--all-tests", action="store_true", help="build every cmocka executable, not only the Rust fixtures")
     parser.add_argument("--jobs", type=int, default=min(4, os.process_cpu_count() or 1))
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")
-    link(args.alias, (args.build or ROOT / f"build_cmocka_link_{args.alias}").resolve(), args.jobs)
+    link(args.alias, (args.build or ROOT / f"build_cmocka_link_{args.alias}").resolve(), args.jobs, args.all_tests)
     return 0
 
 

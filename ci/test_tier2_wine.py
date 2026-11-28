@@ -1,0 +1,83 @@
+#!/usr/bin/env -S uv run --script
+"""Windows Tier 2 runs on Linux under headless Wine in the merge queue (#5844).
+
+    uv run --no-project python -m unittest ci/test_tier2_wine.py
+
+The queue cross-builds the cmocka executables and runs them under Wine; the
+native windows-2025-vs2026 job (with its C-reference baseline) runs everywhere
+else. Wine must never open a window on a developer's desktop.
+"""
+
+from __future__ import annotations
+
+import re
+import unittest
+from pathlib import Path
+
+import tier2_wine
+from test_merge_queue import BUILD, job_block
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def condition(job: str) -> str:
+    header = job_block(BUILD, job).split("    steps:", 1)[0]
+    return re.search(r"^    if: (.+)$", header, re.M).group(1)
+
+
+class WorkflowTest(unittest.TestCase):
+    def test_wine_job_runs_on_prs_and_the_queue_and_runs_the_script(self):
+        block = job_block(BUILD, "rust-tier2-windows-wine")
+        self.assertTrue(block)
+        wine = condition("rust-tier2-windows-wine")
+        self.assertIn("needs.check-event.outputs.windows == 'true'", wine)
+        self.assertIn("fast_path != 'true'", wine)
+        self.assertNotIn("merge_group", wine)
+        self.assertIn("ci/cmocka_link_check.py --alias win-x64 --all-tests", block)
+        self.assertIn("ci/tier2_wine.py", block)
+        self.assertNotIn("windows-2025", block)
+
+    def test_native_windows_tier2_leaves_the_queue_and_prs(self):
+        native = condition("rust-tier2-windows")
+        self.assertIn("github.event_name != 'merge_group'", native)
+        self.assertIn("github.event_name != 'pull_request'", native)
+        self.assertNotIn("github.event_name == 'merge_group'", native)
+
+
+class ScopeTest(unittest.TestCase):
+    def test_the_lanes_own_files_start_the_windows_lane(self):
+        from ci_scope import scope
+        for path in ("ci/tier2_wine.py", "ci/cmocka_link_check.py"):
+            with self.subTest(path=path):
+                self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
+
+
+class HeadlessWineTest(unittest.TestCase):
+    def test_environment_never_reaches_a_display(self):
+        import os
+        os.environ["DISPLAY"], os.environ["WAYLAND_DISPLAY"] = ":0", "wayland-0"
+        try:
+            env = tier2_wine.wine_env(Path("/tmp/prefix"))
+        finally:
+            del os.environ["DISPLAY"], os.environ["WAYLAND_DISPLAY"]
+        self.assertNotIn("DISPLAY", env)
+        self.assertNotIn("WAYLAND_DISPLAY", env)
+        overrides = env["WINEDLLOVERRIDES"]
+        for name in ("mscoree,mshtml=", "winedbg.exe=d", "winemenubuilder.exe=d"):
+            self.assertIn(name, overrides)
+
+    def test_prefix_disables_the_crash_dialog_and_debugger(self):
+        # The shared runner (#5845) creates the prefix; tier2_wine.py defaults to it.
+        runner = (ROOT / "ci" / "wine-runner.sh").read_text()
+        self.assertIn("ShowCrashDialog", runner)
+        self.assertIn("AeDebug", runner)
+        self.assertEqual(tier2_wine.wine_command(), [str(ROOT / "ci" / "wine-runner.sh")])
+
+    def test_quarantine_names_a_reason_for_every_test(self):
+        self.assertTrue(tier2_wine.QUARANTINE)
+        for name, reason in tier2_wine.QUARANTINE.items():
+            self.assertGreater(len(reason), 40, name)
+
+
+if __name__ == "__main__":
+    unittest.main()
