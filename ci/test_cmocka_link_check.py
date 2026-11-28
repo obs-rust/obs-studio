@@ -42,27 +42,32 @@ class ScopeTest(unittest.TestCase):
 
 
 class ToolchainTest(unittest.TestCase):
-    def test_windows_uses_managed_clang_cl_and_the_target_sdk(self):
+    def test_windows_uses_the_soldr_cl_driver_and_the_lld_link_beside_it(self):
+        # The driver and its lld-link shim carry the SDK and compiler-rt builtins
+        # (`__udivti3`); the raw managed clang-cl and lld-link do not.
         with tempfile.TemporaryDirectory(prefix="tier2 sdk ") as temporary:
             work = Path(temporary)
-            (work / "soldr-tools").mkdir()
-            llvm = work / "llvm"
-            llvm.mkdir()
-            (llvm / "clang-cl").touch()
-            sdk = work / "sdk"
-            values = {"--print-ar": str(llvm / "llvm-lib"),
-                      "--print-rc": str(llvm / "llvm-rc"), "--print-sysroot": str(sdk)}
-            with mock.patch.object(cmocka_link_check.subprocess, "run",
-                                   side_effect=lambda args, **kw: mock.Mock(stdout=values[args[-1]])):
+            driver = work / "driver"
+            driver.mkdir()
+            for name in ("x86_64-pc-windows-msvc-clang-cl", "lld-link", "llvm-mt"):
+                (driver / name).touch()
+            values = {"--print-ar": str(driver / "llvm-lib"), "--print-rc": str(driver / "llvm-rc"),
+                      "--print-sysroot": str(work / "sdk"),
+                      "--print-cc": str(driver / "x86_64-pc-windows-msvc-clang-cl")}
+            calls = []
+
+            def run(args, **kw):
+                calls.append(args)
+                return mock.Mock(stdout=values[args[-1]])
+
+            with mock.patch.object(cmocka_link_check.subprocess, "run", side_effect=run):
                 toolchain = cmocka_link_check.windows_toolchain(work, "x86_64-pc-windows-msvc")
-            content = toolchain.read_text()
+            content = toolchain.read_text().replace("set(CMAKE_LINKER", "CMAKE_LINKER")
             self.assertIn("MultiThreadedDLL", content)
-            self.assertIn("lld-link", content)
-            self.assertIn(f'/libpath:"{sdk}/sdk/lib/um/x86_64"', content)
-            wrapper = (work / "soldr-tools/clang-cl").read_text()
-            self.assertIn("-imsvc", wrapper)
-            self.assertNotIn("-isystem", wrapper)
-            self.assertIn("--target=x86_64-pc-windows-msvc", wrapper)
+            self.assertIn("--driver-mode", next(c for c in calls if c[-1] == "--print-cc"))
+            self.assertIn(f"CMAKE_LINKER [==[{driver / 'lld-link'}]==]", content)
+            self.assertIn(str(driver / "x86_64-pc-windows-msvc-clang-cl"), content)
+            self.assertNotIn("soldr-tools", content)
 
 
 class BuildTest(unittest.TestCase):
