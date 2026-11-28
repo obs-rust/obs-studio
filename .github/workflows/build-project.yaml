@@ -3731,6 +3731,132 @@ jobs:
           path: ${{ runner.temp }}/ffmpeg
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+  # Linux producer of the run-only macOS Tier 2 bundle (#5009, #5843): every
+  # CMake/CTest artifact is cross-built and signed here with soldr's Darwin
+  # LLVM; the macOS consumer below only verifies the seal and runs CTest.
+  rust-tier2-macos-build:
+    timeout-minutes: 60
+    name: macOS Tier 2 Artifacts 🐧
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    needs: [check-event, ci-mode]
+    outputs:
+      common-parent: ${{ steps.workspace.outputs.common-parent }}
+      artifact-id: ${{ steps.bundle.outputs.artifact-id }}
+    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
+    env:
+      COMMON_PARENT: /opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      # CTest records absolute build and source paths: build and run at the same
+      # real path (/opt resolves identically on Linux and macOS).
+      - name: Place common checkout
+        id: workspace
+        run: |
+          sudo mkdir -p "${COMMON_PARENT}"
+          sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
+          uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
+        with:
+          verdict-scope: build-project
+          version: 0.9.54
+          build-cache: false
+          prebuild-deps: none
+          cargo-registry-cache: true
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          solo-toolchain-cache: false
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+
+      - name: Cross-build and sign the Tier 2 closure 🔗
+        run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias mac-arm64 --build "${GITHUB_WORKSPACE}/build_cmocka_link_mac-arm64"
+
+      - name: Seal and pack the run-only bundle 📦
+        run: |
+          uv run --no-project ci/macos_tier2_bundle.py stage --work "${GITHUB_WORKSPACE}/build_cmocka_link_mac-arm64" --output "${RUNNER_TEMP}/macos-tier2-bundle" --source-sha "${GITHUB_SHA}"
+          uv run --no-project ci/macos_test_workspace.py pack --bundle "${RUNNER_TEMP}/macos-tier2-bundle" --archive "${RUNNER_TEMP}/macos-tier2.tar.gz"
+
+      - name: Upload Tier 2 bundle
+        id: bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-tier2-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/macos-tier2.tar.gz
+            ${{ runner.temp }}/macos-tier2.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+  # Run-only: nothing compiles on macOS. The existing CTest registry runs against
+  # the C reference libobs, then the hybrid libobs, from the Linux bundle.
+  rust-tier2-macos-ctest:
+    timeout-minutes: 30
+    name: Rust Tier 2 CTest (macos-26)
+    runs-on: macos-26
+    needs: [check-event, ci-mode, rust-tier2-macos-build]
+    if: ${{ always() && !cancelled() && needs.rust-tier2-macos-build.result == 'success' && github.event_name != 'merge_group' && github.event_name != 'pull_request' }}
+    env:
+      COMMON_PARENT: ${{ needs.rust-tier2-macos-build.outputs.common-parent }}
+    steps:
+      # Source files are runtime test data.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Place common checkout
+        id: workspace
+        run: |
+          sudo mkdir -p "${COMMON_PARENT}"
+          sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
+          uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+      - name: Download Tier 2 bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.rust-tier2-macos-build.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/macos-tier2-download
+
+      - name: Verify and unpack Tier 2 bundle
+        run: uv run --no-project ci/macos_test_workspace.py unpack --archive "${RUNNER_TEMP}/macos-tier2-download/macos-tier2.tar.gz"
+
+      - name: Run prebuilt Tier 2 CTest
+        run: uv run --no-project ci/macos_tier2_bundle.py run --source-sha "${GITHUB_SHA}" --jobs 3
+
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
   rust-tier2-macos:
     # 2x the 17-24 min the lane now runs; 25 timed out on master (#5415, #2593 A).
     timeout-minutes: 45
