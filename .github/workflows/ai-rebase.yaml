@@ -95,6 +95,7 @@ jobs:
 
   runner-loss-retry:
     if: >-
+      (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio') &&
       github.event_name == 'workflow_run' && github.repository == 'obs-rust/obs-studio' &&
       github.event.workflow_run.conclusion == 'failure' &&
       github.event.workflow_run.run_attempt < 3 &&
