@@ -48,6 +48,7 @@
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-sceneitem-addref-fields.c.h"
 #include "libobs/obs-sceneitem-defer-update-fields.c.h"
+#include "libobs/obs-scenes-prune.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
 #include "libobs/obs-source-activate-fields.c.h"
 #include "libobs/obs-source-active-child-fields.c.h"

@@ -15894,6 +15894,19 @@
         "libobs/data"
       ]
     },
+    "test_scene_prune_sources": {
+      "sources": [
+        "test/cmocka/test_scene_prune_sources.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_render_plan_steps": {
       "sources": [
         "test/cmocka/test_scene_render_plan_steps.c",
@@ -29534,6 +29547,22 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_prune_sources": {
+      "target": "test_scene_prune_sources",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_render_plan_steps": {
       "target": "test_scene_render_plan_steps",
