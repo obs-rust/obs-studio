@@ -2,7 +2,9 @@
 """Pre-queue Tier 2 cross-link selection and configured target discovery."""
 from __future__ import annotations
 
+import hashlib
 import json
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +12,7 @@ from unittest import mock
 
 import ci_scope
 import cmocka_link_check
+import test_macos_test_artifact
 
 
 class ScopeTest(unittest.TestCase):
@@ -70,12 +73,15 @@ class BuildTest(unittest.TestCase):
                 work = Path(temporary)
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
                      mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
+                     mock.patch.object(cmocka_link_check, "verify_signed_images"), \
+                     mock.patch.object(cmocka_link_check, "record_registry"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run") as run:
                     cmocka_link_check.build_targets(alias, work, 3, {})
+                expected = inventory + (cmocka_link_check.MAC_CLOSURE_TARGETS if alias == "mac-arm64" else [])
                 args = run.call_args.args[0]
                 self.assertEqual(args[args.index("--parallel") + 1], "3")
-                self.assertEqual(args[args.index("--target") + 1:args.index("--")], inventory)
-                self.assertEqual(json.loads((work / "link-targets.json").read_text()), inventory)
+                self.assertEqual(args[args.index("--target") + 1:args.index("--")], expected)
+                self.assertEqual(json.loads((work / "link-targets.json").read_text()), expected)
 
     def test_alias_link_failures_propagate(self):
         import subprocess
@@ -112,6 +118,68 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(Path(env["CCACHE_CONFIGPATH"]).read_text(), "")
             self.assertEqual(env["CCACHE_MAXSIZE"], "512M")
             self.assertEqual(env["CCACHE_COMPILERCHECK"], "content")
+
+
+class MacClosureTest(unittest.TestCase):
+    """mac-arm64 builds and signs the whole CTest closure on Linux (#5009)."""
+
+    def test_mac_builds_every_cmocka_test_but_windows_keeps_the_rust_inventory(self):
+        inventory = ["libobs-cross-shared", "test_existing_rust"]
+        for alias, closure in (("mac-arm64", True), ("win-x64", False)):
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
+                     mock.patch.object(cmocka_link_check, "verify_signed_images") as verify, \
+                     mock.patch.object(cmocka_link_check, "record_registry"), \
+                     mock.patch.object(cmocka_link_check.subprocess, "run") as run:
+                    cmocka_link_check.build_targets(alias, work, 2, {})
+                args = run.call_args_list[0].args[0]
+                targets = args[args.index("--target") + 1:args.index("--")]
+                self.assertEqual("cmocka-tests" in targets, closure)
+                self.assertEqual(verify.called, closure)
+
+    def test_every_linked_image_must_carry_a_valid_signature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            (work / "test").mkdir()
+            image = test_macos_test_artifact.SignatureTest.signed_image()
+            (work / "test/test_a").write_bytes(image)
+            dylib = bytearray(image)
+            struct.pack_into("<I", dylib, 12, 6)
+            # Re-seal the single signed page: hash sits after the 20-byte superblob and 44-byte header.
+            dylib[4096 + 64:4096 + 96] = hashlib.sha256(bytes(dylib[:4096])).digest()
+            (work / "test/libx.dylib").write_bytes(bytes(dylib))
+            obj = bytearray(4096)
+            struct.pack_into("<8I", obj, 0, 0xFEEDFACF, 0x100000C, 0, 1, 0, 0, 0, 0)
+            (work / "test/x.o").write_bytes(bytes(obj))
+            (work / "test/notes.txt").write_text("text")
+            self.assertEqual(cmocka_link_check.verify_signed_images(work), 2)
+            unsigned = bytearray(image)
+            struct.pack_into("<I", unsigned, 16, 0)
+            (work / "test/test_b").write_bytes(bytes(unsigned))
+            with self.assertRaisesRegex(ValueError, "missing arm64 code signature"):
+                cmocka_link_check.verify_signed_images(work)
+
+    def test_no_images_is_a_failure_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "no linked Mach-O"):
+                cmocka_link_check.verify_signed_images(Path(temporary))
+
+    def test_darwin_runtime_comes_from_the_managed_receipt_and_must_exist(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = Path(temporary)
+            (runtime / "libclang_rt.osx.a").touch()
+            receipt = json.dumps({"compiler_rt": str(runtime)})
+            with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)) as run:
+                flags = cmocka_link_check.darwin_runtime_flags()
+            self.assertEqual(run.call_args.args[0][:3], ["soldr", "toolchain", "darwin"])
+            self.assertEqual(flags, {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime / "libclang_rt.osx.a")
+                                     for kind in ("EXE",)})
+            (runtime / "libclang_rt.osx.a").unlink()
+            with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)):
+                with self.assertRaisesRegex(FileNotFoundError, "libclang_rt.osx.a"):
+                    cmocka_link_check.darwin_runtime_flags()
 
 
 class DiscoveryTest(unittest.TestCase):

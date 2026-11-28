@@ -58,10 +58,17 @@ if(OS_MACOS)
   )
 endif()
 
+find_package(SIMDe REQUIRED)
+find_package(Uthash REQUIRED)
+find_package(Threads REQUIRED)
 add_library(OBS::libobs ALIAS libobs-cross-shared)
 add_library(libobs-objects ALIAS libobs-cross-shared-objects)
 add_library(OBS::libobs-core-modules ALIAS libobs-cross-generated)
 target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+# The real libobs exposes SIMDe to every consumer (libobs/CMakeLists.txt).
+target_link_libraries(libobs-cross-shared INTERFACE SIMDe::SIMDe Threads::Threads)
+# OBS::libobs-core-modules publishes obs-core-modules.h from the libobs directory.
+target_include_directories(libobs-cross-generated PUBLIC "${OBS_SOURCE_ROOT}/libobs")
 # Rust object directives retain Windows case on Linux (MSVCRT/OLDNAMES).
 if(OS_WINDOWS)
   link_directories("${CMAKE_BINARY_DIR}/cross-case-libs")
