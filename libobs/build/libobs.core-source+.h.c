@@ -101,6 +101,7 @@
 #include "libobs/obs-source-module-fields.c.h"
 #include "libobs/obs-source-module-roots.c.h"
 #include "libobs/obs-source-mute-monitor-hotkey-registration.c.h"
+#include "libobs/obs-source-muted-volume-fields.c.h"
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-output-capture-device-fields.c.h"
 #include "libobs/obs-source-preload-video-internal-fields.c.h"

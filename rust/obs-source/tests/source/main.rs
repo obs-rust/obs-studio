@@ -128,6 +128,8 @@ mod monitoring;
 mod monitoring_parity;
 mod mute_monitor_hotkeys;
 mod mute_monitor_hotkeys_parity;
+mod muted_volume;
+mod muted_volume_parity;
 mod output_capture_device;
 mod output_capture_device_parity;
 mod output_cea708;

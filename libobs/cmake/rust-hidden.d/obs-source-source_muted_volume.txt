@@ -1,0 +1,5 @@
+# obs-source-muted-volume.c.h (obs-source): the two mute steps around the
+# push-to-mute and push-to-talk gate. Declared in obs-internal.h without
+# EXPORT, so the shims stay hidden.
+source_muted
+get_source_volume
