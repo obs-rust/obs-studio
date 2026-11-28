@@ -5071,6 +5071,16 @@
         "libobs/data"
       ]
     },
+    "test_find_data_file": {
+      "sources": [
+        "test/cmocka/test_find_data_file.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_first_run_wizard": {
       "sources": [
         "frontend/tests/test_first_run_wizard.cpp"
@@ -25973,6 +25983,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_find_data_file": {
+      "target": "test_find_data_file",
+      "command": [
+        "${target}"
+      ]
     },
     "test_first_run_wizard": {
       "target": "test_first_run_wizard",

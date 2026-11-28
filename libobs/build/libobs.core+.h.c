@@ -22,6 +22,7 @@
 #include "libobs/obs-enum-contexts-fields.c.h"
 #include "libobs/obs-enum-scenes-fields.c.h"
 #include "libobs/obs-enum-sources-fields.c.h"
+#include "libobs/obs-find-data-file.c.h"
 #include "libobs/obs-get-audio-fields.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
 #include "libobs/obs-get-main-texture-fields.c.h"
