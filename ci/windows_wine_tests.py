@@ -82,7 +82,13 @@ WINE_SKIPS: tuple[str, ...] = (
     "linear::vec2_parity::ceil_floor_edge_values_match_c_oracle",
     # The client sends Host "[127.0.0.1]" where the test expects the name.
     "ipv6::rejects_brackets_around_non_ipv6_hosts",
-    # Wine's UCRT: wcstombs in the C locale converts an unconvertible char
+    # Wine 10 (the CI runner) differs from the C oracle on UTF-8 conversion
+    # capacity/size-query results and on the missing-binary error code.
+    "tests::platform::pipe::windows_process::pipe_create2_missing_binary_mirrors_test_pipe_create2_missing_binary",
+    "tests::platform::platform_conversions_parity::capacity_is_the_only_difference",
+    "tests::platform::platform_conversions_parity::characterization_inputs_match_oracle",
+    "tests::platform::platform_conversions_parity::utf8_to_wcs_matches_oracle",
+    # Wine UCRT: wcstombs in the C locale converts an unconvertible char
     # (returns 2, not 0), and strftime %Z names the zone differently.
     "tests::platform::platform_conversions::test_wcs_to_mbs_c_locale",
     "tests::platform::platform_filename::zone_specifiers",
