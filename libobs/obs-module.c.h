@@ -507,11 +507,6 @@ static size_t copy_size_obs_encoder_info(size_t size)
 	return whole_fields_size(size, u32_fields, sizeof(u32_fields) / sizeof(u32_fields[0]));
 }
 
-static size_t copy_size_obs_service_info(size_t size)
-{
-	return whole_fields_size(size, NULL, 0);
-}
-
 #define REGISTER_OBS_DEF(size_var, structure, dest, info)                                               \
 	do {                                                                                            \
 		struct structure data = {0};                                                            \
@@ -556,7 +551,6 @@ static size_t copy_size_obs_service_info(size_t size)
 #define source_warn(format, ...) blog(LOG_WARNING, "obs_register_source: " format, ##__VA_ARGS__)
 #define output_warn(format, ...) blog(LOG_WARNING, "obs_register_output: " format, ##__VA_ARGS__)
 #define encoder_warn(format, ...) blog(LOG_WARNING, "obs_register_encoder: " format, ##__VA_ARGS__)
-#define service_warn(format, ...) blog(LOG_WARNING, "obs_register_service: " format, ##__VA_ARGS__)
 
 void obs_register_source_s(const struct obs_source_info *info, size_t size)
 {
@@ -881,58 +875,6 @@ error:
 	HANDLE_ERROR(size, obs_encoder_info, info);
 }
 
-void obs_register_service_s(const struct obs_service_info *info, size_t size)
-{
-	enum obs_module_type_rules_error err;
-	uint32_t callbacks = 0;
-
-	if (find_service(info->id)) {
-		service_warn("Service id '%s' already exists!  "
-			     "Duplicate library?",
-			     info->id);
-		goto error;
-	}
-
-	has_val(struct obs_service_info, get_name, GET_NAME);
-	has_val(struct obs_service_info, create, CREATE);
-	has_val(struct obs_service_info, destroy, DESTROY);
-	has_val(struct obs_service_info, get_protocol, GET_PROTOCOL);
-
-	err = obs_module_type_rules_service_check(callbacks);
-	switch (err) {
-	case OBS_MODULE_TYPE_RULES_OK:
-		break;
-	case OBS_MODULE_TYPE_RULES_NO_GET_NAME:
-		type_required(get_name, obs_register_service);
-		break;
-	case OBS_MODULE_TYPE_RULES_NO_CREATE:
-		type_required(create, obs_register_service);
-		break;
-	case OBS_MODULE_TYPE_RULES_NO_DESTROY:
-		type_required(destroy, obs_register_service);
-		break;
-	case OBS_MODULE_TYPE_RULES_NO_GET_PROTOCOL:
-		type_required(get_protocol, obs_register_service);
-		break;
-	default:
-		break;
-	}
-	if (err != OBS_MODULE_TYPE_RULES_OK)
-		goto error;
-
-	REGISTER_OBS_DEF(size, obs_service_info, obs->service_types, info);
-
-	if (loadingModule) {
-		char *service_id = bstrdup(info->id);
-		da_push_back(loadingModule->services, &service_id);
-	}
-
-	return;
-
-error:
-	HANDLE_ERROR(size, obs_service_info, info);
-}
-
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef type_required
 #undef has_val
@@ -943,4 +885,3 @@ error:
 #undef source_warn
 #undef output_warn
 #undef encoder_warn
-#undef service_warn
