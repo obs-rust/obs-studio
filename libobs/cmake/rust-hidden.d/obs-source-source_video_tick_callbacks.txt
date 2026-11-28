@@ -1,0 +1,8 @@
+# obs-source-video-tick-callbacks.c.h (obs-source): the per-source callback
+# steps of obs_source_video_tick(). Declared in obs-internal.h without
+# EXPORT, so the shims stay hidden.
+obs_source_deferred_update
+activate_source
+deactivate_source
+show_source
+hide_source

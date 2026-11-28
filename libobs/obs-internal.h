@@ -1910,6 +1910,13 @@ extern void remove_async_frame(obs_source_t *source, struct obs_source_frame *fr
 extern void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame);
+/* The per-source callback steps of obs_source_video_tick()
+ * (obs-source-video-tick-callbacks.c.h). */
+extern void obs_source_deferred_update(obs_source_t *source);
+extern void activate_source(obs_source_t *source);
+extern void deactivate_source(obs_source_t *source);
+extern void show_source(obs_source_t *source);
+extern void hide_source(obs_source_t *source);
 /* Adapters for the Rust async-frame entry points
  * (obs-source-frame-wrappers-fields.c.h). */
 extern bool obs_source_frame_wrappers_destroying(obs_source_t *source);
