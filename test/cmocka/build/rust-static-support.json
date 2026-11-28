@@ -16,6 +16,7 @@
     "test/cmocka/encoder-align-frame-rate-divisor-link-support.c",
     "test/cmocka/encoder-get-name-link-support.c",
     "test/cmocka/encoder-last-error-link-support.c",
+    "test/cmocka/encoder-roi-list-link-support.c",
     "test/cmocka/encoder-video-tex-active-fields-link-support.c",
     "test/cmocka/encoder-video-tex-active-mix-link-support.c",
     "test/cmocka/encoder-weak-refs-link-support.c",

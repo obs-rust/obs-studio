@@ -180,6 +180,7 @@ pub mod encoder_properties;
 pub mod encoder_registry_queries;
 pub mod encoder_reroute;
 pub mod encoder_roi;
+pub mod encoder_roi_list;
 pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
 pub mod encoder_set_name;

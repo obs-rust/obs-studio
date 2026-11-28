@@ -2587,6 +2587,21 @@ struct obs_encoder_clear_roi_fields {
 };
 struct obs_encoder_clear_roi_fields obs_encoder_clear_roi_fields(obs_encoder_t *encoder);
 
+/* Private ROI list storage and host operations; not public ABI. */
+struct obs_encoder_roi_list_fields {
+	struct darray *rois;
+	uint32_t *increment;
+	const uint32_t *caps;
+	const uint32_t *scaled_width;
+	const uint32_t *scaled_height;
+	void *const *media;
+	void *mutex;
+	void (*lock)(void *mutex);
+	void (*unlock)(void *mutex);
+	void (*video_size)(void *media, uint32_t *width, uint32_t *height);
+};
+struct obs_encoder_roi_list_fields obs_encoder_roi_list_fields(obs_encoder_t *encoder);
+
 /* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
 struct obs_encoder_roi_state_fields {
 	const size_t *count;

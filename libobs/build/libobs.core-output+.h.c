@@ -33,7 +33,7 @@
 #include "libobs/obs-encoder-properties-fields.c.h"
 #include "libobs/obs-encoder-registry-query-fields.c.h"
 #include "libobs/obs-encoder-reroute-fields.c.h"
-#include "libobs/obs-encoder-roi-list.c.h"
+#include "libobs/obs-encoder-roi-list-fields.c.h"
 #include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder-set-group.c.h"
