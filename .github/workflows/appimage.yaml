@@ -210,6 +210,7 @@ jobs:
               $(pkg-config --cflags --libs gbm egl glesv2 libavcodec libavformat libavutil) \
               -Wl,--disable-new-dtags -Wl,-rpath,"\$ORIGIN/../lib"
             gcc -O2 -Wall -Wextra -Werror -shared -fPIC -o obs-appimage-fake-nvml.so build-aux/appimage/fake-nvml.c -ldl'
+          sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
           ffmpeg -v error -f lavfi -i testsrc2=size=128x72:rate=12 -frames:v 12 \
             -c:v libx264 -pix_fmt yuv420p -bf 0 -crf 18 gpu-h264.mp4
@@ -382,7 +383,7 @@ jobs:
       # AppImage), so the recording it made is checked out here.
       - name: Check the recording 🎞️
         run: |
-          command -v ffmpeg >/dev/null || sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null; }
           uv run --no-project build-aux/appimage/verify_recording.py --self-test
           # (test-appimage.sh allows a run without the test producers only on
           # Ubuntu 22.04, and fails anywhere else)
