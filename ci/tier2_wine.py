@@ -55,43 +55,30 @@ QUARANTINE: dict[str, str] = {
 # (measured with `cmocka_link_check.py --all-tests`): some miss include paths the
 # cross tree does not set (uthash.h, obs-core-modules.h), some fail to link
 # w32-pthreads imports, compiler-rt `__udivti3` or a test-only libobs seam, and
-# four (audio_io, platform_cocoa, utf8_windows, video_io) have no cross target. The
-# build is run with `-k 0`; this script fails when the unbuilt set differs from
-# this list, so it can only shrink on purpose. These keep their Windows
+# have no cross target. The build is run with `-k 0`; this script fails when a
+# test outside this list stops building, and notes a stale entry, so the list
+# can only shrink. These keep their Windows
 # coverage in the nightly native rust-tier2-windows job.
 NOT_CROSS_BUILT = frozenset(
     {
-        "test_audio_io",
         "test_audio_seam",
-        "test_core_module_manifest",
         "test_display_seam",
         "test_encoder_audio_start_frames_steps",
         "test_encoder_audio_start_steps",
-        "test_encoder_group_move",
         "test_encoder_pause_steps",
         "test_graphics_immediate_render",
-        "test_hotkey_binding_getters",
         "test_output_begin_steps",
-        "test_output_caption_append",
         "test_output_caption_queue",
         "test_output_caption_text",
-        "test_output_caption_text1",
         "test_output_delay",
-        "test_output_delay_e2e",
         "test_output_filename_reserve",
         "test_output_interleave",
         "test_output_raw_audio_steps",
         "test_output_raw_audio_trim_steps",
-        "test_output_reconnect_route",
         "test_platform_cocoa",
-        "test_reset_audio",
-        "test_reset_audio2",
         "test_scene_audio_action_steps",
         "test_scene_audio_window_steps",
         "test_scene_item_crop_setter",
-        "test_scene_item_transition_serialization",
-        "test_service_state",
-        "test_set_locale",
         "test_source_audio_place_steps",
         "test_source_deinterlace_seam",
         "test_source_transition_seam_calls",
@@ -104,7 +91,6 @@ NOT_CROSS_BUILT = frozenset(
         "test_transition_sample_time_steps",
         "test_utf8_windows",
         "test_video_clock_race",
-        "test_video_io",
         "test_video_stats_race",
         "test_win_wsc_product_refs",
     }
@@ -214,10 +200,12 @@ def runnable_tests(build: Path) -> list[dict] | None:
     # CTest drops the command of a test whose executable target is not built.
     unbuilt = {t["name"] for t in listed if not t.get("command")}
     unbuilt |= {t["name"] for t in listed if any(p.endswith(".exe") and not Path(p).exists() for p in t.get("command", [])[:2])}
-    if unbuilt != NOT_CROSS_BUILT:
-        print(f"ERROR: unbuilt tests differ from NOT_CROSS_BUILT: "
-              f"newly missing {sorted(unbuilt - NOT_CROSS_BUILT)}, now building {sorted(NOT_CROSS_BUILT - unbuilt)}")
+    if unbuilt - NOT_CROSS_BUILT:
+        print(f"ERROR: tests stopped cross-building: {sorted(unbuilt - NOT_CROSS_BUILT)}")
         return None
+    if NOT_CROSS_BUILT - unbuilt:
+        # They run below; the list may only shrink, so drop them from it.
+        print(f"NOTE: now cross-building, remove from NOT_CROSS_BUILT: {sorted(NOT_CROSS_BUILT - unbuilt)}")
     tests = []
     for test in listed:
         # A Windows executable, possibly behind a CMAKE_CROSSCOMPILING_EMULATOR
