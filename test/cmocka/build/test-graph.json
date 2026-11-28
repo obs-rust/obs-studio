@@ -11662,6 +11662,22 @@
         ]
       }
     },
+    "test_output_strong_ref": {
+      "sources": [
+        "test/cmocka/test_output_strong_ref.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_supported_codecs": {
       "sources": [
         "test/cmocka/test_output_supported_codecs.c"
@@ -28090,6 +28106,13 @@
         ]
       },
       "suite": "graphics"
+    },
+    "test_output_strong_ref": {
+      "target": "test_output_strong_ref",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_output_supported_codecs": {
       "target": "test_output_supported_codecs",
