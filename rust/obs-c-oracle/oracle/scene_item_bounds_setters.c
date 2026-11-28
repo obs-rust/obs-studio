@@ -467,3 +467,60 @@ unsigned oracle_scene_bounds_defer_probe(long initial, unsigned flags, const uns
 		abort();
 	return result;
 }
+
+/* Transform setter parity reuses this oracle's item-local update recorder,
+ * real recursive parent mutex, and independent-thread lock observer. */
+typedef void (*xform_setter)(obs_sceneitem_t *, const struct vec2 *);
+void oracle_scene_bounds_xform_record(const obs_sceneitem_t *item);
+unsigned oracle_scene_bounds_xform_probe(xform_setter original, xform_setter rust, unsigned which, const float *value,
+					 int32_t defer, unsigned flags);
+void oracle_scene_bounds_xform_record(const obs_sceneitem_t *item)
+{
+	bounds_record(item, 1);
+}
+unsigned oracle_scene_bounds_xform_probe(xform_setter original, xform_setter rust, unsigned which, const float *value,
+					 int32_t defer, unsigned flags)
+{
+	struct obs_scene scene = {0};
+	if (pthread_mutex_init_recursive(&scene.video_mutex))
+		abort();
+	scene.is_group = (flags & 2) != 0;
+	struct obs_scene *parent = (flags & 1) ? &scene : NULL;
+	struct bounds_item expected, actual;
+	bounds_item_init(&expected, parent, 0);
+	expected.item.absolute_coordinates = (flags & 4) != 0;
+	expected.item.is_group = (flags & 8) != 0;
+	expected.item.is_scene = (flags & 16) != 0;
+	expected.item.defer_update = defer;
+	expected.item.update_transform = (flags & 64) != 0;
+	vec2_set(&expected.item.scale_ref, 3840.0f, 2160.0f);
+	memcpy(&actual, &expected, sizeof(actual));
+	struct vec2 input;
+	vec2_set(&input, value[0], value[1]);
+	struct vec2 *a = &input, *b = &input;
+	if ((flags & 32) && which != 1) {
+		a = which == 0 ? &expected.item.pos : &expected.item.scale;
+		b = which == 0 ? &actual.item.pos : &actual.item.scale;
+		vec2_copy(a, &input);
+		vec2_copy(b, &input);
+	}
+	unsigned result = 0;
+	for (unsigned repeat = 0; repeat < 2; repeat++) {
+		expected.count = actual.count = 0;
+		memset(expected.events, 0, sizeof(expected.events));
+		memset(actual.events, 0, sizeof(actual.events));
+		original(&expected.item, a);
+		rust(&actual.item, b);
+		if (memcmp(&expected.item, &actual.item, sizeof(expected.item)))
+			result |= 1;
+		if (expected.count != actual.count || memcmp(expected.events, actual.events, sizeof(expected.events)))
+			result |= 2;
+		if (parent && bounds_held(&actual.item))
+			result |= 4;
+		if (memcmp(&input, value, sizeof(input)))
+			result |= 8;
+	}
+	if (pthread_mutex_destroy(&scene.video_mutex))
+		abort();
+	return result;
+}

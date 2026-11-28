@@ -43,6 +43,7 @@
 #include "libobs/obs-scene-item-set-visibility-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
+#include "libobs/obs-scene-item-xform-setters-fields.c.h"
 #include "libobs/obs-scene-ref-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
