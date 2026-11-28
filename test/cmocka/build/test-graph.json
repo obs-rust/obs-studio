@@ -21229,6 +21229,16 @@
         "libobs/data"
       ]
     },
+    "test_transition_uuid_lookup": {
+      "sources": [
+        "test/cmocka/test_transition_uuid_lookup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_type_catalog_enum": {
       "sources": [
         "test/cmocka/test_type_catalog_enum.c"
@@ -31599,6 +31609,21 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_transition_uuid_lookup": {
+      "target": "test_transition_uuid_lookup",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_type_catalog_enum": {
       "target": "test_type_catalog_enum",
