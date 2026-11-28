@@ -9,6 +9,13 @@ if(OS_LINUX OR OS_MACOS)
   set(_preflight_cargo_environment)
   set(_preflight_manifest "${CMAKE_SOURCE_DIR}/rust/obs-preflight-ffi/Cargo.toml")
   set(_preflight_target_dir "${CMAKE_BINARY_DIR}/obs-preflight-cargo")
+  # cmake/cross builds the archive for the Darwin or Windows target, not the host.
+  set(_preflight_target_args)
+  set(_preflight_target_subdir "")
+  if(OBS_CROSS_TIER2 AND Rust_CARGO_TARGET)
+    set(_preflight_target_args --target "${Rust_CARGO_TARGET}")
+    set(_preflight_target_subdir "${Rust_CARGO_TARGET}/")
+  endif()
   list(APPEND _preflight_cargo_environment "CARGO_TARGET_DIR=${_preflight_target_dir}")
   file(
     GLOB_RECURSE _preflight_rust_sources
@@ -18,13 +25,13 @@ if(OS_LINUX OR OS_MACOS)
   )
   set(
     _preflight_archive
-    "${_preflight_target_dir}/release/${CMAKE_STATIC_LIBRARY_PREFIX}obs_preflight_ffi${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    "${_preflight_target_dir}/${_preflight_target_subdir}release/${CMAKE_STATIC_LIBRARY_PREFIX}obs_preflight_ffi${CMAKE_STATIC_LIBRARY_SUFFIX}"
   )
   add_custom_command(
     OUTPUT "${_preflight_archive}"
     COMMAND
       "${CMAKE_COMMAND}" -E env ${_preflight_cargo_environment} ${_preflight_cargo_command} build --manifest-path
-      "${CMAKE_SOURCE_DIR}/Cargo.toml" --package obs-preflight-ffi --lib --release --locked
+      "${CMAKE_SOURCE_DIR}/Cargo.toml" --package obs-preflight-ffi --lib --release --locked ${_preflight_target_args}
     DEPENDS
       "${_preflight_manifest}"
       "${CMAKE_SOURCE_DIR}/rust/obs-preflight/Cargo.toml"

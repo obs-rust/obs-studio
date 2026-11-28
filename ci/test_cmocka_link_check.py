@@ -175,7 +175,7 @@ class MacClosureTest(unittest.TestCase):
                 flags = cmocka_link_check.darwin_runtime_flags()
             self.assertEqual(run.call_args.args[0][:3], ["soldr", "toolchain", "darwin"])
             self.assertEqual(flags, {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime / "libclang_rt.osx.a")
-                                     for kind in ("EXE", "SHARED", "MODULE")})
+                                     for kind in ("EXE",)})
             (runtime / "libclang_rt.osx.a").unlink()
             with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)):
                 with self.assertRaisesRegex(FileNotFoundError, "libclang_rt.osx.a"):

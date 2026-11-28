@@ -95,6 +95,21 @@ def verify_signed_images(work: Path) -> int:
     return count
 
 
+def darwin_runtime_flags() -> dict[str, str]:
+    """Link flags for libclang_rt.osx.a (soldr's managed Darwin compiler-rt).
+
+    The stock SDK driver has no builtins for @available checks, which the
+    VideoToolbox tests use (__isPlatformVersionAtLeast).
+    """
+    receipt = json.loads(subprocess.run(
+        ["soldr", "toolchain", "darwin", "--target", TRIPLES["mac-arm64"], "--sdk-version", "26.5", "--json"],
+        cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+    runtime = Path(receipt["compiler_rt"]) / "libclang_rt.osx.a"
+    if not runtime.is_file():
+        raise FileNotFoundError(f"soldr Darwin toolchain is missing {runtime}")
+    return {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime) for kind in ("EXE",)}
+
+
 def record_registry(work: Path, env: dict[str, str]) -> None:
     """Record the CTest registry this closure was built for (parity evidence)."""
     names = subprocess.run(["ctest", "--test-dir", str(work), "-N"], env=env, check=True,
@@ -200,6 +215,8 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
         wrapper.write_text(f'#!/bin/sh\nexec soldr {name} "$@"\n')
         wrapper.chmod(0o755)
     toolchain_args = [f"-DCMAKE_TOOLCHAIN_FILE={windows_toolchain(work, target)}"] if alias == "win-x64" else []
+    if alias == "mac-arm64":
+        toolchain_args = [f"-D{key}={value}" for key, value in darwin_runtime_flags().items()]
     query = work / ".cmake/api/v1/query/codemodel-v2"
     query.parent.mkdir(parents=True, exist_ok=True)
     query.touch()
