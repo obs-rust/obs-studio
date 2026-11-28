@@ -72,6 +72,14 @@ WINE_SKIPS: tuple[str, ...] = (
     # Flaky under Wine: "Sharing violation" (os error 32) on a temp file the test
     # reopens; passes on some runs.
     "obs_core::module_load_metadata_parity::differential_generated_fields",
+    # Same "Sharing violation" on the final remove_dir_all, seen only on the
+    # self-hosted Dell runners (run 46113979795); native Windows passes.
+    "obs_core::module_load_metadata_parity::manifests_and_typed_defaults",
+    # Wine on the self-hosted Dell runners: the C oracle's safe replace over an
+    # existing file does not take effect (stays "old") and the Rust output is
+    # NotFound after close (run 46113979795); hosted Wine and native Windows pass.
+    "tests::serializer::file_serializer_parity::safe_ext_and_replace_match_oracle",
+    "tests::serializer::file_serializer_parity::safe_output_matches_oracle",
     # Exit-watchdog helper: the hang-in-ExitProcess scenario differs under Wine's
     # loader (failure output not captured; not root-caused).
     "exit_watchdog::helper::windows::the_helper_ends_a_hang_in_exit_process",
