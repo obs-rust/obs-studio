@@ -379,13 +379,13 @@ class CiScopeTest(unittest.TestCase):
         ))
         probe = blocks["select-mq-runner"]
         # Hosted except merge_group with FORGE_QUICK_LABELS set (#5376).
-        self.assertIn("runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}", probe)
+        self.assertIn("runs-on: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}", probe)
         self.assertIn("if: github.event_name != 'pull_request'", probe)
         self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
         # pool-select (tokenless signal source) asks only on merge_group with
         # FORGE_POOL_LABELS set; anything else publishes empty heavy-labels.
         self.assertIn("permissions: {}", probe)
-        self.assertIn("if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''", probe)
+        self.assertIn("if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.FORGE_POOL_LABELS != ''", probe)
         self.assertRegex(probe, r"uses: forge-ci/ci\.yml/actions/pool-select@[0-9a-f]{40} ")
         self.assertIn("source: signal", probe)
         self.assertIn(
