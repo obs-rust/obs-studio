@@ -160,7 +160,8 @@ def test_exe(part: str, build: Path) -> Path | None:
     without the suffix (test_audio_io, test_video_io) mean the same.
     """
     path = Path(part)
-    if not path.is_relative_to(build):
+    # xvfb-run-or-display.sh sits in the build tree too; it is not a test.
+    if not path.is_relative_to(build) or path.suffix not in ("", ".exe"):
         return None
     return path if path.suffix == ".exe" else path.with_name(path.name + ".exe")
 
@@ -182,10 +183,10 @@ def runnable_tests(build: Path) -> list[dict] | None:
             else:
                 unbuilt.append(test["name"])
             continue
-        # The executable, possibly behind a CMAKE_CROSSCOMPILING_EMULATOR or
-        # xvfb-run prefix; CMake script tests (no executable under build) run
+        # The executable, possibly behind a CMAKE_CROSSCOMPILING_EMULATOR or an
+        # xvfb-run wrapper (the display tests, when CI has xvfb); CMake script tests (no executable under build) run
         # on the Linux lanes.
-        found = [(i, exe) for i, part in enumerate(command[:2]) if (exe := test_exe(part, build))]
+        found = [(i, exe) for i, part in enumerate(command) if (exe := test_exe(part, build))]
         if not found:
             continue
         index, exe = found[0]

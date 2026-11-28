@@ -11,6 +11,8 @@ else. Wine must never open a window on a developer's desktop.
 from __future__ import annotations
 
 import re
+import tempfile
+from unittest import mock
 import unittest
 from pathlib import Path
 
@@ -70,6 +72,21 @@ class ExecutableTest(unittest.TestCase):
                          Path("/build/test/cmocka/test_audio_io.exe"))
         self.assertEqual(tier2_wine.test_exe("/build/test/cmocka/x.exe", build), Path("/build/test/cmocka/x.exe"))
         self.assertIsNone(tier2_wine.test_exe("/usr/bin/cmake", build))
+        # The display tests register `xvfb-run-or-display.sh -a <exe>` when CI has xvfb.
+        self.assertIsNone(tier2_wine.test_exe("/build/test/cmocka/xvfb-run-or-display.sh", build))
+        self.assertIsNone(tier2_wine.test_exe("-a", build))
+
+    def test_the_executable_is_found_behind_a_wrapper(self):
+        build = Path("/build")
+        with tempfile.TemporaryDirectory() as tmp:
+            build = Path(tmp)
+            (build / "test").mkdir()
+            exe = build / "test" / "test_audio_controls.exe"
+            exe.touch()
+            plan = [{"name": "test_audio_controls", "command": [str(build / "test/x.sh"), "-a", str(exe)]}]
+            with mock.patch.object(tier2_wine, "plan", return_value=plan):
+                tests = tier2_wine.runnable_tests(build)
+            self.assertEqual(tests[0]["command"], [str(exe)])
 
     def test_no_cross_build_exemption_list_remains(self):
         self.assertFalse(hasattr(tier2_wine, "NOT_CROSS_BUILT"))
