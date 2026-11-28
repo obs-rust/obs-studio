@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 import local_gate
+import macos_test_artifact
 import tier2_front_cache
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -68,6 +69,38 @@ def discover_targets(reply: Path) -> list[str]:
     if not rust or not any(t["name"] == "libobs-cross-shared" and t["type"] == "SHARED_LIBRARY" for t in targets):
         raise ValueError("Tier 2 cross-link inventory needs Rust executables and hybrid libobs")
     return ["libobs-cross-shared", *rust]
+
+
+# Mach-O filetypes that CTest loads or executes: MH_EXECUTE, MH_DYLIB, MH_BUNDLE.
+LOADABLE_FILETYPES = (2, 6, 8)
+# Aggregate every test executable joins (test/cmocka/CMakeLists.txt).
+MAC_CLOSURE_TARGETS = ["cmocka-tests"]
+
+
+def verify_signed_images(work: Path) -> int:
+    """Check the ad-hoc signature of every linked arm64 executable and dylib."""
+    count = 0
+    for path in sorted(work.rglob("*")):
+        if not path.is_file() or path.is_symlink() or path.stat().st_size < 32:
+            continue
+        with path.open("rb") as handle:
+            header = handle.read(16)
+        if header[:4] != b"\xcf\xfa\xed\xfe" or int.from_bytes(header[12:16], "little") not in LOADABLE_FILETYPES:
+            continue
+        macos_test_artifact.verify_macho(path, LOADABLE_FILETYPES)
+        count += 1
+    if not count:
+        raise ValueError(f"no linked Mach-O image under {work}")
+    print(f"Tier 2 mac-arm64: {count} signed arm64 images verified", flush=True)
+    return count
+
+
+def record_registry(work: Path, env: dict[str, str]) -> None:
+    """Record the CTest registry this closure was built for (parity evidence)."""
+    names = subprocess.run(["ctest", "--test-dir", str(work), "-N"], env=env, check=True,
+                           capture_output=True, text=True).stdout
+    (work / "ctest-registry.txt").write_text(names)
+    print(names.strip().splitlines()[-1], flush=True)
 
 
 def windows_toolchain(work: Path, target: str) -> Path:
@@ -131,10 +164,15 @@ def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> Non
         # LLD and native LINK resolve late archive members differently. Enforce
         # the component boundary even when LLD happens to accept an import mix.
         validate_msvc_providers(reply)
+    if alias == "mac-arm64":
+        targets = [*targets, *MAC_CLOSURE_TARGETS]
     (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
     print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} Rust fixtures ({jobs} Ninja workers)", flush=True)
     subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,
                     "--", "-k", "0"], cwd=ROOT, env=env, check=True)
+    if alias == "mac-arm64":
+        verify_signed_images(work)
+        record_registry(work, env)
 
 
 def link(alias: str, work: Path, jobs: int) -> None:

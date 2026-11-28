@@ -2,6 +2,7 @@
 """Pre-queue Tier 2 cross-link selection and configured target discovery."""
 from __future__ import annotations
 
+import hashlib
 import json
 import struct
 import tempfile
@@ -72,12 +73,15 @@ class BuildTest(unittest.TestCase):
                 work = Path(temporary)
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
                      mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
+                     mock.patch.object(cmocka_link_check, "verify_signed_images"), \
+                     mock.patch.object(cmocka_link_check, "record_registry"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run") as run:
                     cmocka_link_check.build_targets(alias, work, 3, {})
+                expected = inventory + (cmocka_link_check.MAC_CLOSURE_TARGETS if alias == "mac-arm64" else [])
                 args = run.call_args.args[0]
                 self.assertEqual(args[args.index("--parallel") + 1], "3")
-                self.assertEqual(args[args.index("--target") + 1:args.index("--")], inventory)
-                self.assertEqual(json.loads((work / "link-targets.json").read_text()), inventory)
+                self.assertEqual(args[args.index("--target") + 1:args.index("--")], expected)
+                self.assertEqual(json.loads((work / "link-targets.json").read_text()), expected)
 
     def test_alias_link_failures_propagate(self):
         import subprocess
@@ -126,8 +130,8 @@ class MacClosureTest(unittest.TestCase):
                 work = Path(temporary)
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
                      mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
-                     mock.patch.object(cmocka_link_check, "verify_signed_images", create=True) as verify, \
-                     mock.patch.object(cmocka_link_check, "record_registry", create=True), \
+                     mock.patch.object(cmocka_link_check, "verify_signed_images") as verify, \
+                     mock.patch.object(cmocka_link_check, "record_registry"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run") as run:
                     cmocka_link_check.build_targets(alias, work, 2, {})
                 args = run.call_args_list[0].args[0]
@@ -143,6 +147,8 @@ class MacClosureTest(unittest.TestCase):
             (work / "test/test_a").write_bytes(image)
             dylib = bytearray(image)
             struct.pack_into("<I", dylib, 12, 6)
+            # Re-seal the single signed page: hash sits after the 20-byte superblob and 44-byte header.
+            dylib[4096 + 64:4096 + 96] = hashlib.sha256(bytes(dylib[:4096])).digest()
             (work / "test/libx.dylib").write_bytes(bytes(dylib))
             obj = bytearray(4096)
             struct.pack_into("<8I", obj, 0, 0xFEEDFACF, 0x100000C, 0, 1, 0, 0, 0, 0)
