@@ -175,7 +175,7 @@ WINDOWS_TIER2_WINE_FILES = frozenset((
 # `**` for any depth and `*` within one path segment. Rust crates linked into
 # libobs are added to tier2 at run time (linked_crates).
 # The Linux Wine lane's own files start the Windows test lane (#5845).
-WINE_LANE_FILES = frozenset({"ci/windows_wine_tests.py", "ci/wine-runner.sh"})
+WINE_LANE_FILES = frozenset({"ci/windows_wine_tests.py", "ci/wine-runner.sh", "ci/install-wine.sh"})
 
 LANES: dict[str, tuple[str, ...]] = {
     "cmocka_link": (

@@ -82,7 +82,7 @@ def wineserver(prefix: Path, *flags: str) -> None:
     wine64 has no `wineserver` on PATH), so a missing binary is not an error.
     """
     wine = wine_command()
-    found = shutil.which("wineserver") or next(
+    found = os.environ.get("WINESERVER") or shutil.which("wineserver") or next(
         (str(c) for c in (Path(wine[-1]).with_name("wineserver"), Path("/usr/lib/wine/wineserver64"),
                           Path("/usr/lib/wine/wineserver")) if c.is_file()), None)
     if found is None:
