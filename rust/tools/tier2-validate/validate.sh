@@ -90,9 +90,14 @@ ctest_jobs=(-j "${OBS_CTEST_JOBS:-1}")
 # run the prebuilt registry against the Cargo-native cores (#5009, #5848).
 residue="${OBS_TIER2_RESIDUE:-0}"
 bundle_work_name="${OBS_TIER2_BUNDLE_WORK:-build_cmocka_link_mac-arm64}"
+# OBS_TIER2_PREBUILT=1: nothing is configured or compiled here. The Linux bundle holds
+# both libobs cores, the reference modules, the prepared Cargo-native artifacts and the
+# Darwin contract binary; macOS only runs the assertions (#5848).
+prebuilt="${OBS_TIER2_PREBUILT:-0}"
 
 build="build_rust"
-if [ -z "$phase" ]; then
+if [ "$prebuilt" = 1 ]; then build="$bundle_work_name"; fi
+if [ -z "$phase" ] && [ "$prebuilt" != 1 ]; then
   cmocka_prefix="$(brew --prefix cmocka)"
   echo "== configure (libobs and libobs-c-reference)"
   cmake --preset macos-ci -B "$build" \
@@ -122,7 +127,7 @@ if [ -z "$c_lib" ] || [ -z "$rust_lib" ]; then
   echo "FAIL: libobs.framework not found (C: '${c_lib}', with Rust: '${rust_lib}') in $build"
   exit 1
 fi
-if [ -z "$phase" ]; then
+if [ -z "$phase" ] && [ "$prebuilt" != 1 ]; then
   nm -gU "$c_lib" | awk '{print $3}' | sort >exports-OFF.txt
   nm -gU "$rust_lib" | awk '{print $3}' | sort >exports-ON.txt
   echo "== libobs exported symbols, C vs Rust"
@@ -139,6 +144,10 @@ if [ -z "$avcodec" ]; then
 fi
 
 probe=$(find "$build/test/cmocka" -name test_bitstream -type f -perm -u+x 2>/dev/null | head -1)
+if [ -z "$phase" ] && [ "$residue" = 1 ]; then
+  # ASan-only: the Cargo phases are covered by the prebuilt run (#5848).
+  exec bash "$0" --phase cmake-tests
+fi
 if [ -z "$phase" ]; then
   # Only preparation overlaps: multiple CTest processes would race on their
   # shared logs, fixtures, fixed ports/temp names and process-local locks.
@@ -153,6 +162,10 @@ fi
 # init on macOS 26, so the cross build keeps UBSan only) and the fixture that
 # configures and compiles while it runs.
 ctest_filter=()
+if [ "$prebuilt" = 1 ] && [ "$phase" = cmake-tests ]; then
+  echo "== cmake-tests: run from the prebuilt bundle by rust-tier2-macos-ctest"
+  exit 0
+fi
 if [ "$residue" = 1 ] && [ "$phase" = cmake-tests ]; then
   asan_names=$(paste -sd'|' "$build/test/cmocka/asan-tests.txt")
   [ -n "$asan_names" ] || { echo "FAIL: no ASan test list in $build/test/cmocka" >&2; exit 1; }
@@ -234,6 +247,10 @@ capture_reference() {
 reference_capture=$(capture_reference mac-capture mac-capture)
 reference_camera=$(capture_reference mac-avcapture mac-avcapture)
 reference_legacy_camera=$(capture_reference mac-avcapture-legacy mac-avcapture)
+if [ "$phase" = cargo-build ] && [ "$prebuilt" = 1 ]; then
+  uv run --no-project ci/macos_tier2_prepare.py assert --work "$build"
+  exit 0
+fi
 if [ "$phase" = cargo-build ]; then
   soldr cargo build -p libobs-rust --release --target "$native_target" --target-dir "$native_rust"
   OBS_BUILD_MACOS_DEPENDENCIES="$(dirname "$(dirname "$avcodec")")" \
@@ -326,7 +343,7 @@ for native_variant in obs-c-reference obs; do
     capture_count=$((capture_count + 1))
   done <"$native_output/macos-capture-paths.txt"
   [ "$capture_count" -eq 3 ] || { echo 'FAIL: all three capture modules must be checked' >&2; exit 1; }
-  if [ "$residue" = 1 ]; then
+  if [ "$prebuilt" = 1 ]; then
     echo "== Cargo [$native_variant] prebuilt ctest suite"
     uv run --no-project ci/macos_tier2_bundle.py ctest-core --root "$(pwd -P)" --work-name "$bundle_work_name" \
       --core "$native_output/$native_variant/libobs.dylib" --variant "$native_variant" --jobs "${OBS_CTEST_JOBS:-1}" || exit 1

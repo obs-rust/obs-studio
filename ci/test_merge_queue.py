@@ -41,7 +41,8 @@ def top_level_jobs(text: str) -> list[str]:
     return re.findall(r"^  ([A-Za-z0-9_-]+):\s*$", body, re.M)
 
 
-NATIVE_MACOS_EXECUTION = ("rust-tests-macos", "rust-tier2-macos", "rust-tier2-macos-build", "rust-tier2-macos-ctest")
+NATIVE_MACOS_EXECUTION = ("rust-tests-macos", "rust-tier2-macos", "rust-tier2-macos-build", "rust-tier2-macos-ctest",
+                          "rust-tier2-macos-asan")
 
 
 class MergeQueue(unittest.TestCase):
@@ -114,7 +115,7 @@ class MergeQueue(unittest.TestCase):
     def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
         for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos", "rust-tests-macos-build",
                      "rust-tests-windows-wine", "rust-tier2-macos", "rust-tier2-macos-build",
-                     "rust-tier2-macos-ctest", "rust-tier2-windows-wine",
+                     "rust-tier2-macos-ctest", "rust-tier2-macos-asan", "rust-tier2-windows-wine",
                      "rust-linux-tier2-build"):
             with self.subTest(job=name):
                 header = job_block(BUILD, name).split("    steps:", 1)[0]
