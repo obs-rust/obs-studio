@@ -126,6 +126,9 @@ class HeadlessWineTest(unittest.TestCase):
         runner = (ROOT / "ci" / "wine-runner.sh").read_text()
         self.assertIn("ShowCrashDialog", runner)
         self.assertIn("AeDebug", runner)
+        # #5867: the prefix and its TEMP live under RUNNER_TEMP, not the container overlay/tmpfs.
+        self.assertIn("${RUNNER_TEMP}/obs-wine-prefix", runner)
+        self.assertIn("HKCU\\\\Environment", runner)
         self.assertEqual(tier2_wine.wine_command(), [str(ROOT / "ci" / "wine-runner.sh")])
 
     def test_quarantine_names_a_reason_for_every_test(self):
