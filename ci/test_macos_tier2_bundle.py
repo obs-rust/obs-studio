@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -60,7 +61,7 @@ class StageTest(unittest.TestCase):
             root = Path(temporary) / "src"
             root.mkdir()
             work = build_tree(root)
-            (work / "test/cmocka/test_b").write_bytes(b"\xcf\xfa\xed\xfe" + bytes(60))
+            (work / "test/cmocka/test_b").write_bytes(struct.pack("<8I", 0xFEEDFACF, 0x100000C, 0, 2, 0, 0, 0, 0) + bytes(64))
             with self.assertRaises(ValueError):
                 bundle.stage(root, work, Path(temporary) / "bundle", source_sha="abc")
             (work / "test/cmocka/test_b").unlink()
