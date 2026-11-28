@@ -2033,10 +2033,9 @@ test plan. Wine is headless (no `DISPLAY`/`WAYLAND_DISPLAY`; `winedbg.exe`,
 the script creates its prefix itself; run Wine locally only through it.
 
 What stays native (schedule, dispatch, release, master): the C-reference
-baseline run, the Cargo core/loader/renderer probes, tests the cross tree cannot
-build yet (`NOT_CROSS_BUILT`, which must equal the measured set and can only
-shrink), and tests quarantined for a genuine Wine or cross-toolchain gap
-(`QUARANTINE`, each with its reason). A test that fails under load gets two
+baseline run, the Cargo core/loader/renderer probes, and tests quarantined for a genuine Wine or cross-toolchain gap
+(`QUARANTINE`, each with its reason). Every other CTest executable must
+cross-build: the script fails on one that did not. A test that fails under load gets two
 serial retries; it must fail three times to fail the lane.
 
 ## Linux Rust execution

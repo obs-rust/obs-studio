@@ -11,6 +11,8 @@ else. Wine must never open a window on a developer's desktop.
 from __future__ import annotations
 
 import re
+import tempfile
+from unittest import mock
 import unittest
 from pathlib import Path
 
@@ -50,6 +52,59 @@ class ScopeTest(unittest.TestCase):
         for path in ("ci/tier2_wine.py", "ci/cmocka_link_check.py"):
             with self.subTest(path=path):
                 self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
+
+
+class WineInstallTest(unittest.TestCase):
+    def test_install_downloads_first_and_unpacks_without_fsync(self):
+        # dpkg unpack of the ~250 MB wine set timed out at 300 s with the download
+        # sharing that budget (run 46119458518, Rust Tier 2 and Rust Tests).
+        for job in ("rust-tier2-windows-wine", "rust-tests-windows-wine"):
+            block = job_block(BUILD, job)
+            with self.subTest(job=job):
+                self.assertIn("install --download-only", block)
+                self.assertIn("Dpkg::Options::=--force-unsafe-io", block)
+
+
+class ExecutableTest(unittest.TestCase):
+    def test_suffixless_registrations_mean_the_exe(self):
+        build = Path("/build")
+        self.assertEqual(tier2_wine.test_exe("/build/test/cmocka/test_audio_io", build),
+                         Path("/build/test/cmocka/test_audio_io.exe"))
+        self.assertEqual(tier2_wine.test_exe("/build/test/cmocka/x.exe", build), Path("/build/test/cmocka/x.exe"))
+        self.assertIsNone(tier2_wine.test_exe("/usr/bin/cmake", build))
+        # The display tests register `xvfb-run-or-display.sh -a <exe>` when CI has xvfb.
+        self.assertIsNone(tier2_wine.test_exe("/build/test/cmocka/xvfb-run-or-display.sh", build))
+        self.assertIsNone(tier2_wine.test_exe("-a", build))
+
+    def test_the_executable_is_found_behind_a_wrapper(self):
+        build = Path("/build")
+        with tempfile.TemporaryDirectory() as tmp:
+            build = Path(tmp)
+            (build / "test").mkdir()
+            exe = build / "test" / "test_audio_controls.exe"
+            exe.touch()
+            plan = [{"name": "test_audio_controls", "command": [str(build / "test/x.sh"), "-a", str(exe)]}]
+            with mock.patch.object(tier2_wine, "plan", return_value=plan):
+                tests = tier2_wine.runnable_tests(build)
+            self.assertEqual(tests[0]["command"], [str(exe)])
+
+    def test_no_cross_build_exemption_list_remains(self):
+        self.assertFalse(hasattr(tier2_wine, "NOT_CROSS_BUILT"))
+
+
+class CrossTreeTest(unittest.TestCase):
+    """The cross tree must give consumers what the native libobs target does."""
+
+    def test_cross_core_module_manifest_is_not_empty(self):
+        text = (ROOT / "cmake/cross/CMakeLists.txt").read_text()
+        self.assertNotIn("set(OBS_CORE_MODULE_COUNT 0)", text)
+        self.assertIn("obs-outputs", text)
+        self.assertIn("obs-transitions", text)
+
+    def test_libobs_exports_pthreads_and_uthash_to_consumers(self):
+        text = (ROOT / "cmake/cross/tier2.cmake").read_text()
+        self.assertIn("target_link_libraries(libobs-cross-shared INTERFACE OBS::w32-pthreads)", text)
+        self.assertIn("target_link_libraries(libobs-cross-shared INTERFACE Uthash::Uthash)", text)
 
 
 class HeadlessWineTest(unittest.TestCase):

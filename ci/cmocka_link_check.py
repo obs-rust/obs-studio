@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex
 import subprocess
 import time
 import tempfile
@@ -119,39 +118,28 @@ def record_registry(work: Path, env: dict[str, str]) -> None:
 
 
 def windows_toolchain(work: Path, target: str) -> Path:
-    """Use soldr's SDK drivers in clang-cl mode so CMake evaluates MSVC guards."""
-    def query(option: str) -> str:
-        return subprocess.run(["soldr", "cc", "--target", target, option], cwd=ROOT,
+    """Use soldr's clang-cl driver and the lld-link shim beside it.
+
+    `--driver-mode cl` wires the SDK and compiler-rt builtins
+    (clang_rt.builtins-x86_64.lib, soldr 0.9.54+) into both; the raw managed
+    clang-cl and lld-link do not, which left `__udivti3` unresolved.
+    """
+    def query(option: str, *extra: str) -> str:
+        return subprocess.run(["soldr", "cc", "--target", target, *extra, option], cwd=ROOT,
                               capture_output=True, text=True, check=True).stdout.strip()
 
     ar, rc, sdk = (query(flag) for flag in ("--print-ar", "--print-rc", "--print-sysroot"))
-    llvm = Path(ar).resolve().parent
-    compiler = llvm / "clang-cl"
-    if not compiler.is_file():
-        raise FileNotFoundError(f"soldr LLVM is missing {compiler}")
-    tools = work / "soldr-tools"
-    # soldr's GNU driver injects -isystem, which clang-cl does not accept.
-    # Use the clang-cl sibling from the same managed LLVM and its xwin SDK.
-    recipe = [str(compiler), f"--target={target}"]
-    for directory in ("crt/include", "sdk/include/ucrt", "sdk/include/um", "sdk/include/shared",
-                      "sdk/include/winrt", "sdk/include/cppwinrt"):
-        recipe.extend(["-imsvc", str(Path(sdk) / directory)])
-    for name in ("clang-cl", "clang-cl++"):
-        path = tools / name
-        path.write_text(f'#!/bin/sh\nexec {shlex.join(recipe)} "$@"\n')
-        path.chmod(0o755)
+    compiler = Path(query("--print-cc", "--driver-mode", "cl"))
+    linker = compiler.with_name("lld-link")
+    for tool in (compiler, linker):
+        if not tool.is_file():
+            raise FileNotFoundError(f"soldr cl driver is missing {tool}")
     settings = {"CMAKE_SYSTEM_NAME": "Windows", "CMAKE_SYSTEM_PROCESSOR": "AMD64",
                 "CMAKE_TRY_COMPILE_CONFIGURATION": "Release", "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
-                "CMAKE_C_COMPILER": str(tools / "clang-cl"), "CMAKE_CXX_COMPILER": str(tools / "clang-cl++"),
-                "CMAKE_AR": ar, "CMAKE_LINKER": str(llvm / "lld-link"), "CMAKE_RC_COMPILER": rc,
-                "CMAKE_MT": str(llvm / "llvm-mt"), "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
+                "CMAKE_C_COMPILER": str(compiler), "CMAKE_CXX_COMPILER": str(compiler),
+                "CMAKE_AR": ar, "CMAKE_LINKER": str(linker), "CMAKE_RC_COMPILER": rc,
+                "CMAKE_MT": str(Path(ar).resolve().parent / "llvm-mt"), "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
                 "CMAKE_FIND_ROOT_PATH": sdk, "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM": "NEVER"}
-    # CMake's MSVC link rule invokes lld-link directly, bypassing the compiler
-    # driver's SDK config. Retain exactly that SDK's real import libraries.
-    search = " ".join(f'/libpath:"{sdk}/{directory}/x86_64"'
-                      for directory in ("crt/lib", "sdk/lib/um", "sdk/lib/ucrt"))
-    for kind in ("EXE", "SHARED", "MODULE"):
-        settings[f"CMAKE_{kind}_LINKER_FLAGS"] = search
     path = work / "windows-msvc.cmake"
     path.write_text("".join(f'set({key} [==[{value}]==] CACHE STRING "soldr Tier 2 toolchain" FORCE)\n'
                             for key, value in settings.items()))
@@ -186,8 +174,8 @@ def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str], all_te
         targets = [*targets, *MAC_CLOSURE_TARGETS]
     (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
     print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} targets ({jobs} Ninja workers)", flush=True)
-    # --all-tests tolerates executables the cross tree cannot build yet;
-    # ci/tier2_wine.py fails unless the unbuilt set equals its NOT_CROSS_BUILT.
+    # --all-tests builds with `-k 0` so one failure still lists every other one;
+    # ci/tier2_wine.py then fails on any test that was not cross-built.
     subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,
                     "--", "-k", "0"], cwd=ROOT, env=env, check=not all_tests)
     if alias == "mac-arm64":
