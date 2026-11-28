@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83626,
-      "libobs": 102272,
+      "libobs": 102415,
       "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.96,
-    "ported_lines": 63703,
-    "total_lines": 354687
+    "percent": 17.98,
+    "ported_lines": 63815,
+    "total_lines": 354830
   },
-  "commit": "acb5c68a",
-  "date": "2026-11-27",
+  "commit": "879e87b9",
+  "date": "2026-11-28",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 53.94,
-          "ported_lines": 37712,
-          "total_lines": 69919
+          "percent": 53.99,
+          "ported_lines": 37824,
+          "total_lines": 70062
         },
         "graphics": {
           "percent": 72.35,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 1061,
-      "hybrid_lines": 38569,
-      "percent": 62.29,
-      "ported_lines": 63703,
-      "total_lines": 102272
+      "files": 1065,
+      "hybrid_lines": 38600,
+      "percent": 62.31,
+      "ported_lines": 63815,
+      "total_lines": 102415
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 56.0,
-            "ported_lines": 36359,
-            "total_lines": 64930
+            "percent": 56.05,
+            "ported_lines": 36471,
+            "total_lines": 65073
           },
           "graphics": {
             "percent": 72.88,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 1026,
-        "hybrid_lines": 34250,
-        "percent": 63.47,
+        "files": 1030,
+        "hybrid_lines": 34281,
+        "percent": 63.5,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -213,6 +213,7 @@
           "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
+          "obs-canvas-reset-video-entry.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
@@ -610,6 +611,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-muted-volume.c.h",
           "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
@@ -662,6 +664,7 @@
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
           "obs-source-update.c.h",
+          "obs-source-video-tick-callbacks.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -730,15 +733,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 59517,
-        "total_lines": 93767
+        "ported_lines": 59629,
+        "total_lines": 93910
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 55.57,
-            "ported_lines": 32759,
-            "total_lines": 58956
+            "percent": 55.62,
+            "ported_lines": 32871,
+            "total_lines": 59099
           },
           "graphics": {
             "percent": 72.88,
@@ -756,9 +759,9 @@
             "total_lines": 9978
           }
         },
-        "files": 1004,
-        "hybrid_lines": 31876,
-        "percent": 63.66,
+        "files": 1008,
+        "hybrid_lines": 31907,
+        "percent": 63.68,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -888,6 +891,7 @@
           "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
+          "obs-canvas-reset-video-entry.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
@@ -1272,6 +1276,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-muted-volume.c.h",
           "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
@@ -1324,6 +1329,7 @@
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
           "obs-source-update.c.h",
+          "obs-source-video-tick-callbacks.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -1390,15 +1396,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 55838,
-        "total_lines": 87714
+        "ported_lines": 55950,
+        "total_lines": 87857
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 55.62,
-            "ported_lines": 33700,
-            "total_lines": 60587
+            "percent": 55.68,
+            "ported_lines": 33812,
+            "total_lines": 60730
           },
           "graphics": {
             "percent": 72.42,
@@ -1416,9 +1422,9 @@
             "total_lines": 10704
           }
         },
-        "files": 1015,
-        "hybrid_lines": 33234,
-        "percent": 63.18,
+        "files": 1019,
+        "hybrid_lines": 33265,
+        "percent": 63.2,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1551,6 +1557,7 @@
           "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
+          "obs-canvas-reset-video-entry.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
@@ -1934,6 +1941,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-muted-volume.c.h",
           "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
@@ -1986,6 +1994,7 @@
           "obs-source-type-info.c.h",
           "obs-source-update-properties.c.h",
           "obs-source-update.c.h",
+          "obs-source-video-tick-callbacks.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -2057,12 +2066,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 57016,
-        "total_lines": 90250
+        "ported_lines": 57128,
+        "total_lines": 90393
       }
     }
   },
   "rust": {
-    "lines": 250901
+    "lines": 251427
   }
 }
