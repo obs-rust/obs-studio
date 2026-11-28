@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83626,
-      "libobs": 101615,
+      "libobs": 102272,
       "plugins": 152821,
       "shared": 15968
     },
-    "percent": 17.85,
-    "ported_lines": 63211,
-    "total_lines": 354030
+    "percent": 17.96,
+    "ported_lines": 63703,
+    "total_lines": 354687
   },
-  "commit": "723283cf",
+  "commit": "acb5c68a",
   "date": "2026-11-27",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 53.74,
-          "ported_lines": 37220,
-          "total_lines": 69262
+          "percent": 53.94,
+          "ported_lines": 37712,
+          "total_lines": 69919
         },
         "graphics": {
           "percent": 72.35,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 1047,
-      "hybrid_lines": 38404,
-      "percent": 62.21,
-      "ported_lines": 63211,
-      "total_lines": 101615
+      "files": 1061,
+      "hybrid_lines": 38569,
+      "percent": 62.29,
+      "ported_lines": 63703,
+      "total_lines": 102272
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 55.8,
-            "ported_lines": 35867,
-            "total_lines": 64273
+            "percent": 56.0,
+            "ported_lines": 36359,
+            "total_lines": 64930
           },
           "graphics": {
             "percent": 72.88,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 1012,
-        "hybrid_lines": 34085,
-        "percent": 63.39,
+        "files": 1026,
+        "hybrid_lines": 34250,
+        "percent": 63.47,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -577,6 +577,7 @@
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-enum-full-tree.c.h",
           "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
@@ -609,9 +610,13 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
+          "obs-source-preload-video-internal.c.h",
           "obs-source-private-settings.c.h",
+          "obs-source-process-filter-begin.c.h",
+          "obs-source-process-filter-end.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-hotkeys.c.h",
@@ -626,12 +631,14 @@
           "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
+          "obs-source-set-video-frame-internal.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-show-active-counters.c.h",
           "obs-source-show-preloaded-video.c.h",
           "obs-source-showing-active.c.h",
           "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
+          "obs-source-skip-video-filter.c.h",
           "obs-source-state-getters.c.h",
           "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
@@ -723,15 +730,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 59025,
-        "total_lines": 93110
+        "ported_lines": 59517,
+        "total_lines": 93767
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 55.35,
-            "ported_lines": 32267,
-            "total_lines": 58299
+            "percent": 55.57,
+            "ported_lines": 32759,
+            "total_lines": 58956
           },
           "graphics": {
             "percent": 72.88,
@@ -749,9 +756,9 @@
             "total_lines": 9978
           }
         },
-        "files": 990,
-        "hybrid_lines": 31711,
-        "percent": 63.57,
+        "files": 1004,
+        "hybrid_lines": 31876,
+        "percent": 63.66,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -1232,6 +1239,7 @@
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-enum-full-tree.c.h",
           "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
@@ -1264,9 +1272,13 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
+          "obs-source-preload-video-internal.c.h",
           "obs-source-private-settings.c.h",
+          "obs-source-process-filter-begin.c.h",
+          "obs-source-process-filter-end.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-hotkeys.c.h",
@@ -1281,12 +1293,14 @@
           "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
+          "obs-source-set-video-frame-internal.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-show-active-counters.c.h",
           "obs-source-show-preloaded-video.c.h",
           "obs-source-showing-active.c.h",
           "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
+          "obs-source-skip-video-filter.c.h",
           "obs-source-state-getters.c.h",
           "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
@@ -1376,15 +1390,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 55346,
-        "total_lines": 87057
+        "ported_lines": 55838,
+        "total_lines": 87714
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 55.41,
-            "ported_lines": 33208,
-            "total_lines": 59930
+            "percent": 55.62,
+            "ported_lines": 33700,
+            "total_lines": 60587
           },
           "graphics": {
             "percent": 72.42,
@@ -1402,9 +1416,9 @@
             "total_lines": 10704
           }
         },
-        "files": 1001,
-        "hybrid_lines": 33069,
-        "percent": 63.09,
+        "files": 1015,
+        "hybrid_lines": 33234,
+        "percent": 63.18,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1887,6 +1901,7 @@
           "obs-source-duplicate.c.h",
           "obs-source-enabled-setter.c.h",
           "obs-source-enum-filters.c.h",
+          "obs-source-enum-full-tree.c.h",
           "obs-source-filter-add.c.h",
           "obs-source-filter-backup.c.h",
           "obs-source-filter-chain.c.h",
@@ -1919,9 +1934,13 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-capture-device.c.h",
           "obs-source-output-cea708.c.h",
           "obs-source-output-flags.c.h",
+          "obs-source-preload-video-internal.c.h",
           "obs-source-private-settings.c.h",
+          "obs-source-process-filter-begin.c.h",
+          "obs-source-process-filter-end.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-hotkeys.c.h",
@@ -1936,12 +1955,14 @@
           "obs-source-restore-filters.c.h",
           "obs-source-save-load.c.h",
           "obs-source-set-name.c.h",
+          "obs-source-set-video-frame-internal.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-show-active-counters.c.h",
           "obs-source-show-preloaded-video.c.h",
           "obs-source-showing-active.c.h",
           "obs-source-signal-handler.c.h",
           "obs-source-size.c.h",
+          "obs-source-skip-video-filter.c.h",
           "obs-source-state-getters.c.h",
           "obs-source-texcoords-centered-setter.c.h",
           "obs-source-theme-icon.c.h",
@@ -2036,12 +2057,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 56524,
-        "total_lines": 89593
+        "ported_lines": 57016,
+        "total_lines": 90250
       }
     }
   },
   "rust": {
-    "lines": 248728
+    "lines": 250901
   }
 }
