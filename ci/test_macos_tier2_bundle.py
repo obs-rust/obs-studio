@@ -134,6 +134,51 @@ class RunTest(unittest.TestCase):
             self.assertEqual(stop.exception.code, 8)
 
 
+class CoreSuiteTest(unittest.TestCase):
+    """The native Cargo cores run the same prebuilt registry (the #5848 residue stays native)."""
+
+    def test_core_is_presented_as_obs_dylib_and_must_actually_load(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "src"
+            root.mkdir()
+            work = build_tree(root)
+            core = Path(temporary) / "cargo/obs/libobs.dylib"
+            core.parent.mkdir(parents=True)
+            core.write_bytes(b"core")
+            calls = []
+
+            def fake(args, **kwargs):
+                calls.append((args, kwargs["env"]))
+                if kwargs.get("stdout") is not None:
+                    kwargs["stdout"].write(f"dyld: loaded {work}/core-obs/obs.dylib\n".encode())
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(bundle.subprocess, "run", side_effect=fake):
+                bundle.run_core_suite(root, work.name, core, "obs", jobs=2)
+            link = work / "core-obs/obs.dylib"
+            self.assertTrue(link.is_symlink() and link.resolve() == core.resolve())
+            ctest = [e for a, e in calls if a[0] == "ctest"]
+            self.assertEqual(len(ctest), 1)
+            self.assertTrue(ctest[0]["DYLD_LIBRARY_PATH"].startswith(str(work / "core-obs")))
+
+    def test_a_probe_that_loads_another_libobs_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "src"
+            root.mkdir()
+            work = build_tree(root)
+            core = Path(temporary) / "libobs.dylib"
+            core.write_bytes(b"core")
+
+            def fake(args, **kwargs):
+                if kwargs.get("stdout") is not None:
+                    kwargs["stdout"].write(b"dyld: loaded /somewhere/else/obs.dylib\n")
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(bundle.subprocess, "run", side_effect=fake):
+                with self.assertRaisesRegex(ValueError, "did not load"):
+                    bundle.run_core_suite(root, work.name, core, "obs", jobs=1)
+
+
 class WorkflowTest(unittest.TestCase):
     @staticmethod
     def job(name: str) -> str:
