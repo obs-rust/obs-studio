@@ -68,6 +68,33 @@ class SoldrCacheTest(unittest.TestCase):
         for cmd, env in self.cargo_calls(local_gate.lane_rust_test, {"OBS_GATE_ZCCACHE": "1"}):
             self.assertNotEqual((env or {}).get("SOLDR_RUSTC_WRAPPER"), "none", " ".join(cmd))
 
+    def host_test_links(self, linux, env=None):
+        """The `SOLDR_LINKER` each native `soldr cargo test` link step gets."""
+        base = {"OBS_LINKER": "", "SOLDR_LINKER": ""}
+        with mock.patch.object(local_gate.host_platform, "is_linux", return_value=linux):
+            calls = self.cargo_calls(local_gate.lane_rust_test, {**base, **(env or {})})
+        return {
+            " ".join(cmd): e.get("SOLDR_LINKER", "")
+            for cmd, e in calls
+            if cmd[2] == "test" and "--no-run" not in cmd and "--doc" not in cmd
+        }
+
+    def test_linux_test_binaries_link_with_reld(self):
+        # reld links the 189 MB obs-tests-core binary in 0.9 s against lld's
+        # 2.6 s (#5843). soldr fetches its pinned reld on first use.
+        links = self.host_test_links(linux=True)
+        self.assertTrue(links)
+        for cmd, linker in links.items():
+            self.assertEqual(linker, "reld", cmd)
+
+    def test_reld_is_linux_only_and_can_be_declined(self):
+        # soldr links Windows MSVC through lld-link and macOS through ld64.lld
+        # whatever SOLDR_LINKER says; reld's COFF engine needs libllvm_ld.so,
+        # which soldr's managed install omits (forge-ci/soldr#4281).
+        self.assertEqual(set(self.host_test_links(linux=False).values()), {""})
+        self.assertEqual(set(self.host_test_links(linux=True, env={"OBS_LINKER": "default"}).values()), {""})
+        self.assertEqual(set(self.host_test_links(linux=True, env={"SOLDR_LINKER": "mold"}).values()), {"mold"})
+
 
 class SelfTestTest(unittest.TestCase):
     """Every ci/test_*.py runs, one process per file, in parallel (#949)."""
