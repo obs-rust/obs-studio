@@ -10731,6 +10731,22 @@
         "plugins/oss-audio"
       ]
     },
+    "test_output_audio_encoder_setter": {
+      "sources": [
+        "test/cmocka/test_output_audio_encoder_setter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_before_video": {
       "sources": [
         "test/cmocka/test_output_before_video.c"
@@ -27694,6 +27710,12 @@
     "test_oss_sndstat": {
       "target": "test_oss_sndstat",
       "suite": "core"
+    },
+    "test_output_audio_encoder_setter": {
+      "target": "test_output_audio_encoder_setter",
+      "command": [
+        "${target}"
+      ]
     },
     "test_output_before_video": {
       "target": "test_output_before_video",
