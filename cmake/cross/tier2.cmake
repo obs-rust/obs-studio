@@ -123,6 +123,25 @@ set_target_properties(cmocka PROPERTIES OBS_DISABLE_PCH TRUE OBS_DISABLE_UNITY_B
 set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
 set(CMOCKA_LIBRARIES cmocka)
 set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
+if(OS_MACOS)
+  # The explicit C reference backend (OFF suite): the C ports without the Rust
+  # halves, under the hybrid's file name and install name so DYLD_LIBRARY_PATH
+  # selects which libobs the unchanged tests load (libobs/cmake/implementation.cmake).
+  add_library(libobs-cross-reference SHARED)
+  target_link_libraries(
+    libobs-cross-reference
+    PRIVATE libobs-cross OBS::caption libobs-cross-generated libobs-cross-shared-native ZLIB::ZLIB
+  )
+  target_include_directories(libobs-cross-reference PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+  target_link_libraries(libobs-cross-reference INTERFACE SIMDe::SIMDe Threads::Threads)
+  set_target_properties(
+    libobs-cross-reference
+    PROPERTIES
+      PREFIX ""
+      OUTPUT_NAME obs
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
+  )
+endif()
 # The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
 # OBS::media-playback); their own recipes, not stand-ins.
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")

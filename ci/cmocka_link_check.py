@@ -75,7 +75,7 @@ def discover_targets(reply: Path) -> list[str]:
 # Mach-O filetypes that CTest loads or executes: MH_EXECUTE, MH_DYLIB, MH_BUNDLE.
 LOADABLE_FILETYPES = (2, 6, 8)
 # Aggregate every test executable joins (test/cmocka/CMakeLists.txt).
-MAC_CLOSURE_TARGETS = ["cmocka-tests"]
+MAC_CLOSURE_TARGETS = ["cmocka-tests", "libobs-cross-reference"]
 
 
 def verify_signed_images(work: Path) -> int:
