@@ -46,11 +46,13 @@
 use obs_c_oracle::output_reconnect::{
     oracle_obs_output_reconnect_active, oracle_obs_output_reconnect_can,
     oracle_obs_output_reconnect_first_delay, oracle_obs_output_reconnect_give_up,
-    oracle_obs_output_reconnect_grows, oracle_obs_output_reconnect_next_delay,
+    oracle_obs_output_reconnect_grows, oracle_obs_output_reconnect_hold_first,
+    oracle_obs_output_reconnect_next_delay,
 };
 use obs_output::ffi::output_reconnect::{
     obs_output_reconnect_active, obs_output_reconnect_can, obs_output_reconnect_first_delay,
-    obs_output_reconnect_give_up, obs_output_reconnect_grows, obs_output_reconnect_next_delay,
+    obs_output_reconnect_give_up, obs_output_reconnect_grows, obs_output_reconnect_hold_first,
+    obs_output_reconnect_next_delay,
 };
 use obs_output::output_reconnect::{self as core, MAX_MSEC, OBS_OUTPUT_DISCONNECTED};
 use proptest::prelude::*;
@@ -180,6 +182,22 @@ fn shim_walk(n: i32, retry_sec: i32, exp: f32) -> Vec<u32> {
 
 // ---------------------------------------------------------------------------
 // exhaustive
+
+// #5722: the C reference carries the same intentional difference from
+// upstream (no upstream counterpart: upstream ends the capture first).
+#[test]
+fn hold_first_matches_the_c_reference() {
+    for delay_active in [false, true] {
+        // SAFETY: plain values.
+        let c = unsafe { oracle_obs_output_reconnect_hold_first(delay_active) };
+        assert_eq!(
+            obs_output_reconnect_hold_first(delay_active),
+            c,
+            "delay_active {delay_active}"
+        );
+        assert_eq!(core::hold_first(delay_active), c);
+    }
+}
 
 #[test]
 fn route_over_every_code_and_flag_pair() {

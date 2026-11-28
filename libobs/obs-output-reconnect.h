@@ -86,3 +86,8 @@ bool obs_output_reconnect_active(int retry_max);
  * OBS_OUTPUT_SUCCESS; otherwise only a disconnect reconnects, and only while
  * reconnecting is on (active, from obs_output_reconnect_active()). */
 bool obs_output_reconnect_can(bool reconnecting, bool active, int code);
+
+/* obs_output_signal_stop(), on the reconnect path: mark the output
+ * reconnecting before its capture ends, so a preserved delay queue is held
+ * throughout (#5722). Only while the delay is active. */
+bool obs_output_reconnect_hold_first(bool delay_active);

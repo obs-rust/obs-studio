@@ -19,4 +19,6 @@ unsafe extern "C" {
     pub fn oracle_obs_output_reconnect_active(retry_max: c_int) -> bool;
 
     pub fn oracle_obs_output_reconnect_can(reconnecting: bool, active: bool, code: c_int) -> bool;
+
+    pub fn oracle_obs_output_reconnect_hold_first(delay_active: bool) -> bool;
 }

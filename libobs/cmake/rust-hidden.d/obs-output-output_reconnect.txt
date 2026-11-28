@@ -7,3 +7,4 @@ obs_output_reconnect_grows
 obs_output_reconnect_next_delay
 obs_output_reconnect_active
 obs_output_reconnect_can
+obs_output_reconnect_hold_first

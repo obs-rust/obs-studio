@@ -2084,16 +2084,18 @@ static void *reconnect_thread(void *param)
 	return NULL;
 }
 
-static void output_reconnect(struct obs_output *output)
+/* was_reconnecting: reconnecting as obs_output_signal_stop() found it,
+ * before it may have set it to hold the delay queue (#5722). */
+static void output_reconnect(struct obs_output *output, bool was_reconnecting)
 {
 	int ret;
 
-	if (reconnecting(output) && os_event_try(output->reconnect_stop_event) != EAGAIN) {
+	if (was_reconnecting && os_event_try(output->reconnect_stop_event) != EAGAIN) {
 		os_atomic_set_bool(&output->reconnecting, false);
 		return;
 	}
 
-	if (!reconnecting(output)) {
+	if (!was_reconnecting) {
 		output->reconnect_retry_cur_msec = obs_output_reconnect_first_delay(output->reconnect_retry_sec);
 		output->reconnect_retries = 0;
 	}
@@ -2107,7 +2109,7 @@ static void output_reconnect(struct obs_output *output)
 		return;
 	}
 
-	if (!reconnecting(output)) {
+	if (!was_reconnecting) {
 		os_atomic_set_bool(&output->reconnecting, true);
 		os_event_reset(output->reconnect_stop_event);
 	}
@@ -2158,10 +2160,19 @@ void obs_output_signal_stop(obs_output_t *output, int code)
 	output->stop_code = code;
 
 	if (can_reconnect(output, code)) {
+		bool was_reconnecting = reconnecting(output);
+
 		if (delay_active(output))
 			os_atomic_inc_long(&output->delay_restart_refs);
+		/* Intentional difference from upstream (#5722): mark the output
+		 * reconnecting before the capture ends, or a delayed packet that
+		 * comes due in between is released instead of held by
+		 * OBS_OUTPUT_DELAY_PRESERVE. output_reconnect() still sees the
+		 * state from before. */
+		if (obs_output_reconnect_hold_first(delay_active(output)))
+			os_atomic_set_bool(&output->reconnecting, true);
 		obs_output_end_data_capture_internal(output, false);
-		output_reconnect(output);
+		output_reconnect(output, was_reconnecting);
 	} else {
 		/* Ending the data capture below clears delay_capturing only
 		 * while the delay is active, so clear both here, as a stop

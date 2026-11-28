@@ -24,6 +24,7 @@ use obs_output::delay::{
     self, Decision, DelayOutput, Entry, NullLog, OBS_OUTPUT_DELAY_PRESERVE, OBS_OUTPUT_ENCODED,
     SET_DELAY, Signal, active_delay_secs, pop_decision,
 };
+use obs_output::output_reconnect::hold_first;
 
 const SEC: u64 = 1_000_000_000;
 /// `OBS_OUTPUT_VIDEO`.
@@ -1021,6 +1022,53 @@ fn preserve_holds_even_when_not_capturing() {
     assert_eq!(out.events.len(), 1);
     assert_eq!(out.events[0].pts, 0);
     assert_eq!(out.queued(), 2);
+    out.teardown();
+}
+
+/// `obs_output_signal_stop()`'s reconnect path, store by store, with a
+/// delayed packet coming due after each one (the encoder thread runs
+/// `process_delay()` concurrently, #5722): the stores that hold the queue
+/// come before the capture ends, as `hold_first` decides.
+#[test]
+fn preserve_holds_a_packet_due_while_the_reconnect_begins() {
+    let mut out = Out::setup();
+    out.delay_cur_flags = OBS_OUTPUT_DELAY_PRESERVE;
+    out.start_capturing(SEC);
+    out.send_packet_at(10 * SEC, 0);
+    out.send_packet_at(10 * SEC + 1, 1);
+
+    // os_atomic_inc_long(&output->delay_restart_refs)
+    out.restart_refs += 1;
+    if hold_first(out.delay_active) {
+        out.reconnecting = true;
+    }
+    // obs_output_end_data_capture_internal(): delay_restart_refs is not 0,
+    // so the delay stays active and only the capture ends
+    out.delay_capturing = false;
+
+    // packet 0 is due now: with preserve it must stay queued
+    let held_allocs = out.live;
+    out.send_packet_at(11 * SEC + 1, 2);
+    assert_eq!(out.events.len(), 0);
+    assert_eq!(
+        out.queued(),
+        3,
+        "a due packet was dropped before reconnecting was set"
+    );
+    assert!(out.live > held_allocs);
+
+    // output_reconnect()
+    out.reconnecting = true;
+    out.send_packet_at(12 * SEC, 3);
+    assert_eq!(out.queued(), 4);
+
+    // begin_delayed_capture(): capturing, then no longer reconnecting;
+    // every packet arrives, in order
+    out.delay_capturing = true;
+    out.reconnecting = false;
+    out.send_packet_at(100 * SEC, 4);
+    let pts: Vec<i64> = out.events.iter().map(|e| e.pts).collect();
+    assert_eq!(pts, [0, 1, 2, 3]);
     out.teardown();
 }
 
