@@ -2311,7 +2311,7 @@ jobs:
   rust-tests-windows-wine:
     timeout-minutes: 45
     name: Rust Tests 🦀 (windows, wine)
-    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: [self-hosted, forge-pool, obs-ubuntu-2604]
     needs: [check-event, ci-mode]
     if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows == 'true' }}
     defaults:
@@ -2424,7 +2424,7 @@ jobs:
   rust-tier2-windows-wine:
     timeout-minutes: 45
     name: Rust Tier 2 (windows, wine)
-    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: [self-hosted, forge-pool, obs-ubuntu-2604]
     needs: [check-event, ci-mode]
     if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows == 'true' }}
     defaults:
