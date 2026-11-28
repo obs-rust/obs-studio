@@ -168,7 +168,9 @@ def run_core_suite(root: Path, work_name: str, core: Path, variant: str, *, jobs
                                 stderr=subprocess.STDOUT)
     if result.returncode:
         sys.exit(result.returncode)
-    if str(directory) not in log.read_text(errors="replace"):
+    # dyld reports the resolved image path, i.e. the Cargo-built core behind the symlink.
+    loaded = log.read_text(errors="replace")
+    if str(directory) not in loaded and str(core.resolve()) not in loaded:
         raise ValueError(f"Cargo [{variant}] tests did not load {link}; see {log}")
 
 

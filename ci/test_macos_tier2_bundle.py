@@ -173,6 +173,23 @@ class CoreSuiteTest(unittest.TestCase):
             self.assertEqual(len(ctest), 1)
             self.assertTrue(ctest[0]["DYLD_LIBRARY_PATH"].startswith(str(work / "core-obs")))
 
+    def test_dyld_reporting_the_resolved_core_path_counts_as_loaded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "src"
+            root.mkdir()
+            work = build_tree(root)
+            core = Path(temporary) / "cargo/libobs.dylib"
+            core.parent.mkdir()
+            core.write_bytes(b"core")
+
+            def fake(args, **kwargs):
+                if kwargs.get("stdout") is not None:
+                    kwargs["stdout"].write(f"dyld: loaded {core.resolve()}\n".encode())
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(bundle.subprocess, "run", side_effect=fake):
+                bundle.run_core_suite(root, work.name, core, "obs", jobs=1)
+
     def test_a_probe_that_loads_another_libobs_fails(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "src"
