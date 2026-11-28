@@ -23,6 +23,9 @@ unsafe extern "C" {
 
 fn run(candidate: Reset, flags: u32, raw: i32, null_info: bool, result: bool) -> [usize; 6] {
     let mut trace = [0; 6];
+    // `c_long` is `i32` on Windows and `i64` elsewhere, so the conversion is a
+    // no-op on one host only.
+    #[allow(clippy::useless_conversion)]
     // SAFETY: the fixture owns a live real-layout canvas and info, arms the
     // thread-local recording core, and writes exactly six words.
     unsafe {
