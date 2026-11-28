@@ -586,9 +586,7 @@ def scope(
             core = True
         if is_qt_sdk(path):
             qt_sdk = macos = windows = True
-        if path in WINE_LANE_FILES:
-            windows = True
-            continue
+        windows |= path in WINE_LANE_FILES
         if HIDDEN_FRAGMENT.match(path):
             continue
         if is_shared(path, exists):
