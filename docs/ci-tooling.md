@@ -2029,6 +2029,27 @@ for exact coverage and local timings. Native Windows/macOS workflow commands,
 C tests, OFF/ON execution, source assertions and Rust compiler/cache settings
 are unchanged.
 
+### reld links the Linux test binaries (#5843)
+
+On a Linux host the gate sets `SOLDR_LINKER=reld` for the native test build
+(`local_gate.native_linker_env`); soldr 0.9.54 fetches its pinned reld 0.2.3.
+Measured on the same objects (heavily loaded host, minimum of 6 relinks): the 189 MB
+`obs-tests-core` debug binary links in 0.89 s wall and 0.11 s CPU against
+rust-lld's 2.61 s and 2.32 s; the 3.7 MB `obs-tests-preflight` binary is a wash
+on wall time (0.43 s against 0.37 s) at half the CPU. Both binaries pass.
+`OBS_LINKER=default` declines, and a `SOLDR_LINKER` already in the environment
+wins. Windows and macOS are left alone:
+
+- `x86_64-pc-windows-msvc`: soldr ignores `SOLDR_LINKER=reld` there, and
+  `soldr link --fuse reld` rejects it. reld's in-process COFF engine needs the
+  archive's `libllvm_ld.so`, which soldr's managed install omits, so reld falls
+  back to a subprocess bridge: 0.85 s against lld-link's 0.1 s on a small link
+  (forge-ci/soldr#4281). With the library beside reld the 85 Tier 2 links took
+  6.3 s CPU against lld-link's 7.7 s: output runs under Wine, but is not
+  byte-identical to soldr's LLD 21.1.5, and the saving is about a second per
+  job, so the cmocka and `windows_link_check.py` links stay on lld-link.
+- `aarch64-apple-darwin`: reld only bridges to `ld64.lld`.
+
 ### Rust timing observations in CI reports
 
 `ci/cache_metrics.py --include-logs` records nextest and Cargo doctests as
