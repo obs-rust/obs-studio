@@ -36,6 +36,10 @@ def build_tree(root: Path) -> Path:
     qt = root / ".deps/obs-deps-qt6-1-universal/lib/QtCore.framework/Versions/A"
     qt.mkdir(parents=True)
     (qt / "QtCore").write_bytes(image)
+    plugins = root / ".deps/obs-deps-qt6-1-universal/plugins/platforms"
+    plugins.mkdir(parents=True)
+    (plugins / "libqoffscreen.dylib").write_bytes(image)
+    (work / "test/cmocka/fixture-empty").mkdir()
     return work
 
 
@@ -55,6 +59,10 @@ class StageTest(unittest.TestCase):
             self.assertFalse([n for n in names if "CMakeFiles" in n or "compiler-cache" in n or n.endswith(".o")])
             self.assertEqual(json.loads((out / "manifest.json").read_text())["source_sha"], "abc")
             self.assertEqual(manifest["work"], "build_cmocka_link_mac-arm64")
+            self.assertIn(".deps/obs-deps-qt6-1-universal/plugins/platforms/libqoffscreen.dylib", names)
+            # Fixture directories that CMake creates at configure time stay, even empty.
+            self.assertIn("build_cmocka_link_mac-arm64/test/cmocka/fixture-empty", manifest["directories"])
+            self.assertTrue((out / "build_cmocka_link_mac-arm64/test/cmocka/fixture-empty").is_dir())
             self.assertTrue((out / "build_cmocka_link_mac-arm64/test/cmocka/test_a").stat().st_mode & 0o100)
 
     def test_stage_refuses_an_unsigned_image_and_an_empty_registry(self):
@@ -125,6 +133,7 @@ class RunTest(unittest.TestCase):
                 self.assertIn(str(root / ".deps/obs-deps-1-universal/lib"), env["DYLD_LIBRARY_PATH"])
                 self.assertIn(str(work / "sanitizer-runtimes"), env["DYLD_LIBRARY_PATH"])
                 self.assertEqual(env["DYLD_FRAMEWORK_PATH"], str(root / ".deps/obs-deps-qt6-1-universal/lib"))
+                self.assertEqual(env["QT_PLUGIN_PATH"], str(root / ".deps/obs-deps-qt6-1-universal/plugins"))
 
     def test_a_failing_suite_fails_the_run_and_no_compiler_is_ever_invoked(self):
         with tempfile.TemporaryDirectory() as temporary:
