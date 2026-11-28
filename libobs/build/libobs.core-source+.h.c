@@ -130,6 +130,7 @@
 #include "libobs/obs-source-type-info-fields.c.h"
 #include "libobs/obs-source-update-fields.c.h"
 #include "libobs/obs-source-update-properties-fields.c.h"
+#include "libobs/obs-source-video-tick-callbacks-fields.c.h"
 #include "libobs/obs-source-weak-predicates-fields.c.h"
 #include "libobs/obs-source-weak-refs-fields.c.h"
 #include "libobs/obs-source.c.h"

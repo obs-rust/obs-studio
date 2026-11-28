@@ -110,6 +110,7 @@ pub mod source_type_lookup;
 pub mod source_update;
 pub mod source_update_properties;
 pub mod source_video_tick;
+pub mod source_video_tick_callbacks;
 pub mod source_volume;
 pub mod source_volume_mul;
 pub mod source_weak_refs;

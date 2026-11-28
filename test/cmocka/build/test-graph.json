@@ -19688,6 +19688,28 @@
         }
       ]
     },
+    "test_source_video_tick_callbacks": {
+      "sources": [
+        "test/cmocka/test_source_video_tick_callbacks.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_video_tick_steps": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
@@ -31055,6 +31077,15 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_source_video_tick_callbacks": {
+      "target": "test_source_video_tick_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_source_video_tick_steps": {
       "target": "test_source_video_tick_steps",
