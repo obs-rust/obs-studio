@@ -52,6 +52,17 @@ class ScopeTest(unittest.TestCase):
                 self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
 
 
+class WineInstallTest(unittest.TestCase):
+    def test_install_downloads_first_and_unpacks_without_fsync(self):
+        # dpkg unpack of the ~250 MB wine set timed out at 300 s with the download
+        # sharing that budget (run 46119458518, Rust Tier 2 and Rust Tests).
+        for job in ("rust-tier2-windows-wine", "rust-tests-windows-wine"):
+            block = job_block(BUILD, job)
+            with self.subTest(job=job):
+                self.assertIn("install --download-only", block)
+                self.assertIn("Dpkg::Options::=--force-unsafe-io", block)
+
+
 class ExecutableTest(unittest.TestCase):
     def test_suffixless_registrations_mean_the_exe(self):
         build = Path("/build")
