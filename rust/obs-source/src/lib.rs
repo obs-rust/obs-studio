@@ -106,6 +106,11 @@
 //! `obs_source_audio_output_capture_device_changed()` and its `activate`
 //! handler (the monitoring fields, host and platform device calls, signals,
 //! log lines and settings reads stay in a C fields adapter);
+//! `libobs/obs-source-output-video-internal.c.h`, the hidden
+//! `obs_source_output_video_internal()` every `obs_source_output_video*()`
+//! entry ends in (the mutexes, field writes, atomics, profiler call, async
+//! frame cache, reference drop, destroy and queue push stay in C fields
+//! adapters);
 //! `libobs/obs-source-preload-video-internal.c.h`, the hidden
 //! `obs_source_preload_video_internal()` every `obs_source_preload_video*()`
 //! entry ends in (`destroying()`, the shapes, the preload frame's create,
@@ -320,6 +325,7 @@ pub mod muted_volume;
 pub mod output_capture_device;
 pub mod output_cea708;
 pub mod output_flags;
+pub mod output_video_internal;
 pub mod own_clock_drift;
 pub mod preload_video_internal;
 pub mod private_settings;

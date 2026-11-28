@@ -1643,7 +1643,7 @@ static inline struct obs_source_frame_copy_key async_frame_key(const struct obs_
 	return key;
 }
 
-static inline void free_async_cache(struct obs_source *source)
+void free_async_cache(struct obs_source *source)
 {
 	for (size_t i = 0; i < source->async_cache.num; i++)
 		obs_source_frame_decref(source->async_cache.array[i].frame);
@@ -1678,7 +1678,7 @@ static void clean_cache(obs_source_t *source)
 #define MAX_ASYNC_FRAMES 30
 _Static_assert(MAX_ASYNC_FRAMES == OBS_SOURCE_FRAME_COPY_MAX_ASYNC_FRAMES, "MAX_ASYNC_FRAMES");
 //if return value is not null then do (os_atomic_dec_long(&output->refs) == 0) && obs_source_frame_destroy(output)
-static inline struct obs_source_frame *cache_video(struct obs_source *source, const struct obs_source_frame *frame)
+struct obs_source_frame *cache_video(struct obs_source *source, const struct obs_source_frame *frame)
 {
 	struct obs_source_frame *new_frame = NULL;
 
@@ -1742,48 +1742,6 @@ static inline struct obs_source_frame *cache_video(struct obs_source *source, co
 	obs_source_frame_copy(new_frame, frame);
 
 	return new_frame;
-}
-
-void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame)
-{
-	if (!obs_source_valid(source, "obs_source_output_video"))
-		return;
-
-	/* the clock of the source's video, for its audio (#3747): taken alone,
-	 * the graphics thread takes audio_buf_mutex inside async_mutex */
-	pthread_mutex_lock(&source->audio_buf_mutex);
-	source->last_output_frame_ts = frame ? frame->timestamp : 0;
-	pthread_mutex_unlock(&source->audio_buf_mutex);
-
-	if (!frame) {
-		pthread_mutex_lock(&source->async_mutex);
-		os_atomic_set_bool(&source->async_active, false);
-		/* A new frame makes the source active again as soon as it is
-		 * queued, but it only reaches the textures when it is rendered.
-		 * Until then, do not draw what was there before. */
-		os_atomic_set_bool(&source->async_textures_stale, true);
-		source->last_frame_ts = 0;
-		free_async_cache(source);
-		pthread_mutex_unlock(&source->async_mutex);
-		return;
-	}
-
-	source_profiler_async_frame_received(source);
-
-	struct obs_source_frame *output = cache_video(source, frame);
-
-	/* ------------------------------------------- */
-	pthread_mutex_lock(&source->async_mutex);
-	if (output) {
-		if (os_atomic_dec_long(&output->refs) == 0) {
-			obs_source_frame_destroy(output);
-			output = NULL;
-		} else {
-			da_push_back(source->async_frames, &output);
-			os_atomic_set_bool(&source->async_active, true);
-		}
-	}
-	pthread_mutex_unlock(&source->async_mutex);
 }
 
 struct obs_audio_data *filter_async_audio(obs_source_t *source, struct obs_audio_data *in)

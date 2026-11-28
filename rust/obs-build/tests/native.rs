@@ -91,6 +91,8 @@ mod canonical_source_output_capture_device_swap_is_registered;
 mod canonical_source_output_cea708_swap_is_registered;
 #[path = "native/registration/canonical_source_output_flags_swap_is_registered.rs"]
 mod canonical_source_output_flags_swap_is_registered;
+#[path = "native/registration/canonical_source_output_video_internal_swap_is_registered.rs"]
+mod canonical_source_output_video_internal_swap_is_registered;
 #[path = "native/registration/canonical_source_preload_video_internal_swap_is_registered.rs"]
 mod canonical_source_preload_video_internal_swap_is_registered;
 #[path = "native/registration/canonical_source_process_filter_begin_swap_is_registered.rs"]
