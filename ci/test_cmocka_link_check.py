@@ -168,18 +168,28 @@ class MacClosureTest(unittest.TestCase):
 
     def test_darwin_runtime_comes_from_the_managed_receipt_and_must_exist(self):
         with tempfile.TemporaryDirectory() as temporary:
-            runtime = Path(temporary)
-            (runtime / "libclang_rt.osx.a").touch()
-            receipt = json.dumps({"compiler_rt": str(runtime)})
+            runtime = Path(temporary) / "lib/darwin"
+            runtime.mkdir(parents=True)
+            names = ("libclang_rt.osx.a", "libclang_rt.asan_osx_dynamic.dylib", "libclang_rt.ubsan_osx_dynamic.dylib")
+            for name in names:
+                (runtime / name).touch()
+            receipt = json.dumps({"compiler_rt": str(runtime), "clang_resource_dir": str(Path(temporary))})
             with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)) as run:
                 flags = cmocka_link_check.darwin_runtime_flags()
             self.assertEqual(run.call_args.args[0][:3], ["soldr", "toolchain", "darwin"])
-            self.assertEqual(flags, {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime / "libclang_rt.osx.a")
-                                     for kind in ("EXE",)})
-            (runtime / "libclang_rt.osx.a").unlink()
-            with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)):
-                with self.assertRaisesRegex(FileNotFoundError, "libclang_rt.osx.a"):
-                    cmocka_link_check.darwin_runtime_flags()
+            self.assertEqual(flags, {"CMAKE_EXE_LINKER_FLAGS": f"{runtime / 'libclang_rt.osx.a'} -resource-dir {temporary}"})
+            self.assertEqual(sorted(p.name for p in cmocka_link_check.sanitizer_runtimes(Path(temporary) / "lib/darwin")),
+                             sorted(names[1:]))
+            for name in names:
+                (runtime / name).unlink()
+                with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)):
+                    with self.assertRaisesRegex(FileNotFoundError, name):
+                        cmocka_link_check.darwin_runtime_flags()
+                (runtime / name).touch()
+
+    def test_sanitizers_stay_off_only_for_windows(self):
+        self.assertEqual(cmocka_link_check.sanitizer_option("win-x64"), "-DOBS_TEST_SANITIZE_PER_TARGET=OFF")
+        self.assertEqual(cmocka_link_check.sanitizer_option("mac-arm64"), "-DOBS_TEST_SANITIZE_PER_TARGET=ON")
 
     def test_registry_must_contain_every_native_macos_test(self):
         listing = "Test project x\n" + "".join(f"  Test #{i}: {name}\n" for i, name in enumerate(["a", "b", "c"], 1))
