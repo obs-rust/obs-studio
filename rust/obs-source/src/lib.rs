@@ -216,6 +216,11 @@
 //! `obs_source_video_tick()` and `async_tick()` (which steps run, the
 //! deferred update, the show and activate edges, the plugin callback and
 //! the async route);
+//! `libobs/obs-source-video-tick-callbacks.c.h`, the per-source callback
+//! steps of `obs_source_video_tick()` (`obs_source_deferred_update()`,
+//! `activate_source()`, `deactivate_source()`, `show_source()` and
+//! `hide_source()`: the callback checks and calls, the deferred count and
+//! `obs_source_dosignal()` stay in C fields adapters);
 //! `libobs/obs-source-volume.c.h`, the volume snap of
 //! `get_source_volume()` and the apply decisions of `apply_audio_volume()`;
 //! and `libobs/obs-source-volume-mul.c.h`, the volume multiply kernels of
@@ -232,7 +237,7 @@
 //! [`transition_slots`],
 //! [`transition_start`], [`transition_stop`], [`transition_switch`],
 //! [`transition_video`],
-//! [`video_tick`], [`volume_apply`] and
+//! [`video_tick`], [`video_tick_callbacks`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
 //! share. The C
@@ -364,6 +369,7 @@ pub mod type_info;
 pub mod update;
 pub mod update_properties;
 pub mod video_tick;
+pub mod video_tick_callbacks;
 pub mod volume_apply;
 pub mod volume_mul;
 pub mod weak_predicates;
