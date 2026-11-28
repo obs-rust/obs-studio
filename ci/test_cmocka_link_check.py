@@ -181,6 +181,16 @@ class MacClosureTest(unittest.TestCase):
                 with self.assertRaisesRegex(FileNotFoundError, "libclang_rt.osx.a"):
                     cmocka_link_check.darwin_runtime_flags()
 
+    def test_registry_must_contain_every_native_macos_test(self):
+        listing = "Test project x\n" + "".join(f"  Test #{i}: {name}\n" for i, name in enumerate(["a", "b", "c"], 1))
+        with tempfile.TemporaryDirectory() as temporary:
+            snapshot = Path(temporary) / "names.txt"
+            snapshot.write_text("a\nb\n")
+            cmocka_link_check.check_registry_parity(listing, snapshot)
+            snapshot.write_text("a\nb\nmissing_owner_test\n")
+            with self.assertRaisesRegex(ValueError, "missing_owner_test"):
+                cmocka_link_check.check_registry_parity(listing, snapshot)
+
 
 class DiscoveryTest(unittest.TestCase):
     def test_msvc_rejects_full_dll_imports_beside_the_rust_archive(self):
