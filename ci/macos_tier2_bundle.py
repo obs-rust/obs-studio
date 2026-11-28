@@ -51,9 +51,16 @@ def selected_files(root: Path, work: Path) -> list[Path]:
                 or relative.parts[0].startswith(".ninja") or relative.name in ("build.ninja", "CMakeCache.txt")):
             continue
         files.append(path)
-    for tree in (libs, qt):
+    for tree in (libs, qt, qt.parent / "plugins"):
         files.extend(path for path in sorted(tree.rglob("*")) if path.is_file() or path.is_symlink())
     return files
+
+
+def selected_directories(work: Path) -> list[Path]:
+    """Directories CMake created at configure time (fixture and working directories), even empty."""
+    return [path for path in sorted(work.rglob("*"))
+            if path.is_dir() and not path.is_symlink()
+            and not EXCLUDED_PARTS & set(path.relative_to(work).parts)]
 
 
 def stage(root: Path, work: Path, output: Path, *, source_sha: str) -> dict:
@@ -66,6 +73,9 @@ def stage(root: Path, work: Path, output: Path, *, source_sha: str) -> dict:
     if output.exists():
         raise ValueError(f"bundle output already exists: {output}")
     files: dict[str, str] = {}
+    directories = [path.relative_to(root).as_posix() for path in selected_directories(work)]
+    for relative in directories:
+        (output / relative).mkdir(parents=True, exist_ok=True)
     for path in selected_files(root, work):
         relative = path.relative_to(root)
         target = output / relative
@@ -76,7 +86,7 @@ def stage(root: Path, work: Path, output: Path, *, source_sha: str) -> dict:
         target.write_bytes(path.read_bytes())
         target.chmod(path.stat().st_mode & 0o777)
         files[relative.as_posix()] = sha256(target)
-    manifest = {"schema": 1, "source_sha": source_sha, "root": str(root), "work": work.name, "files": files,
+    manifest = {"schema": 1, "source_sha": source_sha, "root": str(root), "work": work.name, "files": files, "directories": directories,
                 "tests": int(total.group(1))}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n")
     return manifest
@@ -117,6 +127,7 @@ def suite_environment(root: Path, work: Path, variant: str) -> dict[str, str]:
     env = dict(os.environ)
     env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(first), str(work / "sanitizer-runtimes"), str(libs)])
     env["DYLD_FRAMEWORK_PATH"] = str(qt)
+    env["QT_PLUGIN_PATH"] = str(qt.parent / "plugins")
     return env
 
 
@@ -225,6 +236,9 @@ def verify_in_place(root: Path, source_sha: str) -> dict:
     manifest = json.loads((root / "manifest.json").read_text())
     if manifest.get("source_sha") != source_sha:
         raise ValueError(f"bundle source {manifest.get('source_sha')} is not {source_sha}")
+    for relative in manifest.get("directories", []):
+        if not (root / relative).is_dir():
+            raise ValueError(f"missing bundle directory: {relative}")
     for relative, digest in manifest["files"].items():
         path = root / relative
         if not path.is_file():

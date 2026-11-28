@@ -155,13 +155,24 @@ endfunction()
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
-foreach(
-  _plugin
-  IN
-  ITEMS image-source obs-transitions text-freetype2 obs-filters obs-outputs
+set(
+  OBS_MODULES_CONFIGURED
+  image-source
+  obs-transitions
+  text-freetype2
+  obs-filters
+  obs-outputs
 )
+foreach(_plugin IN LISTS OBS_MODULES_CONFIGURED)
   add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
 endforeach()
+# The linked core-module manifest lists the modules configured here (the
+# dispatcher's full macOS set needs every plugin's dependencies), as
+# set_obs_core_modules() would from OBS_MODULES_ENABLED.
+list(LENGTH OBS_MODULES_CONFIGURED OBS_CORE_MODULE_COUNT)
+string(REPLACE ";" "\",\n\t\"" _core_modules_array "${OBS_MODULES_CONFIGURED}")
+set(OBS_CORE_MODULE_LIST "\t\"${_core_modules_array}\"")
+configure_file("${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in" "${CMAKE_BINARY_DIR}/config/obs-core-modules.c" @ONLY)
 if(OS_MACOS)
   # Qt Core/Widgets tests: Darwin libraries from the pinned prebuilt, generators
   # (moc/uic/rcc) from the pinned Linux host Qt.

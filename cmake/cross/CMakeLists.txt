@@ -196,6 +196,10 @@ endfunction()
 set(HAS_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ${OBS_CROSS_WERROR})
 include(compiler_common)
+if(_host STREQUAL MACOS)
+  # cmake/macos/compilerconfig.cmake: arm64 clang fuses multiply-add by default.
+  add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-ffp-contract=off>")
+endif()
 
 # The same precompiled headers and unity batches as the native builds
 # (cmake/common/pch.cmake, unity.cmake): unity is on here by default, since
