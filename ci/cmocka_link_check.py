@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import time
@@ -110,11 +111,27 @@ def darwin_runtime_flags() -> dict[str, str]:
     return {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime) for kind in ("EXE",)}
 
 
+REGISTRY_SNAPSHOT = ROOT / "ci" / "macos_tier2_registry.txt"
+
+
+def check_registry_parity(listing: str, snapshot: Path = REGISTRY_SNAPSHOT) -> None:
+    """Every test the native macOS pass runs must be registered in the cross graph.
+
+    The snapshot is master's native Tier 2 (macos-26) CTest name list; new
+    tests are added to it when they land, never removed to pass.
+    """
+    registered = set(re.findall(r"Test +#\d+: (\S+)", listing))
+    missing = sorted(set(snapshot.read_text().split()) - registered)
+    if missing:
+        raise ValueError(f"cross registry misses {len(missing)} native macOS tests: {', '.join(missing)}")
+
+
 def record_registry(work: Path, env: dict[str, str]) -> None:
     """Record the CTest registry this closure was built for (parity evidence)."""
     names = subprocess.run(["ctest", "--test-dir", str(work), "-N"], env=env, check=True,
                            capture_output=True, text=True).stdout
     (work / "ctest-registry.txt").write_text(names)
+    check_registry_parity(names)
     print(names.strip().splitlines()[-1], flush=True)
 
 
