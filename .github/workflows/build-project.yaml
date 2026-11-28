@@ -2495,7 +2495,7 @@ jobs:
   rust-tests-macos:
     timeout-minutes: 25
     name: Rust Tests 🦀 (macos-26)
-    if: ${{ always() && !cancelled() && needs.rust-tests-macos-build.result == 'success' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.rust-tests-macos-build.result == 'success' && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tests-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
     runs-on: macos-26
     needs: [check-event, ci-mode, rust-tests-macos-build]
     env:
@@ -3617,7 +3617,7 @@ jobs:
     needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tier2-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
