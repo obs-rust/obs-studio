@@ -2387,6 +2387,65 @@ jobs:
       - name: Link Tier 2 Fixtures 🔗
         run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias ${{ matrix.alias }}
 
+  # Windows Tier 2 on Linux (#5844, #5843): the queue cross-builds every cmocka
+  # executable plus hybrid obs.dll with soldr's clang-cl SDK and runs them under
+  # headless Wine on PRs and in the queue. Native rust-tier2-windows (and its
+  # C-reference baseline) runs on master, schedule, dispatch and release.
+  rust-tier2-windows-wine:
+    timeout-minutes: 45
+    name: Rust Tier 2 (windows, wine)
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    needs: [check-event, ci-mode]
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows == 'true' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
+        with:
+          verdict-scope: build-project
+          version: 0.9.54
+          build-cache: false
+          # Cross target tree; no host Rust consumer reuses a cook (#5844).
+          prebuild-deps: none
+          cargo-registry-cache: true
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          solo-toolchain-cache: false
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      # Wine runs headless: ci/tier2_wine.py unsets DISPLAY/WAYLAND_DISPLAY and
+      # creates its prefix itself, with the crash debugger disabled.
+      - name: Install Wine 🍷
+        timeout-minutes: 10
+        run: |
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+          timeout --kill-after=10s 240 sudo apt-get -o Acquire::Retries=1 update
+          timeout --kill-after=10s 300 sudo apt-get -o Acquire::Retries=1 install -y --no-install-recommends wine wine64
+
+      - name: Cross-Build Windows Tier 2 🔗
+        run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias win-x64 --all-tests
+
+      - name: Run Windows Tier 2 Under Wine 🍷
+        run: uv run --no-project ci/tier2_wine.py --jobs 4
+
   rust-cross-lint-release:
     timeout-minutes: 45
     name: Rust Cross Lint 🦀 (release targets)
@@ -3848,7 +3907,8 @@ jobs:
     needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tier2-windows != 'true') && needs.check-event.outputs.windows == 'true' }}
+    # Not in the merge queue or PRs: rust-tier2-windows-wine runs Windows Tier 2 there (#5844).
+    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
     steps:
       # GitHub's Windows runners default to CRLF, and soldr warns that it can cost
       # recompiles and cache misses (ci/test_windows_lf_checkout.py).

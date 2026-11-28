@@ -513,7 +513,7 @@ class TrustContract(unittest.TestCase):
                 scope_values["cross_targets"] = "win-x64"
                 for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release",
                              "rust-windows-link", "cmocka-link", "cross-compile", "rust-linux-tier2-build",
-                             "linux-qt-frontend", "rust-tests-windows-wine", "rust-tier2-windows"):
+                             "linux-qt-frontend", "rust-tests-windows-wine", "rust-tier2-windows-wine"):
                     header = job_block(build, name).split("    steps:", 1)[0]
                     condition = re.search(r"^    if: (.+)$", header, re.M)[1]
                     expression = condition.removeprefix("${{").removesuffix("}}")

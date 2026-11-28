@@ -141,7 +141,7 @@ class GateJobs(unittest.TestCase):
             "Build 🧱 / Cross Compile 🧰 (mac-arm64,win-x64)",
             "Build 🧱 / macOS Rust Artifacts 🐧",
             "Build 🧱 / Rust Tests 🦀 (windows, wine)",
-            "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+            "Build 🧱 / Rust Tier 2 (windows, wine)",
             "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",

@@ -2005,6 +2005,23 @@ can still determine the final gate. Independent tests can consume runner time
 on a change whose Fast Gate later fails. Record that extra failed-run cost
 alongside successful latency during the #1694 post-rollout day.
 
+### Windows Tier 2 under Wine (#5844, part of #5843)
+
+The merge queue runs `rust-tier2-windows-wine` on Linux instead of the native
+`windows-2025-vs2026` Tier 2 job. `ci/cmocka_link_check.py --alias win-x64
+--all-tests` cross-builds hybrid `obs.dll` and every cmocka executable with
+soldr's clang-cl SDK, and `ci/tier2_wine.py` runs them under Wine from CTest's
+test plan. Wine is headless (no `DISPLAY`/`WAYLAND_DISPLAY`; `winedbg.exe`,
+`winemenubuilder.exe`, Mono and Gecko disabled; crash dialog and AeDebug off) and
+the script creates its prefix itself; run Wine locally only through it.
+
+What stays native (schedule, dispatch, release, master): the C-reference
+baseline run, the Cargo core/loader/renderer probes, tests the cross tree cannot
+build yet (`NOT_CROSS_BUILT`, which must equal the measured set and can only
+shrink), and tests quarantined for a genuine Wine or cross-toolchain gap
+(`QUARANTINE`, each with its reason). A test that fails under load gets two
+serial retries; it must fail three times to fail the lane.
+
 ## Linux Rust execution
 
 The local gate's Linux Rust test commands use a checksum-pinned nextest
