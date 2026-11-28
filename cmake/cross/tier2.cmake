@@ -275,6 +275,21 @@ if(OS_MACOS)
       set(_bundle_directory mac-avcapture)
     endif()
     set(_bundle "${CMAKE_BINARY_DIR}/plugins/${_bundle_directory}/${_capture}.plugin/Contents")
+    # The Info.plist the native bundle gets from set_target_properties_obs: the capture probe
+    # checks CFBundleExecutable and CFBundleIdentifier (com.obsproject.<module>).
+    file(
+      WRITE "${_bundle}/Info.plist"
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+<key>CFBundleExecutable</key><string>${_capture}</string>
+<key>CFBundleIdentifier</key><string>com.obsproject.${_capture}</string>
+<key>CFBundleName</key><string>${_capture}</string>
+<key>CFBundlePackageType</key><string>BNDL</string>
+<key>LSMinimumSystemVersion</key><string>13.0</string>
+</dict></plist>
+"
+    )
     add_custom_target(
       ${_capture}-bundle
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${_bundle}/MacOS" "${_bundle}/Resources"
