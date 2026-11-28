@@ -320,6 +320,7 @@ pub mod muted_volume;
 pub mod output_capture_device;
 pub mod output_cea708;
 pub mod output_flags;
+pub mod output_video_internal;
 pub mod own_clock_drift;
 pub mod preload_video_internal;
 pub mod private_settings;
