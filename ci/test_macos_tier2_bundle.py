@@ -204,5 +204,28 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(needle, job)
 
 
+class ResidueTest(unittest.TestCase):
+    """rust-tier2-macos keeps only what the Linux bundle cannot cover (#5848)."""
+
+    root = Path(__file__).resolve().parents[1]
+
+    def test_validator_builds_no_test_executables_in_residue_mode(self):
+        script = (self.root / "rust/tools/tier2-validate/validate.sh").read_text()
+        targets = (self.root / "rust/tools/tier2-validate/targets.cmake").read_text()
+        self.assertIn("tier2-residue", script)
+        self.assertIn("OBS_TIER2_RESIDUE", script)
+        self.assertIn("ci/macos_tier2_bundle.py ctest-core", script)
+        residue = targets.split("tier2-residue")[1].split("if(OS_WINDOWS)")[0]
+        self.assertIn("libobs-c-reference", residue)
+        self.assertNotIn("cmocka-tests", residue)
+
+    def test_native_job_consumes_the_bundle_instead_of_compiling_it(self):
+        job = WorkflowTest.job("rust-tier2-macos")
+        self.assertIn("rust-tier2-macos-build", job)
+        self.assertIn("OBS_TIER2_RESIDUE", job)
+        self.assertIn("actions/download-artifact@", job)
+        self.assertIn("macos_test_workspace.py unpack", job)
+
+
 if __name__ == "__main__":
     unittest.main()

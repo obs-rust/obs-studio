@@ -120,6 +120,37 @@ def run_suites(root: Path, work_name: str, *, jobs: int) -> None:
             sys.exit(result.returncode)
 
 
+def run_core_suite(root: Path, work_name: str, core: Path, variant: str, *, jobs: int) -> None:
+    """Run the prebuilt registry against a natively built Cargo core.
+
+    The tests ask for @rpath/obs.dylib; dyld resolves it by leaf name through
+    DYLD_LIBRARY_PATH, so the Cargo-built core is presented under that name and
+    a loader probe proves it (and not a bundled libobs) was the image loaded.
+    """
+    work = root / work_name
+    directory = work / f"core-{variant}"
+    directory.mkdir(exist_ok=True)
+    link = directory / "obs.dylib"
+    link.unlink(missing_ok=True)
+    link.symlink_to(core.resolve())
+    libs, _ = dependency_roots(root)
+    env = suite_environment(root, work, "ON")
+    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(directory), str(work / "sanitizer-runtimes"), str(libs)])
+    print(f"== Cargo [{variant}] ctest", flush=True)
+    result = subprocess.run(["ctest", "--test-dir", str(work), "--output-on-failure", "-j", str(jobs)], env=env)
+    if result.returncode:
+        sys.exit(result.returncode)
+    probe_env = dict(env, DYLD_PRINT_LIBRARIES="1")
+    log = directory / "loader.log"
+    with log.open("wb+") as stream:
+        result = subprocess.run([str(work / "test/cmocka/test_bitstream")], env=probe_env, stdout=stream,
+                                stderr=subprocess.STDOUT)
+    if result.returncode:
+        sys.exit(result.returncode)
+    if str(directory) not in log.read_text(errors="replace"):
+        raise ValueError(f"Cargo [{variant}] tests did not load {link}; see {log}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -128,6 +159,12 @@ def main() -> int:
     command.add_argument("--work", type=Path, required=True)
     command.add_argument("--output", type=Path, required=True)
     command.add_argument("--source-sha", required=True)
+    command = sub.add_parser("ctest-core")
+    command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    command.add_argument("--work-name", default="build_cmocka_link_mac-arm64")
+    command.add_argument("--core", type=Path, required=True)
+    command.add_argument("--variant", required=True)
+    command.add_argument("--jobs", type=int, default=3)
     command = sub.add_parser("run")
     command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     command.add_argument("--source-sha", required=True)
@@ -136,6 +173,9 @@ def main() -> int:
     if args.action == "stage":
         manifest = stage(args.root, args.work.resolve(), args.output, source_sha=args.source_sha)
         print(f"staged {len(manifest['files'])} files, {manifest['tests']} tests")
+        return 0
+    if args.action == "ctest-core":
+        run_core_suite(args.root, args.work_name, args.core, args.variant, jobs=args.jobs)
         return 0
     # unpack already extracted the bundle over the common checkout; verify in place.
     manifest = verify_in_place(args.root, args.source_sha)
