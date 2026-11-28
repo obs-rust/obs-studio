@@ -208,6 +208,22 @@ def soldr_cargo(args: list[str], extra_env: dict[str, str] | None = None) -> Non
     run(["soldr", "cargo", *args], env=soldr_env(extra_env))
 
 
+def native_linker_env() -> dict[str, str]:
+    """Link the Linux host's Rust test binaries with reld (forge-ci/reld, #5843).
+
+    soldr 0.9.54 fetches reld 0.2.3 on first use. Its native ELF engine links
+    the 189 MB obs-tests-core binary in 0.9 s (0.1 s CPU) against rust-lld's
+    2.6 s (2.3 s CPU). Linux only: soldr ignores `SOLDR_LINKER=reld` for
+    Windows MSVC, and reld's COFF engine needs a libllvm_ld.so that soldr's
+    managed install omits (forge-ci/soldr#4281), leaving the 8x slower
+    subprocess bridge. macOS Mach-O is only a bridge to ld64.lld.
+    `OBS_LINKER=default` declines; a caller's own SOLDR_LINKER wins.
+    """
+    if os.environ.get("OBS_LINKER") == "default" or os.environ.get("SOLDR_LINKER"):
+        return {}
+    return {"SOLDR_LINKER": "reld"} if host_platform.is_linux() else {}
+
+
 def soldr_env(extra_env: dict[str, str] | None = None) -> dict[str, str]:
     """The environment of every soldr step: the wrapper off (see soldr_cargo)."""
     env = dict(os.environ)
@@ -873,9 +889,9 @@ def rust_tests(packages: list[str]) -> None:
     """Schedule unchanged category binaries globally; retain Cargo doctests."""
     executable = ensure_nextest()
     if executable is None:
-        soldr_cargo(["test", *packages, "--locked"])
+        soldr_cargo(["test", *packages, "--locked"], native_linker_env())
         return
-    env = {"PATH": str(executable.parent) + os.pathsep + os.environ.get("PATH", "")}
+    env = {"PATH": str(executable.parent) + os.pathsep + os.environ.get("PATH", ""), **native_linker_env()}
     failure = None
     try:
         soldr_cargo(["nextest", "run", *packages, "--locked", "--no-fail-fast",
@@ -971,7 +987,7 @@ def native_host(lane: str) -> bool:
 
 def native_rust_checks() -> None:
     """The Rust steps of both native jobs: tests, clippy, formatting."""
-    soldr_cargo(["test", "--workspace", "--locked"])
+    soldr_cargo(["test", "--workspace", "--locked"], native_linker_env())
     soldr_cargo(["clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"])
     soldr_cargo(["fmt", "--all", "--check"])
 
