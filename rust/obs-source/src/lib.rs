@@ -313,6 +313,7 @@ pub mod media_controls;
 pub mod missing_files_getter;
 pub mod monitoring;
 pub mod mute_monitor_hotkeys;
+pub mod muted_volume;
 pub mod output_capture_device;
 pub mod output_cea708;
 pub mod output_flags;
