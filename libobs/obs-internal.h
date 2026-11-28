@@ -1826,6 +1826,8 @@ extern struct obs_audio_data *filter_async_audio(obs_source_t *source, struct ob
 /* obs-source.c, for source_output_audio_data() */
 extern void source_signal_audio_data(obs_source_t *source, const struct audio_data *in, bool muted);
 extern bool source_muted(obs_source_t *source, uint64_t os_time);
+/* obs-source-muted-volume.c.h, for apply_audio_volume() and apply_audio_actions() */
+extern float get_source_volume(obs_source_t *source, uint64_t os_time);
 
 static inline bool frame_out_of_bounds(const obs_source_t *source, uint64_t ts)
 {
