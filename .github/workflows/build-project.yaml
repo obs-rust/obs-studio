@@ -3864,10 +3864,12 @@ jobs:
     name: Rust Tier 2 (macos-26)
     runs-on: macos-26
     # Starts with Fast Gate (#2985), like the other platform lanes.
-    needs: [check-event, ci-mode]
+    needs: [check-event, ci-mode, rust-tier2-macos-build]
+    env:
+      COMMON_PARENT: ${{ needs.rust-tier2-macos-build.outputs.common-parent }}
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && needs.rust-tier2-macos-build.result == 'success' && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -3927,12 +3929,36 @@ jobs:
           python-version: '3.14'
           save-cache: ${{ github.ref == 'refs/heads/master' }}
 
+      # The cmocka/CTest executables come prebuilt from the Linux producer; macOS
+      # builds only the native residue (#5009, #5848). The bundle's absolute CTest
+      # paths need the same real checkout path as the producer.
+      - name: Place common checkout
+        id: workspace
+        if: runner.os == 'macOS'
+        run: |
+          sudo mkdir -p "${COMMON_PARENT}"
+          sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
+          uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+      - name: Download Tier 2 bundle
+        if: runner.os == 'macOS'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.rust-tier2-macos-build.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/macos-tier2-download
+
+      - name: Verify and unpack Tier 2 bundle
+        if: runner.os == 'macOS'
+        run: uv run --no-project ci/macos_test_workspace.py unpack --archive "${RUNNER_TEMP}/macos-tier2-download/macos-tier2.tar.gz"
+
       - name: Validate Tier 2 on macOS (libobs C vs with Rust) 🍏
         if: runner.os == 'macOS'
         shell: bash
         env:
           XCODE_CAS_PATH: ${{ github.workspace }}/.tier2-xcas
           OBS_CTEST_JOBS: 3
+          OBS_TIER2_RESIDUE: 1
         run: |
           "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
           bash rust/tools/tier2-validate/validate.sh
@@ -3949,6 +3975,10 @@ jobs:
       # The windows-ci-x64 preset enables ccache (ENABLE_CCACHE) whenever it is
       # on PATH, as the Windows OBS build does; without it both Tier 2 builds
       # compiled cold, about 5.5 of 9.1 min (#1038). Only master pushes save.
+      - name: Restore checkout
+        if: always() && runner.os == 'macOS' && steps.workspace.outcome == 'success'
+        run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
       - name: Restore Tier 2 ccache 🗄️
         if: runner.os == 'Windows'
         uses: ./.github/actions/cache

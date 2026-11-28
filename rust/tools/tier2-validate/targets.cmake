@@ -10,3 +10,12 @@ elseif(OS_MACOS)
 else()
   message(FATAL_ERROR "tier2-native requires Windows or macOS")
 endif()
+
+# What only a native macOS build can provide (#5848): both libobs cores and the
+# graphics/capture reference modules the Cargo-native contract compares against.
+# The cmocka executables come prebuilt from the Linux cross-build bundle.
+add_custom_target(tier2-residue)
+add_dependencies(tier2-residue libobs libobs-c-reference libobs-opengl)
+if(OS_MACOS)
+  add_dependencies(tier2-residue libobs-metal mac-capture mac-avcapture mac-avcapture-legacy)
+endif()

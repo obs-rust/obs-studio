@@ -215,7 +215,7 @@ class ResidueTest(unittest.TestCase):
         self.assertIn("tier2-residue", script)
         self.assertIn("OBS_TIER2_RESIDUE", script)
         self.assertIn("ci/macos_tier2_bundle.py ctest-core", script)
-        residue = targets.split("tier2-residue")[1].split("if(OS_WINDOWS)")[0]
+        residue = re.search(r"add_dependencies\(tier2-residue ([^)]*)\)", targets).group(1)
         self.assertIn("libobs-c-reference", residue)
         self.assertNotIn("cmocka-tests", residue)
 
