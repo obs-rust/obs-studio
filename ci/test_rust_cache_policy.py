@@ -30,7 +30,7 @@ class RustCachePolicyTest(unittest.TestCase):
                         continue
                     self.assertIn("prebuild-deps-flags:", step)
                     self.assertNotIn("prebuild-deps: none", step)
-        self.assertEqual(found, 14, "Audit new setup-soldr consumers explicitly")
+        self.assertEqual(found, 15, "Audit new setup-soldr consumers explicitly")
         self.assertEqual(cook_free, 5, "Audit each consumer that skips cook explicitly")
 
     def test_all_consumers_inherit_the_rust_wrapper_bypass(self):

@@ -316,6 +316,7 @@ class CiScopeTest(unittest.TestCase):
         heavy = {
             "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
             "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
+            "rust-tests-windows-wine",
         }
         pr_only = {"rust-tests-linux", "cross-compile", "linux-qt-frontend"}
         routed = heavy | pr_only

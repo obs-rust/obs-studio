@@ -2274,6 +2274,57 @@ jobs:
           OBS_CMOCKA_LINK: 'false'
         run: uv run --no-project ci/windows_link_check.py
 
+  # The merge queue and PRs run the Windows Rust tests on Linux (#5845, #5843):
+  # the x86_64-pc-windows-msvc test binaries are cross-built with soldr and
+  # executed under Wine. The native windows-2025-vs2026 lane keeps the full run
+  # (clippy, Qt SDK, tests Wine cannot run) on schedule, dispatch and master.
+  rust-tests-windows-wine:
+    timeout-minutes: 45
+    name: Rust Tests 🦀 (windows, wine)
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    needs: [check-event, ci-mode]
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows == 'true' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
+        with:
+          # Same scope and layer as rust-windows-link, so it replays its cache.
+          verdict-scope: build-project
+          version: 0.9.54
+          build-cache: false
+          prebuild-deps-flags: --profile dev -- --tests
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          solo-toolchain-cache: false
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      - name: Install Wine 🍷
+        run: |
+          command -v wine > /dev/null || "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -y --no-install-recommends wine wine64 libwine
+
+      - name: Run Windows Rust Tests Under Wine 🍷
+        run: uv run --no-project ci/windows_wine_tests.py
+
   cmocka-link:
     timeout-minutes: 30
     name: Tier 2 Link Check 🔗 (${{ matrix.alias }})
@@ -2604,7 +2655,8 @@ jobs:
     timeout-minutes: 30
     name: Rust Tests 🦀 (windows-2025-vs2026)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-windows != 'true') && needs.check-event.outputs.windows == 'true' }}
+    # Native only off the queue and PRs (#5845): those run rust-tests-windows-wine.
+    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' && github.event_name != 'pull_request' && needs.ci-mode.outputs.skip_rust-tests-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
     runs-on: windows-2025-vs2026
     # Starts with Fast Gate (#2985); see rust-tests-macos.
     needs: [check-event, ci-mode]
