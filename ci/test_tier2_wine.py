@@ -55,14 +55,20 @@ class ScopeTest(unittest.TestCase):
 
 
 class WineInstallTest(unittest.TestCase):
-    def test_install_downloads_first_and_unpacks_without_fsync(self):
-        # dpkg unpack of the ~250 MB wine set timed out at 300 s with the download
-        # sharing that budget (run 46119458518, Rust Tier 2 and Rust Tests).
+    def test_wine_is_unpacked_in_the_workspace_not_installed_to_root(self):
+        # The Dell lane root filesystem is too small for `apt-get install wine`
+        # ("No space left on device", #5867): download only, dpkg -x into RUNNER_TEMP.
         for job in ("rust-tier2-windows-wine", "rust-tests-windows-wine"):
             block = job_block(BUILD, job)
             with self.subTest(job=job):
-                self.assertIn("install --download-only", block)
-                self.assertIn("Dpkg::Options::=--force-unsafe-io", block)
+                self.assertIn("ci/install-wine.sh", block)
+                self.assertNotIn("apt-get -o Acquire::Retries=3 install", block)
+        script = (ROOT / "ci" / "install-wine.sh").read_text()
+        self.assertIn("install --download-only", script)
+        self.assertIn("Dir::Cache::archives=", script)
+        self.assertIn("dpkg -x", script)
+        self.assertIn("df -T", script)
+        self.assertIn("WINESERVER", (ROOT / "ci" / "wine-runner.sh").read_text())
 
 
 class ExecutableTest(unittest.TestCase):

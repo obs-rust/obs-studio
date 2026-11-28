@@ -2352,12 +2352,10 @@ jobs:
       - name: Install Wine 🍷
         timeout-minutes: 10
         run: |
-          command -v wine > /dev/null && exit 0
           sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           timeout --kill-after=10s 60 sudo apt-get -o Acquire::Retries=3 update
-          timeout --kill-after=10s 150 sudo apt-get -o Acquire::Retries=3 install --download-only -y --no-install-recommends wine wine64 libwine
-          # Unpacking ~250 MB took over 300 s on a slow runner disk (run 46119458518): skip fsync.
-          timeout --kill-after=10s 300 sudo apt-get -o Dpkg::Options::=--force-unsafe-io install -y --no-install-recommends wine wine64 libwine
+          # Unpack into the workspace, not the small root filesystem (#5867).
+          timeout --kill-after=10s 600 ci/install-wine.sh
 
       - name: Run Windows Rust Tests Under Wine 🍷
         run: uv run --no-project ci/windows_wine_tests.py
@@ -2468,12 +2466,10 @@ jobs:
       - name: Install Wine 🍷
         timeout-minutes: 10
         run: |
-          command -v wine > /dev/null && exit 0
           sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           timeout --kill-after=10s 60 sudo apt-get -o Acquire::Retries=3 update
-          timeout --kill-after=10s 150 sudo apt-get -o Acquire::Retries=3 install --download-only -y --no-install-recommends wine wine64 libwine
-          # Unpacking ~250 MB took over 300 s on a slow runner disk (run 46119458518): skip fsync.
-          timeout --kill-after=10s 300 sudo apt-get -o Dpkg::Options::=--force-unsafe-io install -y --no-install-recommends wine wine64 libwine
+          # Unpack into the workspace, not the small root filesystem (#5867).
+          timeout --kill-after=10s 600 ci/install-wine.sh
 
       - name: Cross-Build Windows Tier 2 🔗
         run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias win-x64 --all-tests

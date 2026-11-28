@@ -8,12 +8,24 @@
 set -euo pipefail
 unset DISPLAY WAYLAND_DISPLAY
 export WINEDEBUG="${WINEDEBUG:--all}" WINEDLLOVERRIDES="mscoree,mshtml=;winedbg.exe=d;winemenubuilder.exe=d"
-# The prefix holds Windows' TEMP (drive_c/users/<user>/Temp), so it must sit on
-# the same real filesystem as the workspace (#5867). On the self-hosted Dell
-# job containers $HOME is the container's overlayfs on a RAM-backed dockerd and
-# /tmp is a tmpfs: Wine's MoveFileEx/ReplaceFile/remove_dir_all fail there with
-# "Sharing violation" or NotFound, while the bind-mounted workspace and
-# $RUNNER_TEMP (the runner's _work dir) behave like the hosted ext4 runners.
+# Wine unpacked by ci/install-wine.sh into a workspace-local root (the Dell root
+# filesystem is too small for apt to install it, #5867); else the system wine.
+wine_root="${OBS_WINE_ROOT:-${RUNNER_TEMP:+${RUNNER_TEMP}/obs-wine-root}}"
+if [[ -n "${wine_root}" && -f "${wine_root}/.obs-wine-ready" ]]; then
+  export LD_LIBRARY_PATH="${wine_root}/usr/lib/x86_64-linux-gnu:${wine_root}/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+  export WINEDLLPATH="${wine_root}/usr/lib/x86_64-linux-gnu/wine"
+  for c in "${wine_root}/usr/lib/wine/wine64" "${wine_root}/usr/lib/wine/wine"; do
+    [[ -x "$c" ]] && export WINELOADER="$c" && break
+  done
+  for c in "${wine_root}/usr/lib/wine/wineserver64" "${wine_root}/usr/lib/wine/wineserver"; do
+    [[ -x "$c" ]] && export WINESERVER="$c" && break
+  done
+  wine() { "${WINELOADER}" "$@"; }
+  wineserver() { "${WINESERVER}" "$@"; }
+fi
+# The prefix holds Windows' TEMP (drive_c/users/<user>/Temp). Keep it under
+# $RUNNER_TEMP, beside the workspace, not in $HOME or /tmp (#5867; a harmless
+# default on hosted runners).
 if [[ -z "${WINEPREFIX:-}" ]]; then
   if [[ -n "${RUNNER_TEMP:-}" ]]; then
     WINEPREFIX="${RUNNER_TEMP}/obs-wine-prefix"
@@ -35,7 +47,7 @@ if [[ ! -f "${WINEPREFIX}/.obs-prefix-ready" ]]; then
   done
   # Evidence for #5867: filesystem type of the prefix, temp, workspace and HOME.
   for label_path in "prefix:${WINEPREFIX}" "temp:${wine_temp}" "workspace:${GITHUB_WORKSPACE:-${PWD}}" \
-    "runner_temp:${RUNNER_TEMP:-unset}" "home:${HOME}" "tmp:/tmp"; do
+    "runner_temp:${RUNNER_TEMP:-unset}" "home:${HOME}" "tmp:/tmp" "root:/"; do
     label="${label_path%%:*}"
     path="${label_path#*:}"
     [[ -e "${path}" ]] || continue
@@ -47,4 +59,4 @@ if [[ ! -f "${WINEPREFIX}/.obs-prefix-ready" ]]; then
   wineserver -w 2> /dev/null || true
   mkdir -p "${WINEPREFIX}" && touch "${WINEPREFIX}/.obs-prefix-ready"
 fi
-exec wine "$@"
+exec "${WINELOADER:-wine}" "$@"
