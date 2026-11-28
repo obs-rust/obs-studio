@@ -870,21 +870,6 @@ bool obs_output_pause(obs_output_t *output, bool pause)
 	return success;
 }
 
-audio_t *obs_output_audio(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_audio"))
-		return NULL;
-
-	if (!flag_encoded(output))
-		return output->audio;
-
-	size_t first_aenc_idx;
-	if (get_first_audio_encoder_index(output, &first_aenc_idx))
-		return obs_encoder_audio(output->audio_encoders[first_aenc_idx]);
-
-	return NULL;
-}
-
 static inline size_t get_first_mixer(const obs_output_t *output)
 {
 	return obs_output_first_mixer(output->mixer_mask);

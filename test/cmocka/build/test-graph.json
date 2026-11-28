@@ -10731,6 +10731,25 @@
         "plugins/oss-audio"
       ]
     },
+    "test_output_audio": {
+      "sources": [
+        "test/cmocka/test_output_audio.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_before_video": {
       "sources": [
         "test/cmocka/test_output_before_video.c"
@@ -27679,6 +27698,21 @@
     "test_oss_sndstat": {
       "target": "test_oss_sndstat",
       "suite": "core"
+    },
+    "test_output_audio": {
+      "target": "test_output_audio",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_output_before_video": {
       "target": "test_output_before_video",
