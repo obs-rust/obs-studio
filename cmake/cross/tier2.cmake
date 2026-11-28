@@ -26,6 +26,10 @@ corrosion_import_crate(
 target_link_libraries(libobs_rust-static INTERFACE OBS::libobs-native-dependencies)
 
 if(OS_MACOS)
+  # Imported @rpath dylibs (MbedTLS) need the Darwin runtime-path flag, which
+  # CMake's platform files only define for a host-native Darwin build.
+  set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")
+  set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP ":")
   # A host librt must never satisfy a Darwin dependency probe.
   list(APPEND CMAKE_FIND_ROOT_PATH "${OBS_CROSS_DEPS}")
   set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -123,4 +127,18 @@ set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
 # OBS::media-playback); their own recipes, not stand-ins.
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
+# Core module recipes that gate registrations by target (obs-outputs, image-source,
+# obs-transitions, text-freetype2, obs-filters). Registered tests compile the
+# module sources directly, so the module bundles themselves are never built here.
+set(ENABLE_FREETYPE ON)
+# Packages found inside a plugin recipe must stay visible to the test registry.
+set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+function(set_target_properties_obs target)
+  set_target_properties(${target} PROPERTIES ${ARGN})
+endfunction()
+add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
+add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
+foreach(_plugin IN ITEMS image-source obs-transitions text-freetype2 obs-filters obs-outputs)
+  add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
+endforeach()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
