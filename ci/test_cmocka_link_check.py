@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,7 @@ from unittest import mock
 
 import ci_scope
 import cmocka_link_check
+import test_macos_test_artifact
 
 
 class ScopeTest(unittest.TestCase):
@@ -112,6 +114,51 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(Path(env["CCACHE_CONFIGPATH"]).read_text(), "")
             self.assertEqual(env["CCACHE_MAXSIZE"], "512M")
             self.assertEqual(env["CCACHE_COMPILERCHECK"], "content")
+
+
+class MacClosureTest(unittest.TestCase):
+    """mac-arm64 builds and signs the whole CTest closure on Linux (#5009)."""
+
+    def test_mac_builds_every_cmocka_test_but_windows_keeps_the_rust_inventory(self):
+        inventory = ["libobs-cross-shared", "test_existing_rust"]
+        for alias, closure in (("mac-arm64", True), ("win-x64", False)):
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
+                     mock.patch.object(cmocka_link_check, "verify_signed_images", create=True) as verify, \
+                     mock.patch.object(cmocka_link_check, "record_registry", create=True), \
+                     mock.patch.object(cmocka_link_check.subprocess, "run") as run:
+                    cmocka_link_check.build_targets(alias, work, 2, {})
+                args = run.call_args_list[0].args[0]
+                targets = args[args.index("--target") + 1:args.index("--")]
+                self.assertEqual("cmocka-tests" in targets, closure)
+                self.assertEqual(verify.called, closure)
+
+    def test_every_linked_image_must_carry_a_valid_signature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            (work / "test").mkdir()
+            image = test_macos_test_artifact.SignatureTest.signed_image()
+            (work / "test/test_a").write_bytes(image)
+            dylib = bytearray(image)
+            struct.pack_into("<I", dylib, 12, 6)
+            (work / "test/libx.dylib").write_bytes(bytes(dylib))
+            obj = bytearray(4096)
+            struct.pack_into("<8I", obj, 0, 0xFEEDFACF, 0x100000C, 0, 1, 0, 0, 0, 0)
+            (work / "test/x.o").write_bytes(bytes(obj))
+            (work / "test/notes.txt").write_text("text")
+            self.assertEqual(cmocka_link_check.verify_signed_images(work), 2)
+            unsigned = bytearray(image)
+            struct.pack_into("<I", unsigned, 16, 0)
+            (work / "test/test_b").write_bytes(bytes(unsigned))
+            with self.assertRaisesRegex(ValueError, "missing arm64 code signature"):
+                cmocka_link_check.verify_signed_images(work)
+
+    def test_no_images_is_a_failure_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "no linked Mach-O"):
+                cmocka_link_check.verify_signed_images(Path(temporary))
 
 
 class DiscoveryTest(unittest.TestCase):
