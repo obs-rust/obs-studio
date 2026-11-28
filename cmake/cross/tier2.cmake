@@ -87,7 +87,7 @@ find_package(
   FFmpeg
   8.0
   REQUIRED
-  COMPONENTS avcodec avformat avutil swscale swresample
+  COMPONENTS avcodec avdevice avformat avutil swscale swresample
 )
 find_package(jansson REQUIRED)
 find_package(Uthash REQUIRED)
@@ -119,4 +119,8 @@ set_target_properties(cmocka PROPERTIES OBS_DISABLE_PCH TRUE OBS_DISABLE_UNITY_B
 set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
 set(CMOCKA_LIBRARIES cmocka)
 set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
+# The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
+# OBS::media-playback); their own recipes, not stand-ins.
+add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
+add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
