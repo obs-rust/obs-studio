@@ -16151,6 +16151,20 @@
         "libobs/obs-scene-item-alignment-setter.c.h"
       ]
     },
+    "test_sceneitem_force_update_transform": {
+      "sources": [
+        "test/cmocka/test_sceneitem_force_update_transform.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_sceneitem_get_group": {
       "sources": [
         "test/cmocka/test_sceneitem_get_group.c"
@@ -29667,6 +29681,22 @@
       "target": "test_sceneitem_alignment_setter",
       "command": [
         "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
+    "test_sceneitem_force_update_transform": {
+      "target": "test_sceneitem_force_update_transform",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ],
       "suite": "core",
       "timeout_seconds": 30
