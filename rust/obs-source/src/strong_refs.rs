@@ -3,8 +3,20 @@
 //! `obs_weak_source_get_source()`. The strong count (`refs` of the source's
 //! control) is biased by one: 0 is the last owner, the release that takes it
 //! to -1 destroys the source, and a control at -1 is never promoted again.
+use obs_util::ffi::tsan;
 use obs_util::platform::CLongAtomic;
 use std::sync::atomic::Ordering::SeqCst;
+
+/// One `SeqCst` read-modify-write on the count, told to ThreadSanitizer as
+/// the acquire-release that the C `os_atomic_*` on the same count gave it
+/// (#5874). The tsan pass does not instrument Rust (#3507): without this,
+/// the final release's `destroy()` races every earlier owner's accesses.
+pub fn counted<R>(refs: &CLongAtomic, op: impl FnOnce(&CLongAtomic) -> R) -> R {
+    tsan::release(refs);
+    let result = op(refs);
+    tsan::acquire(refs);
+    result
+}
 
 /// The C steps around the count, one method each.
 pub trait Host {
@@ -32,17 +44,19 @@ pub trait Host {
 /// Add one strong reference; `None` (a NULL source) is a no-op.
 pub fn addref(refs: Option<&CLongAtomic>) {
     if let Some(refs) = refs {
-        refs.fetch_add(1, SeqCst);
+        counted(refs, |refs| refs.fetch_add(1, SeqCst));
     }
 }
 
 /// `obs_weak_ref_get_ref()`: add one owner only while the count is above -1,
 /// retrying when another thread moved it in between. `true` on success.
 pub fn try_get_ref(refs: &CLongAtomic) -> bool {
-    refs.fetch_update(SeqCst, SeqCst, |owners| {
-        (owners > -1).then(|| owners.wrapping_add(1))
+    counted(refs, |refs| {
+        refs.fetch_update(SeqCst, SeqCst, |owners| {
+            (owners > -1).then(|| owners.wrapping_add(1))
+        })
+        .is_ok()
     })
-    .is_ok()
 }
 
 /// `obs_source_release()`. With the core shut down a source is left alone
@@ -61,7 +75,7 @@ pub fn release<H: Host>(host: &mut H, source: Option<H::Source>) {
     let Some(control) = host.control(source) else {
         return;
     };
-    if host.refs(control).fetch_sub(1, SeqCst) == 0 {
+    if counted(host.refs(control), |refs| refs.fetch_sub(1, SeqCst)) == 0 {
         host.destroy(source);
         host.release_weak(control);
     }
