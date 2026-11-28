@@ -58,7 +58,7 @@ tresult VST3EditorWindow::queryPlatformFrameInterface(const TUID, void **obj)
 void VST3EditorWindow::handlePlatformResize(const QSize &)
 {
 	ViewRect actualRect = qtToVst3Rect(viewContainer_->size());
-	view_->onSize(&actualRect);
+	notifyViewSize(&actualRect);
 }
 
 qreal VST3EditorWindow::vst3CoordinateScaleFactor() const
@@ -102,7 +102,7 @@ bool VST3EditorWindow::nativeEvent(const QByteArray &eventType, void *message, q
 	const int windowHeight = windowRect->bottom - windowRect->top;
 
 	ViewRect constrained(0, 0, windowWidth - extraWidth, windowHeight - extraHeight);
-	view_->checkSizeConstraint(&constrained);
+	constrainView(&constrained);
 
 	const int newWindowWidth = constrained.getWidth() + extraWidth;
 	const int newWindowHeight = constrained.getHeight() + extraHeight;

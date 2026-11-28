@@ -35,7 +35,6 @@ bool VST3Plugin::init(const std::string &classId, const std::string &pluginPath,
 	}
 
 	name = vst3_rust_host_name(rustHost);
-	editController = static_cast<IEditController *>(vst3_rust_host_controller(rustHost));
 	sidechainNumberChannels = static_cast<int>(vst3_rust_host_sidechain_channels(rustHost));
 	numEnabledOutputAudioBuses = 1;
 	return true;

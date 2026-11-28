@@ -24,6 +24,13 @@
 #include <memory>
 #include <string>
 
+#ifdef OBS_VST3_RUST_HOST
+struct Vst3RustEditor;
+using VST3EditorView = Vst3RustEditor;
+#else
+using VST3EditorView = Steinberg::IPlugView;
+#endif
+
 class QCloseEvent;
 class QEvent;
 class QResizeEvent;
@@ -31,7 +38,7 @@ class QTimer;
 
 class VST3EditorWindow : public QWidget {
 public:
-	VST3EditorWindow(Steinberg::IPlugView *view, const std::string &title);
+	VST3EditorWindow(VST3EditorView *view, const std::string &title);
 	~VST3EditorWindow() override;
 
 	VST3EditorWindow(const VST3EditorWindow &) = delete;
@@ -39,9 +46,12 @@ public:
 	VST3EditorWindow(VST3EditorWindow &&) = delete;
 	VST3EditorWindow &operator=(VST3EditorWindow &&) = delete;
 
-	bool create(int width, int height);
+	bool create(int width, int height, Steinberg::FUnknown *hostContext);
 	void show();
 	void close();
+#ifdef OBS_VST3_RUST_HOST
+	void detach();
+#endif
 	// The window is hidden rather than destroyed to preserve its size and position.
 	bool getClosedState() const;
 
@@ -52,7 +62,12 @@ protected:
 	bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
 private:
+#ifndef OBS_VST3_RUST_HOST
 	class PlugFrameImpl;
+#endif
+	bool canResizeView() const;
+	Steinberg::tresult constrainView(Steinberg::ViewRect *rect) const;
+	void notifyViewSize(Steinberg::ViewRect *rect) const;
 
 	static Steinberg::FIDString platformViewType();
 	static bool usesContentScaleFactor();
@@ -71,8 +86,10 @@ private:
 	bool updateContentScaleFactor();
 	void handleScaleChange();
 
-	Steinberg::IPlugView *view_ = nullptr;
+	VST3EditorView *view_ = nullptr;
+#ifndef OBS_VST3_RUST_HOST
 	std::unique_ptr<PlugFrameImpl> frame_;
+#endif
 	QWidget *viewContainer_ = nullptr;
 
 	bool resizable_ = false;
@@ -81,7 +98,9 @@ private:
 
 	bool resizingFromPlugin_ = false;
 	bool correctingHostResize_ = false;
+#ifndef OBS_VST3_RUST_HOST
 	bool resizeViewRecursionGuard_ = false;
+#endif
 
 	bool handlingDpiChange_ = false;
 	qreal contentScaleFactor_ = 0.0;
