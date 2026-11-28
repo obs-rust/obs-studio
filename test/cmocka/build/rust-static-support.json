@@ -34,6 +34,7 @@
     "test/cmocka/graphics-runtime-link-support.c",
     "test/cmocka/hotkey-fields-link-support.c",
     "test/cmocka/hotkey-key-translation-link-support.c",
+    "test/cmocka/hotkey-pair-register-frontend-link-support.c",
     "test/cmocka/latest-input-type-id-link-support.c",
     "test/cmocka/load-sources-link-support.c",
     "test/cmocka/output-encoder-getters-link-support.c",

@@ -7540,6 +7540,16 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_pair_register_frontend": {
+      "sources": [
+        "test/cmocka/test_hotkey_pair_register_frontend.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_hotkey_pair_steps": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -26679,6 +26689,20 @@
           "-a"
         ]
       ]
+    },
+    "test_hotkey_pair_register_frontend": {
+      "target": "test_hotkey_pair_register_frontend",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "skip_return_code": 77,
+      "timeout_seconds": 30
     },
     "test_hotkey_pair_steps": {
       "target": "test_hotkey_pair_steps",
