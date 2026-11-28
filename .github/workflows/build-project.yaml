@@ -626,6 +626,7 @@ jobs:
         if: always() && inputs.native-cache-reuse-source != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-build-reuse-macos-${{ matrix.target }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-reuse-*.json
           retention-days: 1
@@ -648,6 +649,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ inputs.native-cache-reuse-source == '' && fromJSON(needs.check-event.outputs.package) }}
         with:
+          overwrite: true
           name: obs-studio-macos-${{ matrix.target }}-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_macos/obs-studio-*-macos-${{ steps.setup.outputs.cpuName }}.*
 
@@ -655,6 +657,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ needs.check-event.outputs.config == 'Release' }}
         with:
+          overwrite: true
           name: obs-studio-macos-${{ matrix.target }}-${{ needs.check-event.outputs.commitHash }}-dSYMs
           path: ${{ github.workspace }}/build_macos/obs-studio-*-macos-${{ steps.setup.outputs.cpuName }}-dSYMs.tar.xz
 
@@ -699,6 +702,7 @@ jobs:
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-seed-macos-${{ steps.native-seed.outputs.suffix }}
           path: ${{ steps.setup.outputs.xcodeCasPath }}
           include-hidden-files: true
@@ -710,6 +714,7 @@ jobs:
         if: always() && inputs.native-cache-transport-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-local-macos-${{ matrix.target }}
           path: ${{ runner.temp }}/native-cache-local.json
           retention-days: 1
@@ -719,6 +724,7 @@ jobs:
         if: inputs.native-cache-transport-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-identity-macos-${{ matrix.target }}
           path: |
             ${{ runner.temp }}/native-cache-identity.json
@@ -823,6 +829,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-ubuntu-${{ matrix.rust }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-cache-${{ matrix.rust }}.json
           retention-days: 2
@@ -849,6 +856,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
+          overwrite: true
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-sources-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-sources.*
 
@@ -856,6 +864,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
+          overwrite: true
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-x86_64-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-x86_64-ubuntu-gnu.*
 
@@ -863,6 +872,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
+          overwrite: true
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-x86_64-${{ needs.check-event.outputs.commitHash }}-dbgsym
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-x86_64-ubuntu-gnu-dbgsym.ddeb
 
@@ -1029,6 +1039,7 @@ jobs:
         if: ${{ !cancelled() && inputs.flatpak-compiler-diagnostics && steps.flatpak-compiler-diagnostic-config.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
         with:
+          overwrite: true
           name: flatpak-compiler-diagnostics-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-compiler-diagnostics.json
           retention-days: 2
@@ -1089,6 +1100,7 @@ jobs:
         if: ${{ !cancelled() && inputs.flatpak-cache-probe }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-cache-probe-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-cache-probe.json
           if-no-files-found: error
@@ -1106,6 +1118,7 @@ jobs:
         if: ${{ !cancelled() && inputs.flatpak-pruned-build-probe }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-pruned-build-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-pruned-build.json
           if-no-files-found: error
@@ -1120,6 +1133,7 @@ jobs:
         if: inputs.flatpak-dependency-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-dependency-transfer-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-dependency-transfer
           compression-level: 0
@@ -1134,6 +1148,7 @@ jobs:
         if: inputs.flatpak-compiler-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-compiler-transfer-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-compiler-transfer
           compression-level: 0
@@ -1150,6 +1165,7 @@ jobs:
         if: inputs.flatpak-runtime-test && !inputs.flatpak-dependency-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-runtime-repo
           path: ${{ runner.temp }}/flatpak-runtime-repo.tar
           compression-level: 0
@@ -1320,6 +1336,7 @@ jobs:
         if: inputs.flatpak-runtime-test && inputs.flatpak-dependency-transfer-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-runtime-repo
           path: ${{ runner.temp }}/flatpak-runtime-repo.tar
           compression-level: 0
@@ -1340,6 +1357,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-compiler-consumer-${{ github.run_id }}
           path: ${{ runner.temp }}/flatpak-compiler-result
           if-no-files-found: error
@@ -1386,6 +1404,7 @@ jobs:
       - name: Upload Tested Flatpak Bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-bundle
           path: ${{ runner.temp }}/obs-studio-rust-x86_64.flatpak
           compression-level: 0
@@ -1395,6 +1414,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-runtime-evidence
           path: |
             ${{ runner.temp }}/flatpak-runtime-result/result.json
@@ -1560,6 +1580,7 @@ jobs:
         if: always() && inputs.native-cache-reuse-source != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-build-reuse-windows-${{ matrix.architecture }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-reuse-*.json
           retention-days: 1
@@ -1580,6 +1601,7 @@ jobs:
         if: always() && github.event_name == 'workflow_dispatch' && inputs.native-cache-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-budget-${{ matrix.architecture }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-cache-probe-${{ matrix.architecture }}/report.json
           retention-days: 2
@@ -1607,6 +1629,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ inputs.native-cache-reuse-source == '' && fromJSON(needs.check-event.outputs.package) }}
         with:
+          overwrite: true
           name: obs-studio-windows-${{ matrix.architecture }}-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_${{ matrix.architecture }}/obs-studio-*-windows-${{ matrix.architecture }}.zip
 
@@ -1651,6 +1674,7 @@ jobs:
         if: inputs.native-cache-reuse-source == '' && inputs.native-cache-transport-probe && github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-seed-windows-${{ steps.native-seed.outputs.suffix }}
           path: ${{ github.workspace }}/.ccache
           include-hidden-files: true
@@ -1662,6 +1686,7 @@ jobs:
         if: always() && inputs.native-cache-transport-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-local-windows-${{ matrix.architecture }}
           path: ${{ runner.temp }}/native-cache-local.json
           retention-days: 1
@@ -1671,6 +1696,7 @@ jobs:
         if: inputs.native-cache-transport-probe
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-identity-windows-${{ matrix.architecture }}
           path: |
             ${{ runner.temp }}/native-cache-identity.json
@@ -1847,6 +1873,7 @@ jobs:
         if: github.event_name != 'merge_group' && steps.local-gate.outputs.name != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: ${{ steps.local-gate.outputs.name }}
           path: ${{ runner.temp }}/dylint-lane-proof
           retention-days: 3
@@ -1975,6 +2002,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success() && needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_name != '' && needs.ci-mode.outputs.rust-test_hit != 'true'
         with:
+          overwrite: true
           name: ${{ needs.ci-mode.outputs.rust-test_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
@@ -2004,6 +2032,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: proptest-regressions-${{ runner.os }}
           path: rust/*/tests/proptest-regressions/
           if-no-files-found: ignore
@@ -2215,6 +2244,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success() && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true'
         with:
+          overwrite: true
           name: ${{ needs.ci-mode.outputs.cross_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
@@ -2592,6 +2622,7 @@ jobs:
         id: bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: macos-rust-tests-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/macos-tests.tar.gz
@@ -2678,6 +2709,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: proptest-regressions-${{ runner.os }}
           path: rust/*/tests/proptest-regressions/
           if-no-files-found: ignore
@@ -2863,6 +2895,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: proptest-regressions-${{ runner.os }}
           path: rust/*/tests/proptest-regressions/
           if-no-files-found: ignore
@@ -3291,6 +3324,7 @@ jobs:
         if: steps.handoff.outputs.local != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: tier2-tree
           # One directory avoids multiline host/container path translation.
           path: ${{ runner.temp }}/tier2-pack/
@@ -3478,6 +3512,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
+          overwrite: true
           name: tier2-runtime-${{ matrix.mode }}-${{ matrix.part }}
           path: ${{ runner.temp }}/tier2-runtime/runtime-measurement.json
           retention-days: 1
@@ -3486,6 +3521,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() && github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
+          overwrite: true
           name: tier2-cost-${{ matrix.mode }}-${{ matrix.part }}
           path: .tier2-cost/ctest-cost-${{ matrix.mode }}.txt
           include-hidden-files: true
@@ -4157,6 +4193,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-transport-${{ matrix.platform }}-${{ matrix.architecture }}-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/native-cache-*.json

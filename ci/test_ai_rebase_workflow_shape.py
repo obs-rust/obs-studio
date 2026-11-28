@@ -44,11 +44,19 @@ def trigger_keys(text: str) -> set[str]:
 
 
 class WorkflowShapeTest(unittest.TestCase):
-    def test_only_schedule_and_manual_triggers(self):
-        self.assertEqual(trigger_keys(WORKFLOW.read_text()), {"schedule", "workflow_dispatch"})
+    def test_only_schedule_manual_and_runner_loss_triggers(self):
+        self.assertEqual(trigger_keys(WORKFLOW.read_text()),
+                         {"schedule", "workflow_dispatch", "workflow_run"})
 
-    def test_no_completion_event_references_anywhere(self):
-        self.assertNotIn("workflow_run", WORKFLOW.read_text())
+    def test_completion_event_reaches_only_the_runner_loss_retry_job(self):
+        """#5499 cut the Pull-completion -> rebase-sweep feedback edge; #5862 adds a
+        completion consumer that rebases and enqueues nothing but failed runner-loss runs."""
+        text = WORKFLOW.read_text()
+        self.assertEqual(text.count("workflow_run:"), 1)
+        self.assertEqual(text.count("github.event_name != 'workflow_run'"), 2)
+        retry = text.split("\n  runner-loss-retry:\n", 1)[1].split("\n  rebase:\n", 1)[0]
+        self.assertNotIn("ai_rebase.py", retry)
+        self.assertNotIn("--dirty", retry)
 
     def test_header_documents_scheduled_recovery_latency(self):
         header = WORKFLOW.read_text().split("\non:", 1)[0]
