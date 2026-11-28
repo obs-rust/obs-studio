@@ -149,7 +149,9 @@ if [ -z "$phase" ]; then
 fi
 
 if [ "$phase" = cmake-tests ] && [ "$residue" = 1 ]; then
-  echo "== cmake-tests: covered by the prebuilt rust-tier2-macos-ctest bundle run"
+  echo "== cmake-tests: covered by the prebuilt rust-tier2-macos-ctest bundle run, except the"
+  echo "== fixture that configures and compiles while it runs (#5848)"
+  ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure -R '^test_core_module_manifest_source$' --no-tests=error
   exit 0
 fi
 if [ "$phase" = cmake-tests ]; then

@@ -100,6 +100,17 @@ def verify(directory: Path, *, source_sha: str) -> dict:
     return manifest
 
 
+# Configures and compiles a fixture while it runs (check_core_module_manifest_source.cmake):
+# a native-only residue (#5848) that rust-tier2-macos runs from its own CMake tree.
+RUNTIME_COMPILED_TESTS = "^test_core_module_manifest_source$"
+TEST_TIMEOUT_SECONDS = "300"
+
+
+def ctest_command(work: Path, jobs: int) -> list[str]:
+    return ["ctest", "--test-dir", str(work), "--output-on-failure", "-j", str(jobs),
+            "--timeout", TEST_TIMEOUT_SECONDS, "-E", RUNTIME_COMPILED_TESTS]
+
+
 def suite_environment(root: Path, work: Path, variant: str) -> dict[str, str]:
     libs, qt = dependency_roots(root)
     first = work / "libobs-c-reference" if variant == "OFF" else work
@@ -114,8 +125,7 @@ def run_suites(root: Path, work_name: str, *, jobs: int) -> None:
     work = root / work_name
     for variant in ("OFF", "ON"):
         print(f"== [{variant}] ctest", flush=True)
-        result = subprocess.run(["ctest", "--test-dir", str(work), "--output-on-failure", "-j", str(jobs)],
-                                env=suite_environment(root, work, variant))
+        result = subprocess.run(ctest_command(work, jobs), env=suite_environment(root, work, variant))
         if result.returncode:
             sys.exit(result.returncode)
 
@@ -137,7 +147,7 @@ def run_core_suite(root: Path, work_name: str, core: Path, variant: str, *, jobs
     env = suite_environment(root, work, "ON")
     env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(directory), str(work / "sanitizer-runtimes"), str(libs)])
     print(f"== Cargo [{variant}] ctest", flush=True)
-    result = subprocess.run(["ctest", "--test-dir", str(work), "--output-on-failure", "-j", str(jobs)], env=env)
+    result = subprocess.run(ctest_command(work, jobs), env=env)
     if result.returncode:
         sys.exit(result.returncode)
     probe_env = dict(env, DYLD_PRINT_LIBRARIES="1")
