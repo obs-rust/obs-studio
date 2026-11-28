@@ -740,9 +740,9 @@ the paths that select them, so a change only triggers the tests it can affect.
    `runner-loss-retry` job fires on a completed failed `Pull` run (the only
    `workflow_run` consumer; it rebases and sweeps nothing) and runs
    `ci/runner_loss_retry.py`, which reuses `ci/ai_rebase.py`'s RUNNER_LOST,
-   NETWORK_ERROR, CODE_ERROR and SETUP_STEP classifier on each failed job's
+   NETWORK_ERROR and CODE_ERROR classifier on each failed job's
    check-run annotations and failed-step log. It reruns the failed jobs only when
-   **every** failed job is proven runner/network loss (or a failed setup step);
+   **every** failed job is proven runner/network loss (a failed setup step alone is not proof, since a PR can break setup itself);
    one real test or compiler failure, or one job with no evidence, refuses the
    run. At most two automatic reruns per run (`run_attempt` 1 and 2). A PR run is
    rerun while the PR head is unchanged; a merge-group run is rerun while the

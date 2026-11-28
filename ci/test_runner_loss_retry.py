@@ -65,11 +65,11 @@ class ClassifierTests(unittest.TestCase):
         for text in ("", "Process completed with exit code 1."):
             self.assertEqual(rl.job_kind(LOST, text), "unknown")
 
-    def test_failed_setup_step_is_infra(self):
+    def test_failed_setup_step_alone_is_not_proof(self):
+        """A PR that breaks an action pin or setup inputs fails in setup too."""
         setup = job(3, "x", steps=[("Run actions/checkout@abc", "failure")])
-        self.assertEqual(rl.job_kind(setup, ""), "infra")
-        mixed = job(3, "x", steps=[("Run actions/checkout@abc", "success"), ("Build", "failure")])
-        self.assertEqual(rl.job_kind(mixed, ""), "unknown")
+        self.assertEqual(rl.job_kind(setup, ""), "unknown")
+        self.assertEqual(rl.job_kind(setup, "Could not resolve host: github.com"), "infra")
 
 
 class DecisionTests(unittest.TestCase):
@@ -204,6 +204,7 @@ class WorkflowTests(unittest.TestCase):
         retry = self.jobs["runner-loss-retry"]
         condition = self.guard.job_if(retry)
         for needle in ("github.event_name == 'workflow_run'", "workflow_run.conclusion == 'failure'",
+                       "workflow_run.head_repository.full_name == github.repository",
                        "workflow_run.run_attempt < 3"):
             self.assertIn(needle, condition)
         self.assertIn("ci/runner_loss_retry.py --run-id", retry)

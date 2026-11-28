@@ -15,7 +15,7 @@ Rules (ci/test_runner_loss_retry.py):
 - at most MAX_AUTOMATIC_RERUNS automatic reruns per run (run_attempt 1 and 2
   may be rerun, attempt 3 never);
 - every failed job must be proven infrastructure: runner shutdown/lost
-  communication, network loss, or a failed setup step. One real test or
+  communication or network loss (a failed setup step alone is not proof). One real test or
   compiler failure, or one job with no evidence, refuses the whole run;
 - pull_request: `rerun --failed` while the PR head is still the run's head;
 - merge_group: `rerun --failed` while the group is still queued at that exact
@@ -50,7 +50,7 @@ def load(name: str):
     return module
 
 
-bot = load("ai_rebase")  # the one classifier: RUNNER_LOST, NETWORK_ERROR, CODE_ERROR, SETUP_STEP
+bot = load("ai_rebase")  # the one classifier: RUNNER_LOST, NETWORK_ERROR, CODE_ERROR
 retry = load("mq_acquire_retry")  # API helpers, group membership, fresh-queue re-arm
 
 # GitHub's own wording for a host that went down under a job.
@@ -65,9 +65,8 @@ def job_kind(job: dict, text: str) -> str:
         return "code"  # a real failure wins over network text inside it
     if bot.RUNNER_LOST.search(text) or SHUTDOWN.search(text) or bot.NETWORK_ERROR.search(text):
         return "infra"
-    failed = [s["name"] for s in job.get("steps") or [] if s.get("conclusion") in FAILED]
-    if failed and all(bot.SETUP_STEP.search(name) for name in failed):
-        return "infra"
+    # A failed setup step alone is not proof: a PR that breaks an action pin or
+    # setup-soldr inputs fails there too. Only runner/network text counts.
     return "unknown"
 
 
