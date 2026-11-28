@@ -42,6 +42,7 @@
 #include "libobs/obs-encoder-settings-fields.c.h"
 #include "libobs/obs-encoder-state-queries-fields.c.h"
 #include "libobs/obs-encoder-type-info-fields.c.h"
+#include "libobs/obs-encoder-update.c.h"
 #include "libobs/obs-encoder-video-tex-active-fields.c.h"
 #include "libobs/obs-encoder-weak-refs.c.h"
 #include "libobs/obs-encoder.c.h"

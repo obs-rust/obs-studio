@@ -4379,6 +4379,22 @@
         "libobs/data"
       ]
     },
+    "test_encoder_update": {
+      "sources": [
+        "test/cmocka/test_encoder_update.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoder_video_reset": {
       "sources": [
         "test/cmocka/test_encoder_video_reset.c"
@@ -25781,6 +25797,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_update": {
+      "target": "test_encoder_update",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_video_reset": {
