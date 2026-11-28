@@ -14176,6 +14176,22 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_registry_by_name": {
+      "sources": [
+        "test/cmocka/test_registry_by_name.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_remux_audio_timestamps": {
       "sources": [
         "test/cmocka/test_remux_audio_timestamps.c"
@@ -29006,6 +29022,21 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_registry_by_name": {
+      "target": "test_registry_by_name",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "timeout_seconds": 30
     },
     "test_remux_audio_timestamps": {
       "target": "test_remux_audio_timestamps",
