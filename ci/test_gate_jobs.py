@@ -139,15 +139,17 @@ class GateJobs(unittest.TestCase):
             "Build 🧱 / Tier 2 Link Check 🔗 (win-x64)",
             "Build 🧱 / Tier 2 Link Check 🔗 (mac-arm64)",
             "Build 🧱 / Cross Compile 🧰 (mac-arm64,win-x64)",
-            "Build 🧱 / Rust Tests 🦀 (macos-26)",
+            "Build 🧱 / macOS Rust Artifacts 🐧",
             "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
-            "Build 🧱 / Rust Tier 2 (macos-26)",
             "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
             "Build 🧱 / Rust Cross Test Link 🔗 (aarch64-apple-darwin)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
             "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
         }
         self.assertTrue(required <= expected, required - expected)
+        # Native macOS execution is schedule/dispatch/release only (#5843).
+        self.assertNotIn("Build 🧱 / Rust Tests 🦀 (macos-26)", expected)
+        self.assertNotIn("Build 🧱 / Rust Tier 2 (macos-26)", expected)
         healthy = [dict(job(n, "success"), client_attested=True, proof_hit=True) for n in expected]
         self.assertEqual(blocking(healthy, expected=expected), [])
         for missing in required:
