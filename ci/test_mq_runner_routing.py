@@ -136,10 +136,9 @@ class HostedRunnerRoutingTest(unittest.TestCase):
                      'rust-cross-lint', 'rust-cross-lint-release', 'rust-windows-link',
                      'cmocka-link', 'rust-tests-macos-build'):
             with self.subTest(job=name):
-                pr_only = "github.event_name == 'pull_request' && " if name in (
-                    'rust-tests-linux', 'cross-compile', 'linux-qt-frontend') else ''
+                # Every heavy Linux job follows the selector in merge_group too.
                 self.assert_runner('build-project.yaml', name,
-                    "${{ " + pr_only + "inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}")
+                    "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}")
 
     def test_forge_build_jobs_share_the_persistent_checkpoint_format(self):
         workflow = 'build-project.yaml'

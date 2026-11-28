@@ -33,12 +33,19 @@ class MemberPrWorkflowTest(unittest.TestCase):
         for name in names:
             self.assertIn(name + ": ${{ (github.event_name != 'pull_request' || needs.select-mq-runner.outputs.heavy-labels == '') && secrets." + name + " || '' }}", block)
 
-    def test_fast_gate_pr_routing_keeps_queue_hosted(self):
+    def test_pr_path_linux_jobs_follow_selected_pool(self):
+        # Fast Gate, Cross Compile and Qt Frontend Linux use the pool whenever
+        # select-mq-runner picked it (merge_group and same-repo PRs alike) and
+        # stay hosted when it returned empty.
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        block = text.split("  rust-tests-linux:\n", 1)[1].split("\n  cross-compile:", 1)[0]
-        runner = re.search(r"^    runs-on: (.*)$", block, re.M)[1]
-        self.assertIn("github.event_name == 'pull_request' && inputs.mq-heavy-labels", runner)
-
+        for job, nxt in (("rust-tests-linux", "cross-compile"),
+                         ("cross-compile", "rust-cross-lint"),
+                         ("linux-qt-frontend", "rust-tier2-macos")):
+            block = text.split(f"  {job}:\n", 1)[1].split(f"\n  {nxt}:", 1)[0]
+            runner = re.search(r"^    runs-on: (.*)$", block, re.M)[1]
+            self.assertEqual(
+                "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}",
+                runner, job)
 
 if __name__ == "__main__":
     unittest.main()

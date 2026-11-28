@@ -317,9 +317,9 @@ class CiScopeTest(unittest.TestCase):
             "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
             "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
             "rust-tests-windows-wine",
+            "rust-tests-linux", "cross-compile", "linux-qt-frontend",
         }
-        pr_only = {"rust-tests-linux", "cross-compile", "linux-qt-frontend"}
-        routed = heavy | pr_only
+        routed = heavy
         light = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
@@ -346,7 +346,6 @@ class CiScopeTest(unittest.TestCase):
                 self.assertEqual(selected, name == "build-project.yaml" and job in routed, job)
                 if selected:
                     selected_jobs.add(job)
-                    prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
                     fallback = ("ubuntu-latest" if job in {"rust-linux-tier2-build", "rust-linux-tier2"}
                                 else "ubuntu-26.04")
                     if job == "rust-linux-tier2-build":
@@ -358,7 +357,7 @@ class CiScopeTest(unittest.TestCase):
                         self.assertTrue(runner[1].endswith(" || 'ubuntu-latest' }}"))
                         continue
                     self.assertIn(
-                        "runs-on: ${{ " + prefix + "inputs.mq-heavy-labels != '' && "
+                        "runs-on: ${{ inputs.mq-heavy-labels != '' && "
                         "fromJSON(inputs.mq-heavy-labels) || '" + fallback + "' }}", block,
                     )
                 elif name == "build-project.yaml" and job == "check-event":
