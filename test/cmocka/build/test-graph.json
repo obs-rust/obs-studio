@@ -10882,6 +10882,25 @@
         "deps/libcaption"
       ]
     },
+    "test_output_caption_text2": {
+      "sources": [
+        "test/cmocka/test_output_caption_text2.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "SIMDe::SIMDe"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    },
     "test_output_deactivate_state": {
       "sources": [
         "test/cmocka/test_output_deactivate_state.c"
@@ -27739,6 +27758,12 @@
     },
     "test_output_caption_text1": {
       "target": "test_output_caption_text1",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_caption_text2": {
+      "target": "test_output_caption_text2",
       "command": [
         "${target}"
       ]

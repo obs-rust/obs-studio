@@ -48,6 +48,7 @@
 #include "libobs/obs-output-active-fields.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
 #include "libobs/obs-output-caption-queue-fields.c.h"
+#include "libobs/obs-output-caption-text2.c.h"
 #include "libobs/obs-output-congestion-fields.c.h"
 #include "libobs/obs-output-connect-time-fields.c.h"
 #include "libobs/obs-output-conversion-callbacks-fields.c.h"
