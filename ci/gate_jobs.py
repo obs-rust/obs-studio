@@ -155,13 +155,14 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
         expected.update(f"Build 🧱 / Rust Tier 2 Linux 🐧 (tests {mode}, all)" for mode in ("OFF", "ON"))
     if selected.qt:
         expected.add("Build 🧱 / Qt Frontend Linux 🐧")
-    for enabled, runner, artifacts in (
-            (selected.macos, "macos-26", {"Build 🧱 / macOS Rust Artifacts 🐧"}),
-            (selected.windows, "windows-2025-vs2026", set())):
-        if enabled:
-            expected.update(artifacts)
-            expected.add(f"Build 🧱 / Rust Tests 🦀 ({runner})")
-            expected.add(f"Build 🧱 / Rust Tier 2 ({runner})")
+    # macOS is built and linked on Linux in the queue; native macOS execution
+    # (Rust Tests / Rust Tier 2 on macos-26) runs on schedule, dispatch and
+    # release only (#5843), so it is never an expected PR or queue job.
+    if selected.macos:
+        expected.add("Build 🧱 / macOS Rust Artifacts 🐧")
+    if selected.windows:
+        expected.add("Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)")
+        expected.add("Build 🧱 / Rust Tier 2 (windows-2025-vs2026)")
     if any(path.endswith(".swift") for path in files):
         expected.add("Format 🔍 / swift-format")
     expected.update(("Validate Data 🕵️",) if data_selected(files) else ())

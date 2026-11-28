@@ -76,12 +76,12 @@ class WorkflowTest(unittest.TestCase):
         for package in ("uuid-dev", "libglib2.0-dev", "libxkbcommon-dev", "libncurses6"):
             self.assertIn(package, producer)
 
-    def test_gate_requires_both_selected_jobs_and_rejects_missing_producer(self):
+    def test_gate_requires_the_linux_producer_and_not_native_macos_execution(self):
         selected = scope(["rust/obs-util/src/dstr.rs"], event="merge_group")
         expected = gate_jobs.expected_jobs(selected)
         producer = "Build 🧱 / macOS Rust Artifacts 🐧"
         self.assertIn(producer, expected)
-        self.assertIn("Build 🧱 / Rust Tests 🦀 (macos-26)", expected)
+        self.assertNotIn("Build 🧱 / Rust Tests 🦀 (macos-26)", expected)
         records = [{"name": name, "status": "completed", "conclusion": "success"} for name in expected]
         for conclusion in ("skipped", "failure", "cancelled", None):
             with self.subTest(conclusion=conclusion):

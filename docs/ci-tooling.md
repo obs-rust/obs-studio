@@ -480,7 +480,13 @@ PRs retain `rust_scope.affected` selection through `--base`; merge groups and
 nondeferred events build the workspace. Qt preparation and `--require-qt` replay
 share the existing `qt_sdk` scope. A missing Qt payload fails before execution.
 
-The existing `Rust Tests 🦀 (macos-26)` check needs a successful producer and only
+Native macOS execution (`Rust Tests 🦀 (macos-26)`, `Rust Tier 2 (macos-26)`) no
+longer runs on PRs or in the merge queue (#5846, #5843): they run on schedule,
+workflow_dispatch, release and master push. The queue keeps the Linux macOS
+artifact build, the aarch64-apple-darwin cross test link and the mac-arm64
+Tier 2 link check.
+
+The `Rust Tests 🦀 (macos-26)` check needs a successful producer and only
 runs the bundle. Its setup consists of checkout for source/fixture assertions
 and uv's prebuilt Python 3.14 for verification/helpers. CMake and CTest from the
 runner image configure language-free projects and run existing tests. There is

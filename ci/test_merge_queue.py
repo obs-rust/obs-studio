@@ -41,6 +41,9 @@ def top_level_jobs(text: str) -> list[str]:
     return re.findall(r"^  ([A-Za-z0-9_-]+):\s*$", body, re.M)
 
 
+NATIVE_MACOS_EXECUTION = ("rust-tests-macos", "rust-tier2-macos")
+
+
 class MergeQueue(unittest.TestCase):
     def test_queue_formatting_overlaps_the_entire_build_call(self):
         queue = job_block(PULL, "check-format-queue")
@@ -135,6 +138,11 @@ class MergeQueue(unittest.TestCase):
                     expr = expr.replace("&&", " and ").replace("||", " or ")
                     expr = re.sub(r"!(?!=)", " not ", expr)
                     return eval(expr, {"__builtins__": {}})
+                if name in NATIVE_MACOS_EXECUTION:
+                    # Linux builds and links macOS in the queue; native macOS
+                    # execution runs on schedule/dispatch/release only (#5843).
+                    self.assertFalse(allows("true"), condition)
+                    continue
                 self.assertTrue(allows("true"), condition)
                 if name != "rust-tests-linux":
                     self.assertFalse(allows("false"), condition)
