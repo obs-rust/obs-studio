@@ -1746,7 +1746,7 @@ jobs:
     # letting it hold the queue for an hour (#2593 A).
     timeout-minutes: 20
     name: Fast Gate ⚡
-    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     # A docs-only PR or queue run changes no Rust, C or CMake: skipped, and
     # passing CI Gate; the Format job still runs the ci/ self-tests (#2079).
@@ -2060,7 +2060,7 @@ jobs:
   cross-compile:
     timeout-minutes: 45
     name: Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})
-    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
     defaults:
@@ -3507,7 +3507,7 @@ jobs:
   # otherwise.
   linux-qt-frontend:
     name: Qt Frontend Linux 🐧
-    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Independent runner: overlap frontend compilation/tests with Fast Gate.
     # The reusable workflow still fails if either selected job fails; this
     # can spend extra Qt runner time when Fast Gate fails (#1581).
