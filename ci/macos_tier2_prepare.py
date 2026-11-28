@@ -52,7 +52,8 @@ def toolchain_environment(receipt: dict, directory: Path) -> dict[str, str]:
 def contract_environment(root: Path, work: Path, dependencies: Path, *, assert_only: bool) -> dict[str, str]:
     """Environment shared by preparation (Linux) and assertions (macOS) of the contract."""
     modules = work / "plugins"
-    bundles = {name: modules / name / f"{name}.plugin/Contents/MacOS/{name}"
+    # The legacy camera bundle lives beside mac-avcapture's, as in the native build.
+    bundles = {name: modules / ("mac-avcapture" if name == "mac-avcapture-legacy" else name) / f"{name}.plugin/Contents/MacOS/{name}"
                for name in ("mac-capture", "mac-avcapture", "mac-avcapture-legacy")}
     reference = work / "libobs-c-reference/libobs.framework/Versions/A/libobs"
     return {

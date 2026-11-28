@@ -37,6 +37,9 @@ class EnvironmentTest(unittest.TestCase):
                      "MAC_AVCAPTURE_REFERENCE", "MAC_AVCAPTURE_LEGACY_REFERENCE"):
             self.assertTrue(asserted[f"OBS_BUILD_MACOS_{name}"].startswith("/r/build/"), name)
         self.assertTrue(asserted["OBS_BUILD_MACOS_MAC_CAPTURE_REFERENCE"].endswith("mac-capture.plugin/Contents/MacOS/mac-capture"))
+        # validate.sh finds the legacy camera under plugins/mac-avcapture, as the native build lays it out.
+        self.assertTrue(asserted["OBS_BUILD_MACOS_MAC_AVCAPTURE_LEGACY_REFERENCE"].endswith(
+            "plugins/mac-avcapture/mac-avcapture-legacy.plugin/Contents/MacOS/mac-avcapture-legacy"))
         self.assertTrue(asserted["OBS_BUILD_MACOS_REFERENCE"].endswith("libobs-c-reference/libobs.framework/Versions/A/libobs"))
 
 

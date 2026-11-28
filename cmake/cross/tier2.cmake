@@ -269,7 +269,12 @@ if(OS_MACOS)
   foreach(_capture IN ITEMS mac-capture mac-avcapture mac-avcapture-legacy)
     # Native bundles keep the module in Contents/MacOS with its data in Contents/Resources.
     get_target_property(_capture_source_dir ${_capture} SOURCE_DIR)
-    set(_bundle "${CMAKE_BINARY_DIR}/plugins/${_capture}/${_capture}.plugin/Contents")
+    # Native builds keep the legacy camera bundle beside mac-avcapture's.
+    set(_bundle_directory ${_capture})
+    if(_capture STREQUAL "mac-avcapture-legacy")
+      set(_bundle_directory mac-avcapture)
+    endif()
+    set(_bundle "${CMAKE_BINARY_DIR}/plugins/${_bundle_directory}/${_capture}.plugin/Contents")
     add_custom_target(
       ${_capture}-bundle
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${_bundle}/MacOS" "${_bundle}/Resources"
