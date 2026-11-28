@@ -80,12 +80,22 @@ pub trait Host {
 }
 
 /// `obs_source_deferred_update(source)`.
-pub fn deferred_update<H: Host>(_host: &H, _source: H::Source) {
-    todo!("obs_source_deferred_update")
+pub fn deferred_update<H: Host>(host: &H, source: H::Source) {
+    if !host.can_update(source) {
+        return;
+    }
+    let count = host.load_defer_count(source);
+    host.call_update(source);
+    host.swap_defer_count(source, count);
+    host.signal(source, c"source_update", c"update");
 }
 
 /// `activate_source()`, `deactivate_source()`, `show_source()` or
 /// `hide_source()` for `step`.
-pub fn run_step<H: Host>(_host: &H, _source: H::Source, _step: Step) {
-    todo!("activate_source, deactivate_source, show_source, hide_source")
+pub fn run_step<H: Host>(host: &H, source: H::Source, step: Step) {
+    if host.has_callback(source, step) {
+        host.call(source, step);
+    }
+    let (global, local) = step.signals();
+    host.signal(source, global, local);
 }

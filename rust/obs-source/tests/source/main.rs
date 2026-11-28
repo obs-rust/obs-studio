@@ -231,6 +231,7 @@ mod update_properties;
 mod update_properties_parity;
 mod video_tick;
 mod video_tick_callbacks;
+mod video_tick_callbacks_parity;
 mod video_tick_parity;
 mod volume_apply;
 mod volume_apply_parity;
