@@ -18850,6 +18850,21 @@
         "SOURCE_OUTPUT_FLAGS_EXTERNAL"
       ]
     },
+    "test_source_output_video_internal": {
+      "sources": [
+        "test/cmocka/test_source_output_video_internal.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_preload_video_internal": {
       "sources": [
         "test/cmocka/test_source_preload_video_internal.c"
@@ -30751,6 +30766,13 @@
         "${target}"
       ],
       "target": "test_source_output_flags_rust"
+    },
+    "test_source_output_video_internal": {
+      "target": "test_source_output_video_internal",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_preload_video_internal": {
       "target": "test_source_preload_video_internal",
