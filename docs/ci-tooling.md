@@ -2009,9 +2009,13 @@ alongside successful latency during the #1694 post-rollout day.
 
 The local gate's Linux Rust test commands use a checksum-pinned nextest
 0.9.143 binary to schedule the existing category tests globally, with at most
-four concurrent tests. A host with more cores can raise that bound with
+six concurrent tests. A host with more cores can raise that bound with
 `OBS_GATE_TEST_THREADS` (a positive integer); CI sets nothing, so CI keeps
-four. The tool is installed in a local cache only when scope
+six. Native-build and pipe-parity tests start ahead of the bulk queue so their
+slow tail overlaps ordinary tests (#4896). Native builds still run at most two
+at a time; priority changes neither test selection nor concurrency, retries or
+time budgets. The full profile inherits the same priority. The tool is installed
+in a local cache only when scope
 selects Rust tests; there is no new Actions-cache writer. Other hosts keep the
 existing Cargo runner. All commands still go through `soldr cargo`, with the
 existing Rust wrapper bypass.

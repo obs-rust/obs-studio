@@ -15,6 +15,13 @@ slow-timeout = { period = "10s", terminate-after = 3 }
 [test-groups.native-build]
 max-threads = 2
 
+# #4896: start the slow compiler group and pipe spawn stress tests before the
+# bulk queue, so their tail overlaps ordinary tests. Full inherits this priority.
+# #4896: keep the same six slots, native-build cap, selection, retries and budgets.
+[[profile.default.overrides]]
+filter = "test(/native_build::/) | test(/pipe_parity::/)"
+priority = 100
+
 # #2888: compiles real C, C++ and Objective-C sources with unity and PCH, and
 # every native_build test shares that longer budget (#2888, #3071).
 [[profile.default.overrides]]
