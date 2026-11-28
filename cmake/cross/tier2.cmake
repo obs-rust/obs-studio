@@ -136,10 +136,7 @@ if(OS_MACOS)
   target_link_libraries(libobs-cross-reference INTERFACE SIMDe::SIMDe Threads::Threads)
   set_target_properties(
     libobs-cross-reference
-    PROPERTIES
-      PREFIX ""
-      OUTPUT_NAME obs
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
+    PROPERTIES PREFIX "" OUTPUT_NAME obs LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
   )
 endif()
 # The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
@@ -158,7 +155,11 @@ endfunction()
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
 add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
-foreach(_plugin IN ITEMS image-source obs-transitions text-freetype2 obs-filters obs-outputs)
+foreach(
+  _plugin
+  IN
+  ITEMS image-source obs-transitions text-freetype2 obs-filters obs-outputs
+)
   add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
 endforeach()
 if(OS_MACOS)
