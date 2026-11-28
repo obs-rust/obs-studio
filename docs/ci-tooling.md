@@ -292,6 +292,13 @@ the cache never stores link results. The matrix disables fail-fast so one failin
 cancel the other. `ci/gate_jobs.py` requires each selected alias on fallback
 PRs and merge groups. Fully attested PRs defer both aliases to the merge queue.
 The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.
+Windows Rust tests run on Linux in PRs and merge groups (#5845): job
+`rust-tests-windows-wine` cross-builds the `x86_64-pc-windows-msvc` tests and
+`ci/windows_wine_tests.py` runs them under Wine through `ci/wine-runner.sh`.
+The runner is headless (no `DISPLAY`/`WAYLAND_DISPLAY`, no Mono/Gecko/winedbg/
+winemenubuilder, crash dialog and AeDebug off) and creates its prefix itself;
+run Wine locally only through it. Native `rust-tests-windows` runs on schedule,
+dispatch, release and master push.
 The local `ci/windows_link_check.py` default still runs categories and both
 cmocka aliases; CI sets `OBS_CMOCKA_LINK=false` only on the category job.
 Pinned CMake 3.31.10/Ninja 1.13.0 uv wheels avoid apt setup on this path

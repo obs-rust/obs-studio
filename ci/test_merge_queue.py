@@ -77,7 +77,7 @@ class MergeQueue(unittest.TestCase):
             self.assertIn("skip_rust-cross-lint", header)
             self.assertNotIn("cross_hit", header)
         for name in ("cross-compile", "rust-windows-link", "cmocka-link", "linux-qt-frontend",
-                     "rust-tests-windows", "rust-tests-macos", "rust-tier2-windows",
+                     "rust-tests-windows", "rust-tests-windows-wine", "rust-tests-macos", "rust-tier2-windows",
                      "rust-tier2-macos", "rust-linux-tier2-build"):
             header = job_block(BUILD, name).split("    steps:", 1)[0]
             self.assertIn("needs: ", header)
@@ -113,7 +113,7 @@ class MergeQueue(unittest.TestCase):
 
     def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
         for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos", "rust-tests-macos-build",
-                     "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows",
+                     "rust-tests-windows-wine", "rust-tier2-macos", "rust-tier2-windows",
                      "rust-linux-tier2-build"):
             with self.subTest(job=name):
                 header = job_block(BUILD, name).split("    steps:", 1)[0]
@@ -198,3 +198,23 @@ class MergeQueue(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WindowsTestsRunOnLinuxInTheQueue(unittest.TestCase):
+    """#5845: the queue and PRs run Windows Rust tests under Wine; native is nightly."""
+
+    def test_native_windows_tests_skip_queue_and_prs(self):
+        header = job_block(BUILD, "rust-tests-windows").split("    steps:", 1)[0]
+        condition = re.search(r"^    if: (.+)$", header, re.M).group(1)
+        self.assertIn("github.event_name != 'merge_group'", condition)
+        self.assertIn("github.event_name != 'pull_request'", condition)
+
+    def test_wine_job_runs_headless_on_linux(self):
+        block = job_block(BUILD, "rust-tests-windows-wine")
+        self.assertIn("ubuntu-26.04", block)
+        self.assertIn("ci/windows_wine_tests.py", block)
+        runner = (Path(__file__).parent / "wine-runner.sh").read_text(encoding="utf-8")
+        self.assertIn("unset DISPLAY WAYLAND_DISPLAY", runner)
+        self.assertIn("mscoree,mshtml=", runner)
+        self.assertIn("winedbg.exe=d", runner)
+        self.assertIn("ShowCrashDialog", runner)
