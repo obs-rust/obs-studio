@@ -52,6 +52,21 @@ class ScopeTest(unittest.TestCase):
                 self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
 
 
+class CrossTreeTest(unittest.TestCase):
+    """The cross tree must give consumers what the native libobs target does."""
+
+    def test_cross_core_module_manifest_is_not_empty(self):
+        text = (ROOT / "cmake/cross/CMakeLists.txt").read_text()
+        self.assertNotIn("set(OBS_CORE_MODULE_COUNT 0)", text)
+        self.assertIn("obs-outputs", text)
+        self.assertIn("obs-transitions", text)
+
+    def test_libobs_exports_pthreads_and_uthash_to_consumers(self):
+        text = (ROOT / "cmake/cross/tier2.cmake").read_text()
+        self.assertIn("target_link_libraries(libobs-cross-shared INTERFACE OBS::w32-pthreads)", text)
+        self.assertIn("target_link_libraries(libobs-cross-shared INTERFACE Uthash::Uthash)", text)
+
+
 class HeadlessWineTest(unittest.TestCase):
     def test_environment_never_reaches_a_display(self):
         import os
