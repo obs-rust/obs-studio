@@ -3780,6 +3780,7 @@ jobs:
       - name: Set Up soldr 🦀
         uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
         with:
+          # Cross-release archives and Corrosion use separate target trees (#5224).
           verdict-scope: build-project
           version: 0.9.54
           build-cache: false
@@ -3794,8 +3795,8 @@ jobs:
           s3-cache-limit: 50G
         env:
           SETUP_SOLDR_PERSISTENT_CHECKPOINT: ${{ runner.environment == 'self-hosted' && 'boot' || '' }}
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Cross-build and sign the Tier 2 closure 🔗
         run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias mac-arm64 --build "${GITHUB_WORKSPACE}/build_cmocka_link_mac-arm64"

@@ -90,8 +90,6 @@ ctest_jobs=(-j "${OBS_CTEST_JOBS:-1}")
 # run the prebuilt registry against the Cargo-native cores (#5009, #5848).
 residue="${OBS_TIER2_RESIDUE:-0}"
 bundle_work_name="${OBS_TIER2_BUNDLE_WORK:-build_cmocka_link_mac-arm64}"
-build_target=tier2-native
-if [ "$residue" = 1 ]; then build_target=tier2-residue; fi
 
 build="build_rust"
 if [ -z "$phase" ]; then
@@ -105,8 +103,13 @@ if [ -z "$phase" ]; then
     -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   echo "== build (complete native Tier 2 graph)"
-  cmake --build "$build" --config RelWithDebInfo --target "$build_target" \
-    >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  if [ "$residue" = 1 ]; then
+    cmake --build "$build" --config RelWithDebInfo --target tier2-residue \
+      >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  else
+    cmake --build "$build" --config RelWithDebInfo --target tier2-native \
+      >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  fi
 fi
 
 # libobs.framework twice: libobs (C, what the tests link) and its Rust twin

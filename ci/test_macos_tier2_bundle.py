@@ -115,6 +115,9 @@ class RunTest(unittest.TestCase):
                 bundle.run_suites(root, work.name, jobs=3)
             ctest = [(a, e) for a, e in calls if a[0] == "ctest"]
             self.assertEqual(len(ctest), 2)
+            for args, _ in [(a, e) for a, e in calls if a[0] == "ctest"]:
+                self.assertEqual(args[args.index("-E") + 1], "^test_core_module_manifest_source$")
+                self.assertIn("--timeout", args)
             off, on = (e for _, e in ctest)
             self.assertTrue(off["DYLD_LIBRARY_PATH"].startswith(str(work / "libobs-c-reference")))
             self.assertTrue(on["DYLD_LIBRARY_PATH"].startswith(str(work)))
