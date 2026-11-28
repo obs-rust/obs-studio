@@ -1265,7 +1265,11 @@ counts. Missing logs or counters remain unknown.
 
 The Flatpak OBS build reports zccache hits, misses and uncacheable compiles
 from its Ninja build session. Log evidence marks those counts
-`counter_scope: job-session`. Historical Flatpak ccache reports can
+`counter_scope: job-session`. Zero hits only warn, unless the step runs with
+`--expect-reuse` (the compiler-transfer consumer, or the
+`flatpak-expect-compiler-reuse` dispatch input), where they fail the job
+(#5788). A Flatpak zccache run ID cited here or in the migration note must
+be recorded in `docs/evidence/zccache-flatpak.json`. Historical Flatpak ccache reports can
 include cumulative restored statistics and carry
 `counter_scope: restored-cumulative` and `job_delta_available: false`.
 

@@ -1,0 +1,11 @@
+[
+  {
+    "run_id": "45858191336",
+    "head_sha": "ea389c0d8ffe3564e4c4e58211bb8f730aa67e3c",
+    "inputs": {"flatpak-measurement-only": true},
+    "hits": 0,
+    "misses": 378,
+    "artifact": null,
+    "stats_line": "Flatpak Zccache Stats (this build): warm_hits=0 cold_misses=378 uncacheable=0 compilations=378"
+  }
+]

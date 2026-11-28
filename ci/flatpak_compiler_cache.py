@@ -191,6 +191,10 @@ def main():  # noqa: C901
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--artifact', type=Path)
     parser.add_argument('--app', type=Path)
+    # Set only when the caller knows this build had a warm cache to reuse
+    # (#5788); a cold build keeps the zero-hit warning instead of failing.
+    parser.add_argument('--expect-reuse', action='store_true',
+                        help='report: fail when the build reused nothing although reuse was expected')
     args = parser.parse_args()
     if args.operation in ('force', 'pack', 'restore') and args.manifest is None:
         parser.error(f'{args.operation} requires --manifest')
@@ -219,6 +223,9 @@ def main():  # noqa: C901
                 with Path(output).open('a', encoding='utf-8') as stream:
                     print(summary, file=stream)
             if not hits:
+                if args.expect_reuse:
+                    print('::error::Flatpak zccache reported no hits although compiler reuse was expected')
+                    raise SystemExit(1)
                 print('::warning::Flatpak zccache reported no hits for this build')
             return
         result = {'hits': hits, 'misses': misses, 'stats': stats,

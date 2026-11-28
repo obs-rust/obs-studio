@@ -398,3 +398,105 @@ class WiringTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+FLATPAK_CACHE_SCRIPT = ROOT / "ci" / "flatpak_compiler_cache.py"
+EVIDENCE_LEDGER = ROOT / "docs" / "evidence" / "zccache-flatpak.json"
+EVIDENCE_DOCS = [ROOT / "docs" / "zccache-flatpak-migration-note.md"]
+# Only the ci-tooling.md paragraphs about Flatpak zccache: the rest of that
+# file cites unrelated runs (Ubuntu zccache, merge queue) outside this ledger.
+# Stats line printed by the only real Flatpak zccache build (cold dispatch).
+COLD_STATS_LINE = ("Flatpak Zccache Stats (this build): "
+                   "warm_hits=0 cold_misses=378 uncacheable=0 compilations=378")
+RUN_ID = re.compile(r"actions/runs/(\d+)|(?<![\d/])(\d{11})(?!\d)")
+
+
+def session_from_stats_line(line: str) -> dict:
+    fields = dict(part.split("=") for part in line.split(": ", 1)[1].split())
+    return {"status": "ok", "hits": int(fields["warm_hits"]),
+            "misses": int(fields["cold_misses"]),
+            "non_cacheable": int(fields["uncacheable"]),
+            "compilations": int(fields["compilations"]), "errors": 0}
+
+
+def run_report(session: dict, *flags: str) -> subprocess.CompletedProcess:
+    with tempfile.TemporaryDirectory() as directory:
+        cache = Path(directory)
+        (cache / "session.json").write_text(json.dumps(session))
+        env = {k: v for k, v in os.environ.items() if k != "GITHUB_STEP_SUMMARY"}
+        return subprocess.run([sys.executable, str(FLATPAK_CACHE_SCRIPT), "report",
+                               "--cache", str(cache), *flags],
+                              capture_output=True, text=True, env=env, check=False)
+
+
+class FlatpakReuseExpectationTest(unittest.TestCase):
+    """obs-rust/obs-studio#5788: zero warm hits may not pass silently."""
+
+    def test_cold_build_without_expectation_only_warns(self):
+        result = run_report(session_from_stats_line(COLD_STATS_LINE))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(COLD_STATS_LINE, result.stdout)
+        self.assertIn("::warning::", result.stdout)
+
+    def test_zero_hits_fail_when_reuse_expected(self):
+        result = run_report(session_from_stats_line(COLD_STATS_LINE), "--expect-reuse")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(COLD_STATS_LINE, result.stdout)
+        self.assertIn("::error::", result.stdout)
+
+    def test_warm_hits_pass_when_reuse_expected(self):
+        warm = {"status": "ok", "hits": 370, "misses": 8, "non_cacheable": 0,
+                "compilations": 378, "errors": 0}
+        result = run_report(warm, "--expect-reuse")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_workflow_passes_expectation_for_warm_builds(self):
+        workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        caller = (WORKFLOWS / "ci.yml").read_text()
+        self.assertRegex(workflow, r"flatpak-expect-compiler-reuse:\n(?:[^\n]*\n){0,2}\s+type: boolean")
+        self.assertIn("flatpak-expect-compiler-reuse: ${{ github.event_name == 'workflow_dispatch' "
+                      "&& inputs.flatpak-expect-compiler-reuse }}", caller)
+        main = job("build-project.yaml", "flatpak-build")
+        self.assertIn("inputs.flatpak-expect-compiler-reuse && '--expect-reuse'", main)
+        consumer = job("build-project.yaml", "flatpak-compiler-consumer")
+        self.assertRegex(consumer, r"flatpak_compiler_cache\.py report [^\n]*--expect-reuse")
+
+
+class FlatpakEvidenceLedgerTest(unittest.TestCase):
+    """obs-rust/obs-studio#5788: a doc may not cite a run the ledger lacks."""
+
+    def ledger(self) -> dict:
+        return {entry["run_id"]: entry for entry in json.loads(EVIDENCE_LEDGER.read_text())}
+
+    def cited_runs(self) -> set[str]:
+        texts = [doc.read_text() for doc in EVIDENCE_DOCS]
+        tooling = (ROOT / "docs" / "ci-tooling.md").read_text()
+        texts += [paragraph for paragraph in tooling.split("\n\n")
+                  if "flatpak" in paragraph.lower() and "zccache" in paragraph.lower()]
+        return {a or b for text in texts for a, b in RUN_ID.findall(text)}
+
+    def test_every_cited_run_is_in_the_ledger(self):
+        missing = self.cited_runs() - set(self.ledger())
+        self.assertFalse(missing, f"cited run IDs missing from {EVIDENCE_LEDGER.name}: {sorted(missing)}")
+
+    def test_ledger_entries_are_consistent(self):
+        ledger = self.ledger()
+        self.assertIn("45858191336", ledger)
+        for run_id, entry in ledger.items():
+            with self.subTest(run_id=run_id):
+                self.assertEqual(set(entry), {"run_id", "head_sha", "inputs", "hits",
+                                              "misses", "artifact", "stats_line"})
+                self.assertRegex(run_id, r"^\d{11}$")
+                self.assertRegex(entry["head_sha"], r"^[0-9a-f]{12,40}$")
+                self.assertIsInstance(entry["inputs"], dict)
+                session = session_from_stats_line(entry["stats_line"])
+                self.assertEqual((session["hits"], session["misses"]),
+                                 (entry["hits"], entry["misses"]))
+                self.assertEqual(session["compilations"],
+                                 session["hits"] + session["misses"] + session["non_cacheable"])
+
+    def test_retracted_run_ids_appear_nowhere(self):
+        tracked = subprocess.run(["git", "grep", "-l", "-e", "45882577523", "-e", "45883067267",
+                                  "--", ".", ":!ci/test_zccache.py"],
+                                 cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(tracked.stdout, "")
