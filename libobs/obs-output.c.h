@@ -17,8 +17,6 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#define get_weak(output) ((obs_weak_output_t *)output->context.control)
-
 #define RECONNECT_RETRY_BASE_EXP 1.5f
 
 static inline bool active(const struct obs_output *output)
@@ -2177,29 +2175,6 @@ void obs_output_signal_stop(obs_output_t *output, int code)
 	}
 }
 
-void obs_output_release(obs_output_t *output)
-{
-	if (!output)
-		return;
-
-	obs_weak_output_t *control = get_weak(output);
-	if (obs_ref_release(&control->ref)) {
-		// The order of operations is important here since
-		// get_context_by_name in obs.c relies on weak refs
-		// being alive while the context is listed
-		obs_output_destroy(output);
-		obs_weak_output_release(control);
-	}
-}
-
-obs_output_t *obs_output_get_ref(obs_output_t *output)
-{
-	if (!output)
-		return NULL;
-
-	return obs_weak_output_get_output(get_weak(output));
-}
-
 static struct caption_text *caption_text_new(const char *text, size_t bytes, struct caption_text *tail,
 					     struct caption_text **head, double display_duration)
 {
@@ -2249,9 +2224,6 @@ void obs_output_output_caption_text2(obs_output_t *output, const char *text, dou
 		pthread_mutex_unlock(&ctrack->caption_mutex);
 	}
 }
-
-/* File-local macros: keep them out of the next source of a unity build. */
-#undef get_weak
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef RECONNECT_RETRY_BASE_EXP
