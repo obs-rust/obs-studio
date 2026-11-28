@@ -79,9 +79,11 @@ def problems(text: str) -> list[str]:
             cond = step_if(step)
             if (("uses: actions/checkout@" in step and f"{SECRET} || github.token" in step)
                     or "uses: astral-sh/setup-uv@" in step
+                    or ("ci/runner_loss_retry.py" in step
+                        and f"GH_TOKEN: ${{{{ {SECRET} || github.token }}}}" in step)
                     or ("ci/mq_acquire_retry.py" in step
                         and f"GH_TOKEN: ${{{{ {SECRET} || github.token }}}}" in step)
-                    or (name == "capacity-recovery" and "uses: actions/checkout@" in step
+                    or (name in ("capacity-recovery", "runner-loss-retry") and "uses: actions/checkout@" in step
                         and "persist-credentials: false" in step and "ref: master" in step)):
                 continue  # these steps need no push credential
             if not re.search(r"\benv\." + flag + r" *[!=]= *'true'", cond):

@@ -316,7 +316,7 @@ class WorkflowTest(unittest.TestCase):
     def test_scheduled_recovery_is_isolated_from_rebase_and_untrusted_checkout(self):
         guard = load_ci("test_ai_rebase_token_guard")
         workflow = (ROOT / ".github/workflows/ai-rebase.yaml").read_text()
-        self.assertNotIn("workflow_run", workflow)
+        self.assertEqual(workflow.count("workflow_run:"), 1)  # the runner-loss-retry trigger only
         jobs = guard.jobs(workflow)
         recovery = jobs["capacity-recovery"]
         self.assertIn("ci/mq_acquire_retry.py $DRY", recovery)

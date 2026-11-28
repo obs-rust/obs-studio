@@ -110,10 +110,10 @@ class DampeningTests(unittest.TestCase):
             self.assertIn("head changed", bot.rebase_pr(1, False, expected_head=HEAD))
             run.assert_not_called()
 
-    def test_workflow_has_only_schedule_and_manual_triggers(self):
+    def test_workflow_has_no_push_trigger_and_workflow_run_reaches_only_the_retry_job(self):
         workflow = Path(".github/workflows/ai-rebase.yaml").read_text()
-        triggers = workflow.split("on:", 1)[1].split("permissions:", 1)[0]
-        self.assertNotIn("workflow_run:", triggers)
+        triggers = workflow.split("\non:", 1)[1].split("permissions:", 1)[0]
+        self.assertIn("workflow_run:", triggers)  # runner-loss-retry only (#5862)
         self.assertNotIn("push:", triggers)
         self.assertIn("schedule:", triggers)
         self.assertIn("workflow_dispatch:", triggers)

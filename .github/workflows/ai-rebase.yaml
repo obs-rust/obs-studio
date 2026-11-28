@@ -19,7 +19,13 @@ name: AI rebase
 # Schedule/manual scan retains capacity recovery without a Pull-completion
 # feedback edge; master pushes do not start sweeps.
 # Infrastructure-ejected PRs are re-armed on the schedule (up to 30 minutes later).
+# A completed Pull run whose failed jobs died only of runner shutdown/loss or
+# network loss is rerun at once by the runner-loss-retry job (#5862), PR and
+# merge_group alike, at most twice per run. That event reaches no other job.
 on:
+  workflow_run:
+    workflows: [Pull]
+    types: [completed]
   schedule:
     - cron: "17,47 * * * *"
   workflow_dispatch:
@@ -40,6 +46,7 @@ permissions:
 jobs:
   capacity-recovery:
     if: >-
+      github.event_name != 'workflow_run' &&
       (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio') &&
       github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-24.04
@@ -86,11 +93,51 @@ jobs:
           # shellcheck disable=SC2086 # DRY is an optional argument
           uv run --no-project --script ci/ai_rebase.py --requeue-ejected --limit 10 $DRY
 
+  runner-loss-retry:
+    if: >-
+      github.event_name == 'workflow_run' && github.repository == 'obs-rust/obs-studio' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt < 3 &&
+      (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'merge_group')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # One decision per run; a burst of completions for other runs does not queue behind it.
+    concurrency:
+      group: runner-loss-retry-${{ github.event.workflow_run.id }}
+      cancel-in-progress: false
+    env:
+      HAS_TOKEN: ${{ vars.AI_REBASE_APP_ID != '' }}
+    steps:
+      - name: Mint the ai-rebase App token
+        id: app
+        if: env.HAS_TOKEN == 'true'
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ vars.AI_REBASE_APP_ID }}
+          private-key: ${{ secrets.AI_REBASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+      # Default-branch code only: never the triggering head or its artifacts.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: false
+      - name: Rerun runner-loss failures
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: uv run --no-project --script ci/runner_loss_retry.py --run-id "$RUN_ID"
+
   rebase:
     concurrency:
       group: ai-rebase-conflicts
       cancel-in-progress: false
-    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    if: >-
+      github.event_name != 'workflow_run' &&
+      (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # GitHub does not allow `secrets` in a job `if:`, so whether the App is

@@ -735,6 +735,23 @@ the paths that select them, so a change only triggers the tests it can affect.
    before enqueueing; it shares the older ejection handler's retry marker.
    Each recovery still requires every selected job and CI Gate to pass.
 
+   **Runner shutdown or network loss (#5862).** A host reboot kills its jobs with
+   "The runner has received a shutdown signal". The same workflow's
+   `runner-loss-retry` job fires on a completed failed `Pull` run (the only
+   `workflow_run` consumer; it rebases and sweeps nothing) and runs
+   `ci/runner_loss_retry.py`, which reuses `ci/ai_rebase.py`'s RUNNER_LOST,
+   NETWORK_ERROR, CODE_ERROR and SETUP_STEP classifier on each failed job's
+   check-run annotations and failed-step log. It reruns the failed jobs only when
+   **every** failed job is proven runner/network loss (or a failed setup step);
+   one real test or compiler failure, or one job with no evidence, refuses the
+   run. At most two automatic reruns per run (`run_attempt` 1 and 2). A PR run is
+   rerun while the PR head is unchanged; a merge-group run is rerun while the
+   group is still queued at that SHA, else its PR is re-armed immediately
+   (sharing the per-head marker above) instead of waiting for the :17/:47 cron.
+   Reruns must be idempotent: every `actions/upload-artifact` in `ci.yml` and
+   `build-project.yaml` sets `overwrite: true`, so a rerun replaces an artifact the
+   lost attempt already finalized (`ci/test_runner_loss_retry.py` enforces it).
+
    Both paths require exact hosted acquisition annotations and CI Gate capacity
    diagnostics for every unsuccessful job. Missing/unknown/incomplete evidence,
    independent gate failures and real test failures never authorize recovery.

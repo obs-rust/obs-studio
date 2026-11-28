@@ -268,6 +268,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: flatpak-runtime-evidence
           path: |
             ${{ runner.temp }}/flatpak-runtime-result/result.json
@@ -318,6 +319,7 @@ jobs:
       - name: Upload Environment Metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: tier2-setup-metadata
           path: ${{ runner.temp }}/setup-bundle/bundle.json
           retention-days: 1
@@ -325,6 +327,7 @@ jobs:
       - name: Upload Prepared Image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: tier2-setup-image
           path: ${{ runner.temp }}/setup-bundle/image.tar.zst
           compression-level: 0
@@ -396,6 +399,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: tier2-setup-${{ matrix.variant }}-${{ matrix.trial }}
           path: |
             ${{ runner.temp }}/setup-bundle/*-measurement.json
@@ -515,6 +519,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: native-cache-consumer-${{ matrix.platform }}-${{ matrix.architecture }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-cache-consume.json
           retention-days: 1
@@ -586,6 +591,7 @@ jobs:
       - name: Upload Lane Proof 🧾
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          overwrite: true
           name: ${{ needs.build-project.outputs.tier2-linux-proof }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
