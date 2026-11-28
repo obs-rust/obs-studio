@@ -49,9 +49,11 @@ class ToolchainTest(unittest.TestCase):
             work = Path(temporary)
             driver = work / "driver"
             driver.mkdir()
-            for name in ("x86_64-pc-windows-msvc-clang-cl", "lld-link", "llvm-mt"):
+            for name in ("x86_64-pc-windows-msvc-clang-cl", "lld-link"):
                 (driver / name).touch()
-            values = {"--print-ar": str(driver / "llvm-lib"), "--print-rc": str(driver / "llvm-rc"),
+            llvm = work / "llvm"
+            llvm.mkdir()
+            values = {"--print-ar": str(llvm / "llvm-lib"), "--print-rc": str(llvm / "llvm-rc"),
                       "--print-sysroot": str(work / "sdk"),
                       "--print-cc": str(driver / "x86_64-pc-windows-msvc-clang-cl")}
             calls = []
@@ -68,6 +70,9 @@ class ToolchainTest(unittest.TestCase):
             self.assertIn(f"CMAKE_LINKER [==[{driver / 'lld-link'}]==]", content)
             self.assertIn(str(driver / "x86_64-pc-windows-msvc-clang-cl"), content)
             self.assertNotIn("soldr-tools", content)
+            # The cc-driver's llvm-mt needs libxml2.so.2, which CI runners lack;
+            # the managed LLVM's does not (Tier 2 Link Check, run 46117487857).
+            self.assertIn(f"CMAKE_MT [==[{llvm / 'llvm-mt'}]==]", content)
 
 
 class BuildTest(unittest.TestCase):
