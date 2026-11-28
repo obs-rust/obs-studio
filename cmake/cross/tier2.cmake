@@ -142,4 +142,17 @@ add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm
 foreach(_plugin IN ITEMS image-source obs-transitions text-freetype2 obs-filters obs-outputs)
   add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
 endforeach()
+if(OS_MACOS)
+  # Qt Core/Widgets tests: Darwin libraries from the pinned prebuilt, generators
+  # (moc/uic/rcc) from the pinned Linux host Qt.
+  list(PREPEND CMAKE_PREFIX_PATH "${OBS_CROSS_QT}")
+  _obs_cross_uic(_host_uic)
+  set(QT_HOST_PATH "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
+  unset(CMAKE_DISABLE_FIND_PACKAGE_Qt6)
+  find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+  find_package(Qt6CoreTools REQUIRED)
+  find_package(Qt6WidgetsTools REQUIRED)
+  include("${CMAKE_CURRENT_LIST_DIR}/tier2-host-qt.cmake")
+  obs_tier2_bind_host_qt("${QT_HOST_PATH}")
+endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
