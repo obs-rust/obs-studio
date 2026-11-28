@@ -877,7 +877,7 @@ jobs:
         run: |
           : Tier 4 GPU Acceleration Check 🎮
           sudo cmake --install build_ubuntu --config ${{ needs.check-event.outputs.config }} > /dev/null
-          command -v xvfb-run > /dev/null || sudo apt-get install -y --no-install-recommends xvfb
+          command -v xvfb-run > /dev/null || { sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends xvfb; }
           uv run --no-project --with websockets==13.1 test/websocket-tier4/run_tier4.py --only gpu --obs /usr/bin/obs-studio-rust-gui
 
       # The whole black-box obs-websocket suite against the real app with Rust
@@ -2318,9 +2318,14 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+      # The Dell pool image ships no apt lists, so refresh them first (#5859).
       - name: Install Wine 🍷
+        timeout-minutes: 10
         run: |
-          command -v wine > /dev/null || "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -y --no-install-recommends wine wine64 libwine
+          command -v wine > /dev/null && exit 0
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+          timeout --kill-after=10s 240 sudo apt-get -o Acquire::Retries=1 update
+          "${GITHUB_WORKSPACE}/.github/scripts/retry" timeout --kill-after=10s 300 sudo apt-get -o Acquire::Retries=1 install -y --no-install-recommends wine wine64 libwine
 
       - name: Run Windows Rust Tests Under Wine 🍷
         run: uv run --no-project ci/windows_wine_tests.py
@@ -2864,7 +2869,8 @@ jobs:
           # Bound mirror stalls in this bootstrap and subsequent package installs.
           printf '%s\n' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' \
             'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99-ci-acquire-bounds
-          # No index refresh/upgrade: the content-addressed image freezes versions.
+          # apt-lists-ready: a prebaked image installs with no index refresh/upgrade
+          # (the content-addressed image freezes versions); stock images update below.
           if [ "$TIER2_PREBAKED" = true ]; then
             timeout --kill-after=10s 180 apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata
             exit 0
@@ -2995,7 +3001,7 @@ jobs:
         env:
           TIER2_APT_SHARED: ${{ steps.pcache.outputs.apt != '' }}
         run: |
-          # Install Git already refreshed these lists in this fresh container.
+          # apt-lists-ready: Install Git already refreshed these lists in this fresh container.
           export TIER2_INSTALL_ARCHIVES="$TIER2_APT_ARCHIVES"
           if [ "${TIER2_APT_SHARED:-false}" = true ]; then
             # Only downloads write the shared Dell archive. Release the flock
