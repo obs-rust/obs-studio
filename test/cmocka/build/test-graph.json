@@ -1993,6 +1993,26 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_create_disabled_module": {
+      "sources": [
+        "test/cmocka/test_create_disabled_module.c"
+      ],
+      "libraries": [
+        "SIMDe::SIMDe",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    },
     "test_cube_lut": {
       "sources": [
         "test/cmocka/test_cube_lut.c",
@@ -24994,6 +25014,22 @@
     },
     "test_crc32": {
       "target": "test_crc32"
+    },
+    "test_create_disabled_module": {
+      "target": "test_create_disabled_module",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_cube_lut": {
       "target": "test_cube_lut"
