@@ -97,7 +97,7 @@ def verify_signed_images(work: Path) -> int:
     return count
 
 
-# soldr's LLVM 21 ASan runtime deadlocks in AsanInitFromRtl on macOS 26, so the
+# soldr's LLVM 21 ASan runtime deadlocks in AsanInitFromRtl on macOS 26 (forge-ci/soldr#4291), so the
 # cross build keeps UBSan only; native macOS builds and runs the ASan targets.
 SANITIZER_RUNTIMES = ("libclang_rt.ubsan_osx_dynamic.dylib",)
 
