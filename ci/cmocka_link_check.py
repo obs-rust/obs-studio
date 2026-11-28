@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import time
 import tempfile
@@ -96,19 +97,33 @@ def verify_signed_images(work: Path) -> int:
     return count
 
 
-def darwin_runtime_flags() -> dict[str, str]:
-    """Link flags for libclang_rt.osx.a (soldr's managed Darwin compiler-rt).
+SANITIZER_RUNTIMES = ("libclang_rt.asan_osx_dynamic.dylib", "libclang_rt.ubsan_osx_dynamic.dylib")
 
-    The stock SDK driver has no builtins for @available checks, which the
-    VideoToolbox tests use (__isPlatformVersionAtLeast).
+
+def sanitizer_option(alias: str) -> str:
+    """Per-target ASan/UBSan stays off only where the Windows link cannot run it."""
+    return f"-DOBS_TEST_SANITIZE_PER_TARGET={'OFF' if alias == 'win-x64' else 'ON'}"
+
+
+def sanitizer_runtimes(directory: Path) -> list[Path]:
+    return [directory / name for name in SANITIZER_RUNTIMES]
+
+
+def darwin_runtime_flags() -> dict[str, str]:
+    """Link flags from soldr's managed Darwin compiler-rt.
+
+    The stock SDK driver has no builtins for @available checks (VideoToolbox
+    tests use __isPlatformVersionAtLeast) and no sanitizer runtimes; the
+    managed resource directory has libclang_rt.osx.a and the ASan/UBSan dylibs.
     """
     receipt = json.loads(subprocess.run(
         ["soldr", "toolchain", "darwin", "--target", TRIPLES["mac-arm64"], "--sdk-version", "26.5", "--json"],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
-    runtime = Path(receipt["compiler_rt"]) / "libclang_rt.osx.a"
-    if not runtime.is_file():
-        raise FileNotFoundError(f"soldr Darwin toolchain is missing {runtime}")
-    return {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime) for kind in ("EXE",)}
+    directory = Path(receipt["compiler_rt"])
+    for name in ("libclang_rt.osx.a", *SANITIZER_RUNTIMES):
+        if not (directory / name).is_file():
+            raise FileNotFoundError(f"soldr Darwin toolchain is missing {directory / name}")
+    return {"CMAKE_EXE_LINKER_FLAGS": f"{directory / 'libclang_rt.osx.a'} -resource-dir {receipt['clang_resource_dir']}"}
 
 
 REGISTRY_SNAPSHOT = ROOT / "ci" / "macos_tier2_registry.txt"
@@ -238,7 +253,13 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str], all_tests: boo
         wrapper.chmod(0o755)
     toolchain_args = [f"-DCMAKE_TOOLCHAIN_FILE={windows_toolchain(work, target)}"] if alias == "win-x64" else []
     if alias == "mac-arm64":
-        toolchain_args = [f"-D{key}={value}" for key, value in darwin_runtime_flags().items()]
+        flags = darwin_runtime_flags()
+        toolchain_args = [f"-D{key}={value}" for key, value in flags.items()]
+        runtimes = work / "sanitizer-runtimes"
+        runtimes.mkdir(exist_ok=True)
+        compiler_rt = Path(flags["CMAKE_EXE_LINKER_FLAGS"].split()[0]).parent
+        for runtime in sanitizer_runtimes(compiler_rt):
+            shutil.copy2(runtime, runtimes / runtime.name)
     query = work / ".cmake/api/v1/query/codemodel-v2"
     query.parent.mkdir(parents=True, exist_ok=True)
     query.touch()
@@ -251,7 +272,7 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str], all_tests: boo
                     f"-DOBS_CROSS_TARGET={alias}", "-DOBS_CROSS_LINK=ON", "-DOBS_CROSS_TIER2=ON",
                     "-DCMAKE_BUILD_TYPE=RelWithDebInfo", f"-DRust_CARGO={wrappers / 'cargo'}",
                     f"-DRust_COMPILER={wrappers / 'rustc'}", f"-DRust_CARGO_TARGET={target}",
-                    "-DOBS_TEST_SANITIZE_PER_TARGET=OFF",
+                    sanitizer_option(alias),
                     f"-DCMAKE_C_COMPILER_LAUNCHER={env['CMAKE_C_COMPILER_LAUNCHER']}",
                     f"-DCMAKE_CXX_COMPILER_LAUNCHER={env['CMAKE_CXX_COMPILER_LAUNCHER']}", *toolchain_args], cwd=ROOT, env=env, check=True)
     print(f"Tier 2 {alias}: configured in {time.monotonic() - configured:.2f}s", flush=True)

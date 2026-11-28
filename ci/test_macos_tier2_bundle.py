@@ -120,6 +120,7 @@ class RunTest(unittest.TestCase):
             self.assertTrue(on["DYLD_LIBRARY_PATH"].startswith(str(work)))
             for env in (off, on):
                 self.assertIn(str(root / ".deps/obs-deps-1-universal/lib"), env["DYLD_LIBRARY_PATH"])
+                self.assertIn(str(work / "sanitizer-runtimes"), env["DYLD_LIBRARY_PATH"])
                 self.assertEqual(env["DYLD_FRAMEWORK_PATH"], str(root / ".deps/obs-deps-qt6-1-universal/lib"))
 
     def test_a_failing_suite_fails_the_run_and_no_compiler_is_ever_invoked(self):

@@ -104,7 +104,7 @@ def suite_environment(root: Path, work: Path, variant: str) -> dict[str, str]:
     libs, qt = dependency_roots(root)
     first = work / "libobs-c-reference" if variant == "OFF" else work
     env = dict(os.environ)
-    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(first), str(libs)])
+    env["DYLD_LIBRARY_PATH"] = os.pathsep.join([str(first), str(work / "sanitizer-runtimes"), str(libs)])
     env["DYLD_FRAMEWORK_PATH"] = str(qt)
     return env
 
