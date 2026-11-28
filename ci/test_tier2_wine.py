@@ -52,6 +52,18 @@ class ScopeTest(unittest.TestCase):
                 self.assertTrue(scope([path], event="pull_request", ref="1/merge").windows)
 
 
+class ExecutableTest(unittest.TestCase):
+    def test_suffixless_registrations_mean_the_exe(self):
+        build = Path("/build")
+        self.assertEqual(tier2_wine.test_exe("/build/test/cmocka/test_audio_io", build),
+                         Path("/build/test/cmocka/test_audio_io.exe"))
+        self.assertEqual(tier2_wine.test_exe("/build/test/cmocka/x.exe", build), Path("/build/test/cmocka/x.exe"))
+        self.assertIsNone(tier2_wine.test_exe("/usr/bin/cmake", build))
+
+    def test_no_cross_build_exemption_list_remains(self):
+        self.assertFalse(hasattr(tier2_wine, "NOT_CROSS_BUILT"))
+
+
 class CrossTreeTest(unittest.TestCase):
     """The cross tree must give consumers what the native libobs target does."""
 

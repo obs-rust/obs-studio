@@ -325,6 +325,10 @@ function(_obs_cross_shared_libobs name)
         target_link_options(${name} PRIVATE "LINKER:/EXPORT:${_sym}")
       endforeach()
     endforeach()
+    # The soldr cl driver links compiler-rt's builtins (for `__udivti3` in the C
+    # sources), and the whole-archived Rust staticlib carries its own copy of the
+    # same builtins objects: identical duplicates (`__compilerrt_abort_impl`).
+    target_link_options(${name} PRIVATE "LINKER:/FORCE:MULTIPLE")
     # w32-pthreads is its own DLL in the shipped build
     # (deps/w32-pthreads/CMakeLists.txt: add_library(w32-pthreads SHARED)), so
     # its source and its DllMain stay in a separate shared library here too.
@@ -364,8 +368,10 @@ if(OBS_CROSS_LINK)
   set(OBS_VERSION "cross-check")
   set(OBS_VERSION_CANONICAL "cross-check")
   set(OBS_COMMIT "cross-check")
-  set(OBS_CORE_MODULE_COUNT 0)
-  set(OBS_CORE_MODULE_LIST "\tNULL")
+  # A real manifest: test_core_module_manifest requires these two, and a count
+  # of 0 made it fail under Wine. The native list is every enabled core module.
+  set(OBS_CORE_MODULE_COUNT 2)
+  set(OBS_CORE_MODULE_LIST "\t\"obs-outputs\",\n\t\"obs-transitions\"")
   configure_file("${OBS_SOURCE_ROOT}/libobs/obsversion.c.in" "${CMAKE_BINARY_DIR}/config/obsversion.c" @ONLY)
   configure_file(
     "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"

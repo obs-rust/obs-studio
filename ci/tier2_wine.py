@@ -35,11 +35,6 @@ ROOT = Path(__file__).resolve().parent.parent
 # reason. They keep running natively in the nightly rust-tier2-windows job.
 # Quarantine only a genuine Wine or cross-toolchain gap, never a flaky test.
 QUARANTINE: dict[str, str] = {
-    "test_core_module_manifest": (
-        "required_core_modules_are_listed: the cross tree configures obs-core-modules.c with "
-        "OBS_CORE_MODULE_COUNT 0 (cmake/cross), so obs_core_modules_count is 0. A cross-tree gap, "
-        "not Wine; fix in cmake/cross."
-    ),
     "test_disk_space_monitor": (
         "All four cases time out waiting on the monitor's worker thread (70 s) on the CI runner under "
         "Wine, three runs in a row; the same executable passes under Wine 11 on an idle workstation. "
@@ -59,52 +54,6 @@ QUARANTINE: dict[str, str] = {
         "A cross-toolchain difference, not a Wine gap, and the C test must not be edited."
     ),
 }
-
-
-# Tests the Linux cross tree cannot build yet, so Wine cannot run them
-# (measured with `cmocka_link_check.py --all-tests`): some miss include paths the
-# cross tree does not set (uthash.h, obs-core-modules.h), some fail to link
-# w32-pthreads imports, compiler-rt `__udivti3` or a test-only libobs seam, and
-# have no cross target. The build is run with `-k 0`; this script fails when a
-# test outside this list stops building, and notes a stale entry, so the list
-# can only shrink. These keep their Windows
-# coverage in the nightly native rust-tier2-windows job.
-NOT_CROSS_BUILT = frozenset(
-    {
-        "test_audio_seam",
-        "test_display_seam",
-        "test_encoder_audio_start_frames_steps",
-        "test_encoder_audio_start_steps",
-        "test_encoder_pause_steps",
-        "test_graphics_immediate_render",
-        "test_output_begin_steps",
-        "test_output_caption_queue",
-        "test_output_caption_text",
-        "test_output_delay",
-        "test_output_filename_reserve",
-        "test_output_interleave",
-        "test_output_raw_audio_steps",
-        "test_output_raw_audio_trim_steps",
-        "test_platform_cocoa",
-        "test_scene_audio_action_steps",
-        "test_scene_audio_window_steps",
-        "test_scene_item_crop_setter",
-        "test_source_audio_place_steps",
-        "test_source_deinterlace_seam",
-        "test_source_transition_seam_calls",
-        "test_source_transition_seam_render",
-        "test_svt_av1",
-        "test_texture_create_mip_data",
-        "test_texture_render",
-        "test_threading",
-        "test_transition_render_steps",
-        "test_transition_sample_time_steps",
-        "test_utf8_windows",
-        "test_video_clock_race",
-        "test_video_stats_race",
-        "test_win_wsc_product_refs",
-    }
-)
 
 
 def wine_env(prefix: Path) -> dict[str, str]:
@@ -162,7 +111,7 @@ def run_test(test: dict, build: Path, env: dict[str, str], timeout: int) -> tupl
     started = time.monotonic()
     # Own process group: a hung test leaves wine's helper processes behind.
     with subprocess.Popen([*wine_command(), *command], cwd=cwd, env=run_env, stdin=subprocess.DEVNULL,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True) as proc:
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", start_new_session=True) as proc:
         try:
             output, _ = proc.communicate(timeout=timeout)
             code = proc.returncode
@@ -204,26 +153,50 @@ def start_wine(prefix: Path, build: Path, deps: Path) -> dict[str, str]:
     return env
 
 
-def runnable_tests(build: Path) -> list[dict] | None:
-    """CTest's Windows executables, or None when the unbuilt set drifted."""
-    listed = plan(build)
-    # CTest drops the command of a test whose executable target is not built.
-    unbuilt = {t["name"] for t in listed if not t.get("command")}
-    unbuilt |= {t["name"] for t in listed if any(p.endswith(".exe") and not Path(p).exists() for p in t.get("command", [])[:2])}
-    if unbuilt - NOT_CROSS_BUILT:
-        print(f"ERROR: tests stopped cross-building: {sorted(unbuilt - NOT_CROSS_BUILT)}")
+def test_exe(part: str, build: Path) -> Path | None:
+    """The Windows executable a CTest command part names, if it is one of ours.
+
+    CTest on Windows finds `.../test_x` as `.../test_x.exe`; registrations written
+    without the suffix (test_audio_io, test_video_io) mean the same.
+    """
+    path = Path(part)
+    if not path.is_relative_to(build):
         return None
-    if NOT_CROSS_BUILT - unbuilt:
-        # They run below; the list may only shrink, so drop them from it.
-        print(f"NOTE: now cross-building, remove from NOT_CROSS_BUILT: {sorted(NOT_CROSS_BUILT - unbuilt)}")
-    tests = []
-    for test in listed:
-        # A Windows executable, possibly behind a CMAKE_CROSSCOMPILING_EMULATOR
-        # prefix; CMake script tests (no .exe) run on the Linux lanes.
-        exes = [i for i, part in enumerate(test.get("command", [])[:2]) if part.endswith(".exe")]
-        if exes and test["name"] not in unbuilt:
-            test["command"] = test["command"][exes[0]:]
-            tests.append(test)
+    return path if path.suffix == ".exe" else path.with_name(path.name + ".exe")
+
+
+def runnable_tests(build: Path) -> list[dict] | None:
+    """CTest's Windows executables, or None when one was not cross-built."""
+    tests: list[dict] = []
+    unbuilt: list[str] = []
+    for test in plan(build):
+        # CTest drops the command of a test whose executable it cannot find.
+        command = test.get("command")
+        if not command:
+            # Registered as `.../test_x` with no suffix: CTest cannot resolve it
+            # on Linux, where Windows' CTest would find test_x.exe.
+            guess = build / "test" / "cmocka" / f"{test['name']}.exe"
+            if guess.exists():
+                test["command"] = [str(guess)]
+                tests.append(test)
+            else:
+                unbuilt.append(test["name"])
+            continue
+        # The executable, possibly behind a CMAKE_CROSSCOMPILING_EMULATOR or
+        # xvfb-run prefix; CMake script tests (no executable under build) run
+        # on the Linux lanes.
+        found = [(i, exe) for i, part in enumerate(command[:2]) if (exe := test_exe(part, build))]
+        if not found:
+            continue
+        index, exe = found[0]
+        if not exe.exists():
+            unbuilt.append(test["name"])
+            continue
+        test["command"] = [str(exe), *command[index + 1:]]
+        tests.append(test)
+    if unbuilt:
+        print(f"ERROR: tests that were not cross-built: {sorted(unbuilt)}")
+        return None
     return tests
 
 

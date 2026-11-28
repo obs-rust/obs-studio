@@ -82,6 +82,10 @@ if(OS_WINDOWS)
   target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/deps/w32-pthreads")
   add_library(OBS::w32-pthreads ALIAS libobs-cross-shared-pthreads)
   target_include_directories(libobs-cross-shared-pthreads PUBLIC "${OBS_SOURCE_ROOT}/deps/w32-pthreads")
+  # As libobs/cmake/os-windows.cmake does: consumers of libobs get w32-pthreads'
+  # import library. Tests that compile libobs sources into themselves
+  # (test_threading, the *_seam and *_steps tests) call pthread_* directly.
+  target_link_libraries(libobs-cross-shared INTERFACE OBS::w32-pthreads)
 endif()
 find_package(
   FFmpeg
@@ -91,6 +95,8 @@ find_package(
 )
 find_package(jansson REQUIRED)
 find_package(Uthash REQUIRED)
+# libobs links uthash's headers into every consumer (libobs/CMakeLists.txt).
+target_link_libraries(libobs-cross-shared INTERFACE Uthash::Uthash)
 find_package(SIMDe REQUIRED)
 find_package(ZLIB REQUIRED)
 
