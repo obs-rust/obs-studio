@@ -125,4 +125,32 @@ set_target_properties(cmocka PROPERTIES OBS_DISABLE_PCH TRUE OBS_DISABLE_UNITY_B
 set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
 set(CMOCKA_LIBRARIES cmocka)
 set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
+if(OS_WINDOWS)
+  # The owners the unchanged registry gates on (librtmp, happy-eyeballs,
+  # media-playback, file-updater, opts-parser, bpm tests). soldr's cl driver
+  # resolves case-correct SDK headers such as Mstcpip.h (#5870).
+  # When #5855's OS_MACOS block lands, widen its guard to OS_MACOS OR OS_WINDOWS
+  # and delete this one.
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
+  set(ENABLE_FREETYPE ON)
+  set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+  function(set_target_properties_obs target)
+    set_target_properties(${target} PROPERTIES ${ARGN})
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
+  set(
+    OBS_MODULES_CONFIGURED
+    image-source
+    obs-transitions
+    text-freetype2
+    obs-filters
+    obs-outputs
+  )
+  foreach(_plugin IN LISTS OBS_MODULES_CONFIGURED)
+    add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
+  endforeach()
+endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
