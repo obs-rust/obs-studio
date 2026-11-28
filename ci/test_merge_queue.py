@@ -41,7 +41,7 @@ def top_level_jobs(text: str) -> list[str]:
     return re.findall(r"^  ([A-Za-z0-9_-]+):\s*$", body, re.M)
 
 
-NATIVE_MACOS_EXECUTION = ("rust-tests-macos", "rust-tier2-macos")
+NATIVE_MACOS_EXECUTION = ("rust-tests-macos", "rust-tier2-macos", "rust-tier2-macos-build", "rust-tier2-macos-ctest")
 
 
 class MergeQueue(unittest.TestCase):
@@ -113,7 +113,8 @@ class MergeQueue(unittest.TestCase):
 
     def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
         for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos", "rust-tests-macos-build",
-                     "rust-tests-windows-wine", "rust-tier2-macos", "rust-tier2-windows-wine",
+                     "rust-tests-windows-wine", "rust-tier2-macos", "rust-tier2-macos-build",
+                     "rust-tier2-macos-ctest", "rust-tier2-windows-wine",
                      "rust-linux-tier2-build"):
             with self.subTest(job=name):
                 header = job_block(BUILD, name).split("    steps:", 1)[0]
@@ -133,6 +134,7 @@ class MergeQueue(unittest.TestCase):
                     expr = expr.replace("needs.ci-mode.result", repr("success"))
                     expr = expr.replace("needs.rust-tests-linux.result", repr("success"))
                     expr = expr.replace("needs.rust-tests-macos-build.result", repr("success"))
+                    expr = expr.replace("needs.rust-tier2-macos-build.result", repr("success"))
                     expr = re.sub(r"inputs\.[\w_-]+", "False", expr)
                     expr = expr.replace("always()", "True").replace("cancelled()", "False")
                     expr = expr.replace("&&", " and ").replace("||", " or ")

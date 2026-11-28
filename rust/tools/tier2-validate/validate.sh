@@ -85,6 +85,12 @@ mkdir -p "$XCODE_CAS_PATH"
 # (#2138). Tests that must not overlap carry RUN_SERIAL or RESOURCE_LOCK.
 ctest_jobs=(-j "${OBS_CTEST_JOBS:-1}")
 
+# OBS_TIER2_RESIDUE=1: the cmocka/CTest executables were cross-built and signed on
+# Linux (ci/macos_tier2_bundle.py). Build only what needs a native toolchain and
+# run the prebuilt registry against the Cargo-native cores (#5009, #5848).
+residue="${OBS_TIER2_RESIDUE:-0}"
+bundle_work_name="${OBS_TIER2_BUNDLE_WORK:-build_cmocka_link_mac-arm64}"
+
 build="build_rust"
 if [ -z "$phase" ]; then
   cmocka_prefix="$(brew --prefix cmocka)"
@@ -97,8 +103,13 @@ if [ -z "$phase" ]; then
     -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
     >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
   echo "== build (complete native Tier 2 graph)"
-  cmake --build "$build" --config RelWithDebInfo --target tier2-native \
-    >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  if [ "$residue" = 1 ]; then
+    cmake --build "$build" --config RelWithDebInfo --target tier2-residue \
+      >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  else
+    cmake --build "$build" --config RelWithDebInfo --target tier2-native \
+      >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+  fi
 fi
 
 # libobs.framework twice: libobs (C, what the tests link) and its Rust twin
@@ -127,7 +138,7 @@ if [ -z "$avcodec" ]; then
   exit 1
 fi
 
-probe=$(find "$build/test/cmocka" -name test_bitstream -type f -perm -u+x | head -1)
+probe=$(find "$build/test/cmocka" -name test_bitstream -type f -perm -u+x 2>/dev/null | head -1)
 if [ -z "$phase" ]; then
   # Only preparation overlaps: multiple CTest processes would race on their
   # shared logs, fixtures, fixed ports/temp names and process-local locks.
@@ -137,6 +148,16 @@ if [ -z "$phase" ]; then
   exit 0
 fi
 
+# Residue: only what the Linux bundle cannot cover is built and run natively here
+# (#5848): the ASan-instrumented tests (soldr's LLVM 21 ASan runtime deadlocks at
+# init on macOS 26, so the cross build keeps UBSan only) and the fixture that
+# configures and compiles while it runs.
+ctest_filter=()
+if [ "$residue" = 1 ] && [ "$phase" = cmake-tests ]; then
+  asan_names=$(paste -sd'|' "$build/test/cmocka/asan-tests.txt")
+  [ -n "$asan_names" ] || { echo "FAIL: no ASan test list in $build/test/cmocka" >&2; exit 1; }
+  ctest_filter=(-R "^(${asan_names}|test_core_module_manifest_source)\$" --no-tests=error)
+fi
 if [ "$phase" = cmake-tests ]; then
   for mode in OFF ON; do
     if [ "$mode" = ON ]; then lib=$rust_lib; else lib=$c_lib; fi
@@ -150,7 +171,7 @@ if [ "$phase" = cmake-tests ]; then
     suite_logs="$PWD/$build/tail-logs/$phase/$mode"
     mkdir -p "$suite_logs"
     echo "== [$mode] ctest"
-    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" \
+    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" ${ctest_filter[@]+"${ctest_filter[@]}"} \
       --output-log "$suite_logs/ctest.log"; then
       DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
         show_crash_stacks "$build"
@@ -305,6 +326,12 @@ for native_variant in obs-c-reference obs; do
     capture_count=$((capture_count + 1))
   done <"$native_output/macos-capture-paths.txt"
   [ "$capture_count" -eq 3 ] || { echo 'FAIL: all three capture modules must be checked' >&2; exit 1; }
+  if [ "$residue" = 1 ]; then
+    echo "== Cargo [$native_variant] prebuilt ctest suite"
+    uv run --no-project ci/macos_tier2_bundle.py ctest-core --root "$(pwd -P)" --work-name "$bundle_work_name" \
+      --core "$native_output/$native_variant/libobs.dylib" --variant "$native_variant" --jobs "${OBS_CTEST_JOBS:-1}" || exit 1
+    continue
+  fi
   echo "== Cargo [$native_variant] unchanged ctest suite"
   if ! "${native_dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" \
     --output-log "$suite_logs/ctest.log"; then
