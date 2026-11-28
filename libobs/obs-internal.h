@@ -1912,6 +1912,10 @@ extern void remove_async_frame(obs_source_t *source, struct obs_source_frame *fr
 extern void obs_source_output_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_preload_video_internal(obs_source_t *source, const struct obs_source_frame *frame);
 extern void obs_source_set_video_frame_internal(obs_source_t *source, const struct obs_source_frame *frame);
+/* The async frame cache obs_source_output_video_internal()
+ * (obs-source-output-video-internal.c.h) fills and clears (obs-source.c.h). */
+extern struct obs_source_frame *cache_video(struct obs_source *source, const struct obs_source_frame *frame);
+extern void free_async_cache(struct obs_source *source);
 /* The per-source callback steps of obs_source_video_tick()
  * (obs-source-video-tick-callbacks.c.h). */
 extern void obs_source_deferred_update(obs_source_t *source);

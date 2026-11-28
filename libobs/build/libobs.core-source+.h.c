@@ -104,6 +104,7 @@
 #include "libobs/obs-source-muted-volume-fields.c.h"
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-output-capture-device-fields.c.h"
+#include "libobs/obs-source-output-video-internal.c.h"
 #include "libobs/obs-source-preload-video-internal-fields.c.h"
 #include "libobs/obs-source-process-filter-begin-fields.c.h"
 #include "libobs/obs-source-process-filter-end-fields.c.h"
