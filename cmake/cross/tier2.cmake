@@ -139,40 +139,48 @@ if(OS_MACOS)
     PROPERTIES PREFIX "" OUTPUT_NAME obs LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
   )
 endif()
-# The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
-# OBS::media-playback); their own recipes, not stand-ins.
-add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
-add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
-# Core module recipes that gate registrations by target (obs-outputs, image-source,
-# obs-transitions, text-freetype2, obs-filters). Registered tests compile the
-# module sources directly, so the module bundles themselves are never built here.
-set(ENABLE_FREETYPE ON)
-# Packages found inside a plugin recipe must stay visible to the test registry.
-set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
-function(set_target_properties_obs target)
-  set_target_properties(${target} PROPERTIES ${ARGN})
-endfunction()
-add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
-add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
-add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
-set(
-  OBS_MODULES_CONFIGURED
-  image-source
-  obs-transitions
-  text-freetype2
-  obs-filters
-  obs-outputs
-)
-foreach(_plugin IN LISTS OBS_MODULES_CONFIGURED)
-  add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
-endforeach()
-# The linked core-module manifest lists the modules configured here (the
-# dispatcher's full macOS set needs every plugin's dependencies), as
-# set_obs_core_modules() would from OBS_MODULES_ENABLED.
-list(LENGTH OBS_MODULES_CONFIGURED OBS_CORE_MODULE_COUNT)
-string(REPLACE ";" "\",\n\t\"" _core_modules_array "${OBS_MODULES_CONFIGURED}")
-set(OBS_CORE_MODULE_LIST "\t\"${_core_modules_array}\"")
-configure_file("${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in" "${CMAKE_BINARY_DIR}/config/obs-core-modules.c" @ONLY)
+# macOS registry parity only: the Windows graph keeps its own, smaller registry (the
+# librtmp tests need case-correct SDK headers that the Linux xwin SDK lacks).
+if(OS_MACOS)
+  # The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
+  # OBS::media-playback); their own recipes, not stand-ins.
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
+  # Core module recipes that gate registrations by target (obs-outputs, image-source,
+  # obs-transitions, text-freetype2, obs-filters). Registered tests compile the
+  # module sources directly, so the module bundles themselves are never built here.
+  set(ENABLE_FREETYPE ON)
+  # Packages found inside a plugin recipe must stay visible to the test registry.
+  set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+  function(set_target_properties_obs target)
+    set_target_properties(${target} PROPERTIES ${ARGN})
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
+  set(
+    OBS_MODULES_CONFIGURED
+    image-source
+    obs-transitions
+    text-freetype2
+    obs-filters
+    obs-outputs
+  )
+  foreach(_plugin IN LISTS OBS_MODULES_CONFIGURED)
+    add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
+  endforeach()
+  # The linked core-module manifest lists the modules configured here (the
+  # dispatcher's full macOS set needs every plugin's dependencies), as
+  # set_obs_core_modules() would from OBS_MODULES_ENABLED.
+  list(LENGTH OBS_MODULES_CONFIGURED OBS_CORE_MODULE_COUNT)
+  string(REPLACE ";" "\",\n\t\"" _core_modules_array "${OBS_MODULES_CONFIGURED}")
+  set(OBS_CORE_MODULE_LIST "\t\"${_core_modules_array}\"")
+  configure_file(
+    "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+    "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+    @ONLY
+  )
+endif()
 if(OS_MACOS)
   # Qt Core/Widgets tests: Darwin libraries from the pinned prebuilt, generators
   # (moc/uic/rcc) from the pinned Linux host Qt.
