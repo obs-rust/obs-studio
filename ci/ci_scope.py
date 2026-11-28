@@ -167,6 +167,9 @@ class Scope:
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
 # `**` for any depth and `*` within one path segment. Rust crates linked into
 # libobs are added to tier2 at run time (linked_crates).
+# The Linux Wine lane's own files start the Windows test lane (#5845).
+WINE_LANE_FILES = frozenset({"ci/windows_wine_tests.py", "ci/wine-runner.sh"})
+
 LANES: dict[str, tuple[str, ...]] = {
     "cmocka_link": (
         "libobs/**", "rust/libobs-rust/**", "rust/obs-build/**", "test/cmocka/**", "deps/**",
@@ -583,6 +586,9 @@ def scope(
             core = True
         if is_qt_sdk(path):
             qt_sdk = macos = windows = True
+        if path in WINE_LANE_FILES:
+            windows = True
+            continue
         if HIDDEN_FRAGMENT.match(path):
             continue
         if is_shared(path, exists):
