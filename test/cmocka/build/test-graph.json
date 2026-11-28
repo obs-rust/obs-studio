@@ -4290,6 +4290,22 @@
         }
       ]
     },
+    "test_encoder_set_audio": {
+      "sources": [
+        "test/cmocka/test_encoder_set_audio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_size_steps": {
       "sources": [
         "test/cmocka/test_encoder_size_steps.c",
@@ -25719,6 +25735,12 @@
     },
     "test_encoder_scaling_enabled": {
       "target": "test_encoder_scaling_enabled",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_set_audio": {
+      "target": "test_encoder_set_audio",
       "command": [
         "${target}"
       ]
