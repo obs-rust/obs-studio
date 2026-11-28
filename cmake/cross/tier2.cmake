@@ -176,10 +176,14 @@ if(OS_MACOS)
   obs_tier2_bind_host_qt("${QT_HOST_PATH}")
 endif()
 if(OS_MACOS)
-  # macOS has no xvfb; a Linux producer's /usr/bin/xvfb-run must never wrap the
-  # tests it registers (an empty cache value stops find_program searching).
-  foreach(_xvfb_var IN ITEMS OBS_XVFB_RUN_REAL XVFB_RUN XVFB_RUN_PROGRAM XVFB_RUN_EXECUTABLE)
-    set(${_xvfb_var} "" CACHE FILEPATH "No xvfb on macOS" FORCE)
-  endforeach()
+  # macOS has no xvfb; the Linux producer's xvfb-run must never wrap the tests it
+  # registers. Hide the host directory that holds it from find_program (an empty
+  # cache value does not stop the search).
+  find_program(_host_xvfb_run xvfb-run)
+  if(_host_xvfb_run)
+    get_filename_component(_host_xvfb_dir "${_host_xvfb_run}" DIRECTORY)
+    list(APPEND CMAKE_IGNORE_PATH "${_host_xvfb_dir}")
+  endif()
+  unset(_host_xvfb_run CACHE)
 endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")

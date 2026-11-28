@@ -182,6 +182,24 @@ class CoreSuiteTest(unittest.TestCase):
                     bundle.run_core_suite(root, work.name, core, "obs", jobs=1)
 
 
+class ProbeTest(unittest.TestCase):
+    def test_a_hung_test_is_sampled_and_reported_not_waited_for(self):
+        import subprocess as real
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "src"
+            root.mkdir()
+            work = build_tree(root)
+            process = mock.Mock(pid=7)
+            process.communicate.side_effect = [real.TimeoutExpired("t", 1), ("late output", None)]
+            with mock.patch.object(bundle.subprocess, "Popen", return_value=process) as popen, \
+                 mock.patch.object(bundle.subprocess, "run") as run:
+                self.assertEqual(bundle.probe(root, work.name, "test_a", seconds=1), 124)
+            self.assertEqual(popen.call_args.kwargs["env"]["ASAN_OPTIONS"].split(":")[0], "verbosity=1")
+            self.assertEqual(run.call_args.args[0][:2], ["sample", "7"])
+            process.kill.assert_called_once()
+
+
 class WorkflowTest(unittest.TestCase):
     @staticmethod
     def job(name: str) -> str:

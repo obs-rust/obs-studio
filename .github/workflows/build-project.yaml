@@ -3861,6 +3861,14 @@ jobs:
       - name: Verify and unpack Tier 2 bundle
         run: uv run --no-project ci/macos_test_workspace.py unpack --archive "${RUNNER_TEMP}/macos-tier2-download/macos-tier2.tar.gz"
 
+      # Diagnostic: an ASan-instrumented test that hangs on macOS prints its verbose
+      # runtime log and a process sample instead of waiting for the CTest timeout.
+      - name: Probe sanitizer startup 🔬
+        continue-on-error: true
+        run: |
+          uv run --no-project ci/macos_tier2_bundle.py probe --test test_amf3_classname --seconds 45
+          uv run --no-project ci/macos_tier2_bundle.py probe --test test_video_render_passes --seconds 45
+
       - name: Run prebuilt Tier 2 CTest
         run: uv run --no-project ci/macos_tier2_bundle.py run --source-sha "${GITHUB_SHA}" --jobs 3
 

@@ -161,6 +161,27 @@ def run_core_suite(root: Path, work_name: str, core: Path, variant: str, *, jobs
         raise ValueError(f"Cargo [{variant}] tests did not load {link}; see {log}")
 
 
+def probe(root: Path, work_name: str, test: str, *, seconds: int) -> int:
+    """Run one test directly with verbose ASan, sampling the process if it hangs (diagnostic)."""
+    work = root / work_name
+    env = suite_environment(root, work, "ON")
+    env["ASAN_OPTIONS"] = "verbosity=1:symbolize=0:detect_leaks=0"
+    executable = next(work.rglob(test))
+    process = subprocess.Popen([str(executable)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        output, _ = process.communicate(timeout=seconds)
+        print(output[-4000:])
+        print(f"probe {test}: exit {process.returncode}")
+        return process.returncode
+    except subprocess.TimeoutExpired:
+        print(f"probe {test}: hung after {seconds}s; sampling", flush=True)
+        subprocess.run(["sample", str(process.pid), "2", "-file", "/dev/stdout"], check=False, timeout=60)
+        process.kill()
+        output, _ = process.communicate()
+        print((output or "")[-4000:])
+        return 124
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -175,6 +196,11 @@ def main() -> int:
     command.add_argument("--core", type=Path, required=True)
     command.add_argument("--variant", required=True)
     command.add_argument("--jobs", type=int, default=3)
+    command = sub.add_parser("probe")
+    command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    command.add_argument("--work-name", default="build_cmocka_link_mac-arm64")
+    command.add_argument("--test", required=True)
+    command.add_argument("--seconds", type=int, default=60)
     command = sub.add_parser("run")
     command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     command.add_argument("--source-sha", required=True)
@@ -184,6 +210,8 @@ def main() -> int:
         manifest = stage(args.root, args.work.resolve(), args.output, source_sha=args.source_sha)
         print(f"staged {len(manifest['files'])} files, {manifest['tests']} tests")
         return 0
+    if args.action == "probe":
+        return probe(args.root, args.work_name, args.test, seconds=args.seconds)
     if args.action == "ctest-core":
         run_core_suite(args.root, args.work_name, args.core, args.variant, jobs=args.jobs)
         return 0
