@@ -36,6 +36,8 @@
     clippy::unreachable
 )]
 
+use crate::{ptm_gate, volume_apply};
+
 /// One of the two keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
@@ -76,14 +78,35 @@ pub trait Host {
     fn volume(&self, source: Self::Source) -> f32;
 }
 
+/// The gate both steps share, on `flags`: the stop-time writes, then the
+/// reads, then whether the source is muted.
+fn gate<H: Host>(host: &H, source: H::Source, flags: Flags, os_time: u64) -> bool {
+    for key in [Key::Mute, Key::Talk] {
+        if host.key_enabled(source, key) && host.pressed(source, flags, key) {
+            let delay = host.delay(source, key);
+            host.set_stop_time(source, key, ptm_gate::stop_time(os_time, delay));
+        }
+    }
+
+    let mute_active = host.pressed(source, flags, Key::Mute)
+        || ptm_gate::held(os_time, host.stop_time(source, Key::Mute));
+    let talk_active = host.pressed(source, flags, Key::Talk)
+        || ptm_gate::held(os_time, host.stop_time(source, Key::Talk));
+
+    !host.enabled(source)
+        || host.muted(source, flags)
+        || ptm_gate::mutes(host.key_enabled(source, Key::Mute), mute_active)
+        || ptm_gate::talk_mutes(host.key_enabled(source, Key::Talk), talk_active)
+}
+
 /// `source_muted(source, os_time)`.
 pub fn source_muted<H: Host>(host: &H, source: H::Source, os_time: u64) -> bool {
-    let _ = (host, source, os_time);
-    todo!("source_muted")
+    gate(host, source, Flags::User, os_time)
 }
 
 /// `get_source_volume(source, os_time)`.
 pub fn get_source_volume<H: Host>(host: &H, source: H::Source, os_time: u64) -> f32 {
-    let _ = (host, source, os_time);
-    todo!("get_source_volume")
+    let muted = gate(host, source, Flags::Mix, os_time);
+    // Read once, muted or not: only the mix thread writes it.
+    volume_apply::snap(muted, host.volume(source))
 }

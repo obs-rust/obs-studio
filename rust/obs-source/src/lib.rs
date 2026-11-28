@@ -121,6 +121,9 @@
 //! `obs_source_process_filter_tech_end()` (the bypass flag, the target and
 //! parent lookups, the flags read, the texture lookup and the draws stay in
 //! a C fields adapter);
+//! `libobs/obs-source-muted-volume.c.h`, the hidden `source_muted()` and
+//! `get_source_volume()` around that gate (every field read and the stop
+//! time writes stay in a C fields adapter);
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
 //! `libobs/obs-source-push-to-enable.c.h`, the push-to-mute and push-to-talk
@@ -231,7 +234,7 @@
 //! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`source_draw`], [`filter_backup`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`source_draw`], [`filter_backup`], [`frame_copy`], [`media_admission`], [`monitoring`], [`muted_volume`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],

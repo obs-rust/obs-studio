@@ -398,9 +398,12 @@ fn push_to_mute_short_circuits_before_push_to_talk() {
             Flags::User => assert!(source_muted(&model, (), T)),
             Flags::Mix => assert_eq!(get_source_volume(&model, (), T).to_bits(), 0),
         }
+        // Both keys enabled: each write check reads the pressed flag.
         let mut reads = vec![
             Event::KeyEnabled(Key::Mute),
+            Event::Pressed(flags, Key::Mute),
             Event::KeyEnabled(Key::Talk),
+            Event::Pressed(flags, Key::Talk),
             Event::Pressed(flags, Key::Mute),
             Event::StopTime(Key::Mute),
             Event::Pressed(flags, Key::Talk),
