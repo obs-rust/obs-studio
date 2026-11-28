@@ -26,6 +26,10 @@ corrosion_import_crate(
 target_link_libraries(libobs_rust-static INTERFACE OBS::libobs-native-dependencies)
 
 if(OS_MACOS)
+  # Imported @rpath dylibs (MbedTLS) need the Darwin runtime-path flag, which
+  # CMake's platform files only define for a host-native Darwin build.
+  set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")
+  set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP ":")
   # A host librt must never satisfy a Darwin dependency probe.
   list(APPEND CMAKE_FIND_ROOT_PATH "${OBS_CROSS_DEPS}")
   set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -91,7 +95,7 @@ find_package(
   FFmpeg
   8.0
   REQUIRED
-  COMPONENTS avcodec avformat avutil swscale swresample
+  COMPONENTS avcodec avdevice avformat avutil swscale swresample
 )
 find_package(jansson REQUIRED)
 find_package(Uthash REQUIRED)
@@ -125,4 +129,96 @@ set_target_properties(cmocka PROPERTIES OBS_DISABLE_PCH TRUE OBS_DISABLE_UNITY_B
 set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
 set(CMOCKA_LIBRARIES cmocka)
 set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
+if(OS_MACOS)
+  # The explicit C reference backend (OFF suite): the C ports without the Rust
+  # halves, under the hybrid's file name and install name so DYLD_LIBRARY_PATH
+  # selects which libobs the unchanged tests load (libobs/cmake/implementation.cmake).
+  add_library(libobs-cross-reference SHARED)
+  target_link_libraries(
+    libobs-cross-reference
+    PRIVATE libobs-cross OBS::caption libobs-cross-generated libobs-cross-shared-native ZLIB::ZLIB
+  )
+  target_include_directories(libobs-cross-reference PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+  target_link_libraries(libobs-cross-reference INTERFACE SIMDe::SIMDe Threads::Threads)
+  set_target_properties(
+    libobs-cross-reference
+    PROPERTIES PREFIX "" OUTPUT_NAME obs LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/libobs-c-reference"
+  )
+endif()
+# macOS registry parity only: the Windows graph keeps its own, smaller registry (the
+# librtmp tests need case-correct SDK headers that the Linux xwin SDK lacks).
+if(OS_MACOS)
+  # The shared owners the unchanged registry gates on (OBS::happy-eyeballs,
+  # OBS::media-playback); their own recipes, not stand-ins.
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/happy-eyeballs" "${CMAKE_BINARY_DIR}/shared/happy-eyeballs")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/media-playback" "${CMAKE_BINARY_DIR}/shared/media-playback")
+  # Core module recipes that gate registrations by target (obs-outputs, image-source,
+  # obs-transitions, text-freetype2, obs-filters). Registered tests compile the
+  # module sources directly, so the module bundles themselves are never built here.
+  set(ENABLE_FREETYPE ON)
+  # Packages found inside a plugin recipe must stay visible to the test registry.
+  set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+  function(set_target_properties_obs target)
+    set_target_properties(${target} PROPERTIES ${ARGN})
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/opts-parser" "${CMAKE_BINARY_DIR}/shared/opts-parser")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/file-updater" "${CMAKE_BINARY_DIR}/shared/file-updater")
+  add_subdirectory("${OBS_SOURCE_ROOT}/shared/bpm" "${CMAKE_BINARY_DIR}/shared/bpm")
+  set(
+    OBS_MODULES_CONFIGURED
+    image-source
+    obs-transitions
+    text-freetype2
+    obs-filters
+    obs-outputs
+  )
+  foreach(_plugin IN LISTS OBS_MODULES_CONFIGURED)
+    add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}" EXCLUDE_FROM_ALL)
+  endforeach()
+  # The linked core-module manifest lists the modules configured here (the
+  # dispatcher's full macOS set needs every plugin's dependencies), as
+  # set_obs_core_modules() would from OBS_MODULES_ENABLED.
+  list(LENGTH OBS_MODULES_CONFIGURED OBS_CORE_MODULE_COUNT)
+  string(REPLACE ";" "\",\n\t\"" _core_modules_array "${OBS_MODULES_CONFIGURED}")
+  set(OBS_CORE_MODULE_LIST "\t\"${_core_modules_array}\"")
+  configure_file(
+    "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+    "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+    @ONLY
+  )
+endif()
+if(OS_MACOS)
+  # Qt Core/Widgets tests: Darwin libraries from the pinned prebuilt, generators
+  # (moc/uic/rcc) from the pinned Linux host Qt.
+  list(PREPEND CMAKE_PREFIX_PATH "${OBS_CROSS_QT}")
+  _obs_cross_uic(_host_uic)
+  set(QT_HOST_PATH "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
+  unset(CMAKE_DISABLE_FIND_PACKAGE_Qt6)
+  find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+  find_package(Qt6CoreTools REQUIRED)
+  find_package(Qt6WidgetsTools REQUIRED)
+  include("${CMAKE_CURRENT_LIST_DIR}/tier2-host-qt.cmake")
+  obs_tier2_bind_host_qt("${QT_HOST_PATH}")
+endif()
+if(OS_MACOS)
+  # macOS has no xvfb; the Linux producer's xvfb-run must never wrap the tests it
+  # registers. Hide the host directory that holds it from find_program (an empty
+  # cache value does not stop the search).
+  find_program(_host_xvfb_run xvfb-run)
+  if(_host_xvfb_run)
+    get_filename_component(_host_xvfb_dir "${_host_xvfb_run}" DIRECTORY)
+    list(APPEND CMAKE_IGNORE_PATH "${_host_xvfb_dir}")
+  endif()
+  # Merged-usr hosts expose one xvfb-run as /bin and /usr/bin; hide every spelling.
+  foreach(
+    _host_dir
+    IN
+    ITEMS /bin /usr/bin /usr/local/bin /sbin /usr/sbin
+  )
+    if(EXISTS "${_host_dir}/xvfb-run")
+      list(APPEND CMAKE_IGNORE_PATH "${_host_dir}")
+    endif()
+  endforeach()
+  unset(_host_xvfb_run CACHE)
+endif()
 add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")

@@ -319,6 +319,7 @@ class CiScopeTest(unittest.TestCase):
             "rust-tests-windows-wine",
             "rust-tests-linux", "cross-compile", "linux-qt-frontend",
             "rust-tier2-windows-wine",
+            "rust-tier2-macos-build",
         }
         routed = heavy
         light = {

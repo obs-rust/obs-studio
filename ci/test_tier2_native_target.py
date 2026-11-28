@@ -28,7 +28,8 @@ class NativeTier2Target(unittest.TestCase):
         commands = ["cmake_minimum_required(VERSION 3.28)", "project(native_tier2_probe NONE)", f"set(OS_{host} TRUE)"]
         # This dependency is not in the validator's target list. New tests must
         # still join the build through the existing cmocka-tests registry.
-        names = COMMON | PLATFORM[host] | {"future-test", "shared-core"}
+        # tier2-residue (#5848) also needs the native-only ASan aggregate and loader probe.
+        names = COMMON | PLATFORM[host] | {"future-test", "shared-core", "cmocka-asan-tests", "test_bitstream"}
         for name in sorted(names - {omit}):
             action = "false" if fail and name == "future-test" else f"touch {root.as_posix()}/{name}.built"
             commands.append(f"add_custom_target({name} COMMAND ${{CMAKE_COMMAND}} -E {action})")

@@ -94,7 +94,7 @@ function(_obs_cross_dependencies)
   set(prebuilt_destination "obs-deps-VERSION-ARCH")
   set(qt6_filename "${_qt_file}")
   set(qt6_destination "obs-deps-qt6-VERSION-ARCH")
-  if(OBS_CROSS_TIER2)
+  if(OBS_CROSS_TIER2 AND NOT OBS_CROSS_TARGET STREQUAL "mac-arm64")
     _check_dependencies(prebuilt)
   else()
     _check_dependencies(prebuilt qt6)
@@ -196,6 +196,10 @@ endfunction()
 set(HAS_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ${OBS_CROSS_WERROR})
 include(compiler_common)
+if(_host STREQUAL MACOS)
+  # cmake/macos/compilerconfig.cmake: arm64 clang fuses multiply-add by default.
+  add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-ffp-contract=off>")
+endif()
 
 # The same precompiled headers and unity batches as the native builds
 # (cmake/common/pch.cmake, unity.cmake): unity is on here by default, since
@@ -415,6 +419,37 @@ if(_host STREQUAL WINDOWS)
   _obs_cross_c_conversion_ratchet(libobs-cross-rust-shims)
 endif()
 
+# Host Qt (uic/moc/rcc) is also needed by the Tier 2 graph's Qt-based tests.
+include(${CMAKE_CURRENT_LIST_DIR}/release-download.cmake)
+set(OBS_CROSS_HOST_QT_TAG qt6-6.11.1)
+set(OBS_CROSS_HOST_QT_ASSET qt6-6.11.1-linux-x86_64-glibc2.28-release-testlib.tar.zst)
+set(OBS_CROSS_HOST_QT_SHA256 021cb3b0f3890851a6787c127f2b94ad0da7c5a20bc3402f09a76656c277dc6e)
+function(_obs_cross_uic out)
+  set(dir "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
+  if(NOT EXISTS "${dir}/.sha256")
+    set(archive "${OBS_SOURCE_ROOT}/.deps/${OBS_CROSS_HOST_QT_ASSET}")
+    obs_cross_release_download(
+      "host Qt for uic"
+      obs-rust/obs-studio-libs
+      ${OBS_CROSS_HOST_QT_TAG}
+      ${OBS_CROSS_HOST_QT_ASSET}
+      "${archive}"
+      ${OBS_CROSS_HOST_QT_SHA256}
+    )
+    file(REMOVE_RECURSE "${dir}")
+    file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${dir}")
+    file(REMOVE "${archive}")
+    file(WRITE "${dir}/.sha256" "${OBS_CROSS_HOST_QT_SHA256}")
+  endif()
+  file(GLOB_RECURSE uic LIST_DIRECTORIES FALSE "${dir}/*/uic" "${dir}/uic")
+  list(FILTER uic INCLUDE REGEX "/(bin|libexec)/uic$")
+  if(NOT uic)
+    message(FATAL_ERROR "No uic under ${dir}")
+  endif()
+  list(GET uic 0 uic)
+  set(${out} "${uic}" PARENT_SCOPE)
+endfunction()
+
 if(OBS_CROSS_TIER2)
   include("${CMAKE_CURRENT_LIST_DIR}/tier2.cmake")
   return()
@@ -499,35 +534,6 @@ endfunction()
 # pinned Linux Qt of the same version (build-project.yaml's QT_TAG/QT_ASSET,
 # kept equal by ci/test_cross_qt.py). Nothing is moc'd: moc output is compiled
 # on its own, never included, and this check links nothing.
-include(${CMAKE_CURRENT_LIST_DIR}/release-download.cmake)
-set(OBS_CROSS_HOST_QT_TAG qt6-6.11.1)
-set(OBS_CROSS_HOST_QT_ASSET qt6-6.11.1-linux-x86_64-glibc2.28-release-testlib.tar.zst)
-set(OBS_CROSS_HOST_QT_SHA256 021cb3b0f3890851a6787c127f2b94ad0da7c5a20bc3402f09a76656c277dc6e)
-function(_obs_cross_uic out)
-  set(dir "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
-  if(NOT EXISTS "${dir}/.sha256")
-    set(archive "${OBS_SOURCE_ROOT}/.deps/${OBS_CROSS_HOST_QT_ASSET}")
-    obs_cross_release_download(
-      "host Qt for uic"
-      obs-rust/obs-studio-libs
-      ${OBS_CROSS_HOST_QT_TAG}
-      ${OBS_CROSS_HOST_QT_ASSET}
-      "${archive}"
-      ${OBS_CROSS_HOST_QT_SHA256}
-    )
-    file(REMOVE_RECURSE "${dir}")
-    file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${dir}")
-    file(REMOVE "${archive}")
-    file(WRITE "${dir}/.sha256" "${OBS_CROSS_HOST_QT_SHA256}")
-  endif()
-  file(GLOB_RECURSE uic LIST_DIRECTORIES FALSE "${dir}/*/uic" "${dir}/uic")
-  list(FILTER uic INCLUDE REGEX "/(bin|libexec)/uic$")
-  if(NOT uic)
-    message(FATAL_ERROR "No uic under ${dir}")
-  endif()
-  list(GET uic 0 uic)
-  set(${out} "${uic}" PARENT_SCOPE)
-endfunction()
 
 # ui_<form>.h for every frontend form, into <build>/frontend-ui.
 function(_obs_cross_frontend_forms)
