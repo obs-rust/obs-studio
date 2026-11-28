@@ -11103,6 +11103,22 @@
         }
       ]
     },
+    "test_output_initialize_encoders": {
+      "sources": [
+        "test/cmocka/test_output_initialize_encoders.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "SIMDe::SIMDe",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_input_checks": {
       "sources": [
         "test/cmocka/test_output_input_checks.c"
@@ -27830,6 +27846,12 @@
     },
     "test_output_identity_getters": {
       "target": "test_output_identity_getters",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_initialize_encoders": {
+      "target": "test_output_initialize_encoders",
       "command": [
         "${target}"
       ]
