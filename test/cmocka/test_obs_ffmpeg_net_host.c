@@ -23,7 +23,10 @@ static void test_wall_time_is_wall_clock(void **state)
 	(void)state;
 	double before = (double)time(NULL);
 	double now = obs_ffmpeg_host_wall_time();
-	double after = (double)time(NULL) + 1.0;
+	/* time() reads the coarse realtime clock, which can trail
+	 * CLOCK_REALTIME by a tick: just past a second boundary it still
+	 * reports the old second (#5872). */
+	double after = (double)time(NULL) + 2.0;
 
 	assert_true(now >= before && now <= after);
 }
