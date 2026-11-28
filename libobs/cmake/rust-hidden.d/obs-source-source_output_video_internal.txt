@@ -1,0 +1,4 @@
+# obs-source-output-video-internal.c.h (obs-source): the worker every
+# obs_source_output_video*() entry ends in. Declared in obs-internal.h
+# without EXPORT, so the shim stays hidden.
+obs_source_output_video_internal

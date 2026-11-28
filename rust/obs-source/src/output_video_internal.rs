@@ -83,6 +83,41 @@ pub fn output_video_internal<H: Host>(
     source: Option<H::Source>,
     frame: Option<H::Frame>,
 ) {
-    let _ = (host, source, frame);
-    todo!("obs_source_output_video_internal")
+    let Some(source) = source else {
+        host.null_source(c"obs_source_output_video");
+        return;
+    };
+
+    // The clock of the source's video, for its audio (#3747): taken alone,
+    // the graphics thread takes audio_buf_mutex inside async_mutex.
+    host.lock_audio_buf(source);
+    let timestamp = frame.map_or(0, |frame| host.frame_timestamp(frame));
+    host.set_last_output_frame_ts(source, timestamp);
+    host.unlock_audio_buf(source);
+
+    let Some(frame) = frame else {
+        host.lock_async(source);
+        host.set_async_active(source, false);
+        // Not drawn again until a new frame is rendered.
+        host.mark_textures_stale(source);
+        host.clear_last_frame_ts(source);
+        host.free_async_cache(source);
+        host.unlock_async(source);
+        return;
+    };
+
+    host.frame_received(source);
+
+    let cached = host.cache_video(source, frame);
+
+    host.lock_async(source);
+    if let Some(cached) = cached {
+        if host.release_ref(cached) == 0 {
+            host.destroy_frame(cached);
+        } else {
+            host.push_frame(source, cached);
+            host.set_async_active(source, true);
+        }
+    }
+    host.unlock_async(source);
 }

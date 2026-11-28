@@ -74,6 +74,7 @@ pub mod source_name;
 pub mod source_output_capture_device;
 pub mod source_output_cea708;
 pub mod source_output_flags;
+pub mod source_output_video_internal;
 pub mod source_preload_video_internal;
 pub mod source_private_settings;
 pub mod source_process_filter_begin;

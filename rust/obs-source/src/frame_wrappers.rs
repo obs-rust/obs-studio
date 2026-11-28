@@ -4,10 +4,11 @@
 //! `*2()` variants.
 //!
 //! Each is the same thin wrapper in front of a worker
-//! (`obs_source_output_video_internal()`, which stays C,
-//! `_preload_video_internal()`, Rust since #5837 in
-//! [`crate::preload_video_internal`], or `_set_video_frame_internal()`, Rust
-//! since #5839 in [`crate::set_video_frame_internal`]):
+//! (`obs_source_output_video_internal()`, Rust since #5841 in
+//! [`crate::output_video_internal`], `_preload_video_internal()`, Rust since
+//! #5837 in [`crate::preload_video_internal`], or
+//! `_set_video_frame_internal()`, Rust since #5839 in
+//! [`crate::set_video_frame_internal`]):
 //! - a source being destroyed returns at once, before the NULL check;
 //! - a missing frame goes to the worker as NULL; the two `set_video_frame`
 //!   entries hand it to the *preload* worker, not the set worker
