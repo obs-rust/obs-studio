@@ -88,6 +88,7 @@ WINE_SKIPS: tuple[str, ...] = (
     "tests::platform::platform_conversions_parity::capacity_is_the_only_difference",
     "tests::platform::platform_conversions_parity::characterization_inputs_match_oracle",
     "tests::platform::platform_conversions_parity::utf8_to_wcs_matches_oracle",
+    "tests::platform::platform_number_parity::strtod_matches_c_oracle",
     # Wine UCRT: wcstombs in the C locale converts an unconvertible char
     # (returns 2, not 0), and strftime %Z names the zone differently.
     "tests::platform::platform_conversions::test_wcs_to_mbs_c_locale",
