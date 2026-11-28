@@ -166,6 +166,21 @@ class MacClosureTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "no linked Mach-O"):
                 cmocka_link_check.verify_signed_images(Path(temporary))
 
+    def test_darwin_runtime_comes_from_the_managed_receipt_and_must_exist(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime = Path(temporary)
+            (runtime / "libclang_rt.osx.a").touch()
+            receipt = json.dumps({"compiler_rt": str(runtime)})
+            with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)) as run:
+                flags = cmocka_link_check.darwin_runtime_flags()
+            self.assertEqual(run.call_args.args[0][:3], ["soldr", "toolchain", "darwin"])
+            self.assertEqual(flags, {f"CMAKE_{kind}_LINKER_FLAGS": str(runtime / "libclang_rt.osx.a")
+                                     for kind in ("EXE", "SHARED", "MODULE")})
+            (runtime / "libclang_rt.osx.a").unlink()
+            with mock.patch.object(cmocka_link_check.subprocess, "run", return_value=mock.Mock(stdout=receipt)):
+                with self.assertRaisesRegex(FileNotFoundError, "libclang_rt.osx.a"):
+                    cmocka_link_check.darwin_runtime_flags()
+
 
 class DiscoveryTest(unittest.TestCase):
     def test_msvc_rejects_full_dll_imports_beside_the_rust_archive(self):
