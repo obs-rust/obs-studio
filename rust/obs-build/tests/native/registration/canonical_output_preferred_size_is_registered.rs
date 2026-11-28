@@ -44,5 +44,9 @@ fn canonical_output_preferred_size_is_registered() {
     );
     let original = fs::read_to_string(root.join("libobs/obs-output.c.h")).unwrap();
     assert!(!original.contains("void obs_output_set_preferred_size("));
-    assert!(original.contains("void obs_output_set_preferred_size2("));
+    assert!(!original.contains("void obs_output_set_preferred_size2("));
+    let indexed =
+        fs::read_to_string(root.join("libobs/obs-output-set-preferred-size2.c.h")).unwrap();
+    assert!(indexed.contains("void obs_output_set_preferred_size2("));
+    assert!(live.contains("#include \"libobs/obs-output-set-preferred-size2.c.h\""));
 }
