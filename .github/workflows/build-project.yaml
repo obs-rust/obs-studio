@@ -2350,6 +2350,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # The registry gates the obs-websocket tests on that submodule's sources.
+      - name: Fetch obs-websocket sources 📥
+        if: matrix.alias == 'mac-arm64'
+        run: git submodule update --init --depth 1 plugins/obs-websocket
+
       - name: Set Up soldr 🦀
         uses: zackees/setup-soldr@dd26c92eb35c553b208bb741326b6d54cf611436 # setup-soldr#707
         with:
@@ -3752,6 +3757,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      # The registry gates the obs-websocket tests on that submodule's sources.
+      - name: Fetch obs-websocket sources 📥
+        run: git submodule update --init --depth 1 plugins/obs-websocket
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
