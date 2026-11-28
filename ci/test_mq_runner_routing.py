@@ -50,9 +50,12 @@ class HostedRunnerRoutingTest(unittest.TestCase):
     def test_pool_select_reads_signal_behind_kill_switch(self):
         job = self.job('ci.yml', 'select-mq-runner')
         step = job.split('      - name: Select Pool or Hosted\n', 1)[1]
-        # Only merge_group with FORGE_POOL_LABELS set asks the pool; PRs never run the job.
-        self.assertIn("    if: github.event_name != 'pull_request'\n", job)
-        self.assertIn("        if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''\n", step)
+        # merge_group and same-repo PRs with FORGE_POOL_LABELS set ask the pool;
+        # fork PRs never run the job.
+        self.assertIn("    if: github.event_name != 'pull_request' || "
+                      "github.event.pull_request.head.repo.full_name == github.repository\n", job)
+        self.assertIn("        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') "
+                      "&& vars.FORGE_POOL_LABELS != ''\n", step)
         self.assertIn('        continue-on-error: true\n', step)
         self.assertIn('          source: signal\n', step)
         self.assertIn('          labels: ${{ vars.FORGE_POOL_LABELS }}\n', step)
@@ -62,10 +65,11 @@ class HostedRunnerRoutingTest(unittest.TestCase):
         self.assertNotIn('token:', job)
 
     def test_queue_selector_uses_forge_quick_with_kill_switch(self):
-        # Only merge_group selection leaves the hosted queue (#5376); an empty
+        # merge_group and PR selection leave the hosted queue (#5376); an empty
         # FORGE_QUICK_LABELS is the kill switch back to ubuntu-latest.
         self.assert_runner('ci.yml', 'select-mq-runner',
-            "${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && "
+            "${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') "
+            "&& vars.FORGE_QUICK_LABELS != '' && "
             "fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}")
         job = self.job('ci.yml', 'select-mq-runner')
         # forge-quick: 120 s wall clock, 256 MiB including the tmpfs workspace.

@@ -88,17 +88,19 @@ jobs:
   # matching runners are idle or a Dell dispatcher has room to start one (the
   # obs-rust lane is at floor 0: the queued job makes the dispatcher start a
   # runner, forge-ci/gh-runner#67). Every other case, and any selector error, leaves
-  # heavy-labels empty, which keeps every heavy job hosted. PRs are skipped
-  # (hosted), as DELL_PR_ROUTING=off did; push, schedule and manual runs stay
-  # hosted. The job runs on the org's forge-quick admin runners (ephemeral,
+  # heavy-labels empty, which keeps every heavy job hosted. Same-repo PRs
+  # select the same way; fork PRs skip the job (hosted); push, schedule and
+  # manual runs stay hosted. The job runs on the org's forge-quick admin runners (ephemeral,
   # 120 s, 256 MiB, 0.5 CPU, no Docker or LAN) so the decision never waits in
   # the hosted queue (#5376). Kill switches: unset FORGE_POOL_LABELS (heavy
   # jobs hosted), unset FORGE_QUICK_LABELS (this job on ubuntu-latest).
   select-mq-runner:
     name: Select Merge Queue Runner
     permissions: {}
-    if: github.event_name != 'pull_request'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
+    # Same-repo PRs use the pool too (operator, 2026-11-28); fork PRs never
+    # reach self-hosted runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
     timeout-minutes: 2
     outputs:
       # Labels only when pool-select chose the pool; empty (hosted) otherwise.
@@ -107,7 +109,7 @@ jobs:
       - name: Select Pool or Hosted
         id: select
         continue-on-error: true
-        if: github.event_name == 'merge_group' && vars.FORGE_POOL_LABELS != ''
+        if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.FORGE_POOL_LABELS != ''
         uses: forge-ci/ci.yml/actions/pool-select@82945f807590d469a2833f2a421a0a7861bc37d1 # ci.yml#564: signal source, counts Dell dispatcher room (gh-runner#67)
         with:
           source: signal
